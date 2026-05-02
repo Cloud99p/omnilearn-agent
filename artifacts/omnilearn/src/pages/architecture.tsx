@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Database, BrainCircuit, Globe, Activity, Shield, Code, Server, Zap, Terminal } from "lucide-react";
+import KnowledgeGraph from "@/components/knowledge-graph";
 
 const ARCH_MODULES = [
   { id: "1", name: "Data Ingestion", type: "Stateless", icon: Globe, tools: ["Scrapy", "Apache Nutch"] },
@@ -93,6 +94,8 @@ export default function Architecture() {
           </div>
         </div>
       </motion.div>
+
+      <KnowledgeGraph />
     </div>
   );
 }
