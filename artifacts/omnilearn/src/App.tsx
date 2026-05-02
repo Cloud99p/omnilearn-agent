@@ -14,6 +14,7 @@ import Personality from "@/pages/personality";
 import Compliance from "@/pages/compliance";
 import Network from "@/pages/network";
 import Compare from "@/pages/compare";
+import DnaPage from "@/pages/dna";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ function Router() {
         <Route path="/compliance" component={Compliance} />
         <Route path="/network" component={Network} />
         <Route path="/compare" component={Compare} />
+        <Route path="/dna" component={DnaPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
