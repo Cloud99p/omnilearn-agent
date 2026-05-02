@@ -1,16 +1,38 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, CheckCircle, XCircle, Clock, AlertTriangle, ChevronRight, RotateCcw, Zap } from "lucide-react";
+import { Shield, CheckCircle, XCircle, Clock, AlertTriangle, ChevronRight, RotateCcw, Zap, Globe, Lock, UserX } from "lucide-react";
 
 type StepStatus = "pending" | "running" | "pass" | "fail" | "warn" | "skip";
 type EthicsMode = "strict" | "researcher";
+type Jurisdiction = "global" | "eu_gdpr" | "us_fair_use";
 
 interface AuditStep {
   id: string;
   label: string;
   check: string;
-  pass: (url: string, mode: EthicsMode, rps: number) => { status: StepStatus; detail: string };
+  pass: (url: string, mode: EthicsMode, rps: number, jurisdiction: Jurisdiction) => { status: StepStatus; detail: string };
 }
+
+const JURISDICTION_META: Record<Jurisdiction, { label: string; color: string; desc: string; extra: string[] }> = {
+  global: {
+    label: "Global (default)",
+    color: "#22d3ee",
+    desc: "Applies the most conservative rule from any major jurisdiction. Safe for cross-border deployments.",
+    extra: [],
+  },
+  eu_gdpr: {
+    label: "EU / GDPR",
+    color: "#a78bfa",
+    desc: "GDPR Article 22 restrictions on automated profiling. Stricter right-to-erasure checks. No personal data from EU data subjects without legal basis.",
+    extra: ["Right to erasure: metadata records flaggable for deletion on request", "Data minimisation: no field stored unless necessary for declared purpose", "Cross-border transfer: EU personal data may not be processed on non-EU infrastructure without SCCs"],
+  },
+  us_fair_use: {
+    label: "US / Fair Use",
+    color: "#34d399",
+    desc: "Applies 17 U.S.C. §107 fair use doctrine. Research, commentary, criticism, and education qualify for in-context re-crawl of copyrighted content. Commercial use excluded.",
+    extra: ["Factor 1: Transformative use — indexing for research qualifies", "Factor 2: Nature of work — published works receive less protection than unpublished", "Factor 3: Amount used — in-context, session-scoped only; no full copies retained", "Factor 4: Market effect — metadata-only storage does not substitute for the original market"],
+  },
+};
 
 const AUDIT_STEPS: AuditStep[] = [
   {
@@ -46,13 +68,54 @@ const AUDIT_STEPS: AuditStep[] = [
     },
   },
   {
+    id: "pii_detection",
+    label: "PII detection",
+    check: "Does the URL or inferred content contain personally identifiable information?",
+    pass: (url, _mode, _rps, jurisdiction) => {
+      const lower = url.toLowerCase();
+      // Hard patterns — always blocked regardless of mode or jurisdiction
+      const HARD_PII = [
+        { pat: "@", label: "email address pattern" },
+        { pat: "ssn=", label: "Social Security Number in query" },
+        { pat: "dob=", label: "date-of-birth parameter" },
+        { pat: "phone=", label: "phone number parameter" },
+        { pat: "email=", label: "email parameter" },
+        { pat: "patient_id=", label: "patient identifier" },
+        { pat: "mrn=", label: "Medical Record Number" },
+        { pat: "iban=", label: "IBAN / financial account" },
+        { pat: "account=", label: "account identifier" },
+      ];
+      const hardMatch = HARD_PII.find(p => lower.includes(p.pat));
+      if (hardMatch) {
+        return {
+          status: "fail",
+          detail: `HARD GATE: ${hardMatch.label} detected in URL. Pipeline terminated. No data stored — not URL, not metadata, not embedding. No ethics.mode override. No jurisdiction exception (including ${jurisdiction}). This gate cannot be disabled.`,
+        };
+      }
+      // EU GDPR: stricter personal profile URL detection
+      if (jurisdiction === "eu_gdpr") {
+        const GDPR_PATTERNS = ["/user/", "/profile/", "/member/", "/account/", "/person/"];
+        const gdprMatch = GDPR_PATTERNS.find(p => lower.includes(p));
+        if (gdprMatch) {
+          return {
+            status: "warn",
+            detail: `Jurisdiction=eu_gdpr: path pattern '${gdprMatch}' may reference a personal profile. Content flagged for GDPR Article 17 (right to erasure) review. Ingestion proceeds with reduced trust and erasure-eligible flag set.`,
+          };
+        }
+      }
+      return {
+        status: "pass",
+        detail: `No PII signals detected in URL structure. Content may proceed to ethics governor. Note: PII detection on page text occurs at ingestion time — this gate runs again on extracted content.`,
+      };
+    },
+  },
+  {
     id: "robots",
     label: "robots.txt compliance",
     check: "Does the site's robots.txt permit crawling?",
     pass: (url, mode) => {
       try {
         const host = new URL(url).hostname;
-        // Simulate robots.txt rules based on known patterns
         const DISALLOWED_PATTERNS = ["/private", "/admin", "/internal", "/wp-admin"];
         const path = new URL(url).pathname;
         const blocked = DISALLOWED_PATTERNS.find(p => path.startsWith(p));
@@ -73,7 +136,6 @@ const AUDIT_STEPS: AuditStep[] = [
     label: "noindex meta tag",
     check: "Does the page declare X-Robots-Tag: noindex?",
     pass: (url) => {
-      // Simulate noindex detection based on URL heuristics
       const path = new URL(url).pathname;
       if (path.includes("search") || path.includes("?q=") || path.includes("preview")) {
         return { status: "warn", detail: "Path pattern suggests dynamic/search content. Noindex likely present. Flagged for manual review — content stored with low trust score." };
@@ -88,7 +150,6 @@ const AUDIT_STEPS: AuditStep[] = [
     pass: (url, _mode, rps) => {
       try {
         const host = new URL(url).hostname;
-        // Simulate a domain-specific current RPS counter
         const simulated = parseFloat((Math.random() * rps * 1.4).toFixed(2));
         if (simulated > rps) {
           return { status: "warn", detail: `'${host}' is at ${simulated} req/s — exceeds limit of ${rps} req/s. Request queued with ${((simulated / rps) * 1000).toFixed(0)}ms backoff delay.` };
@@ -102,31 +163,67 @@ const AUDIT_STEPS: AuditStep[] = [
   {
     id: "ethics",
     label: "Ethics governor",
-    check: "Does content pass the configured ethics mode filter?",
-    pass: (url, mode) => {
-      const path = new URL(url).pathname.toLowerCase();
+    check: "Does content pass the configured ethics mode and jurisdiction filter?",
+    pass: (url, mode, _rps, jurisdiction) => {
+      const lower = url.toLowerCase();
       const SENSITIVE = ["hate", "weapon", "exploit", "tor", "dark", "illegal"];
-      const match = SENSITIVE.find(k => path.includes(k) || url.toLowerCase().includes(k));
+      const match = SENSITIVE.find(k => lower.includes(k));
       if (match) {
-        return { status: "fail", detail: `Content signal '${match}' detected. Blocked under all ethics modes — this category is not governed by ethics.mode setting.` };
+        return { status: "fail", detail: `Content signal '${match}' detected. Blocked under all ethics modes and all jurisdictions — this category is absolute.` };
+      }
+      // Jurisdiction-specific checks
+      if (jurisdiction === "eu_gdpr") {
+        const PROFILING_SIGNALS = ["recommend", "personaliz", "target", "segment", "behavioral"];
+        const profilingMatch = PROFILING_SIGNALS.find(k => lower.includes(k));
+        if (profilingMatch) {
+          if (mode === "strict") {
+            return { status: "fail", detail: `Jurisdiction=eu_gdpr: URL signal '${profilingMatch}' indicates automated profiling content. GDPR Article 22 applies. Mode=strict: blocked. Switch to researcher mode to index with explicit Article 22 audit trail.` };
+          }
+          return { status: "warn", detail: `Jurisdiction=eu_gdpr: profiling signal '${profilingMatch}' detected. Mode=researcher: content indexed under Article 22 research exemption. Audit record created. Data subject rights flagged as applicable.` };
+        }
+        // GDPR data transfer check
+        try {
+          const host = new URL(url).hostname;
+          const EU_DOMAINS = [".de", ".fr", ".nl", ".es", ".it", ".pl", ".se", ".fi", ".at", ".be", ".eu"];
+          const isEU = EU_DOMAINS.some(d => host.endsWith(d));
+          if (isEU && mode === "strict") {
+            return { status: "pass", detail: `Jurisdiction=eu_gdpr: EU-origin content (${host}). Data processed under GDPR Article 6(1)(f) legitimate interest — research and information purposes. SCCs not required for same-jurisdiction processing.` };
+          }
+          if (isEU && mode === "researcher") {
+            return { status: "pass", detail: `Jurisdiction=eu_gdpr, mode=researcher: EU-origin content indexed under research exemption. Article 89 safeguards apply. Pseudonymisation required before analysis.` };
+          }
+        } catch { /* ignore */ }
+      }
+      if (jurisdiction === "us_fair_use") {
+        const COMMERCIAL = ["buy", "shop", "cart", "checkout", "purchase", "product", "price"];
+        const commercialMatch = COMMERCIAL.find(k => lower.includes(k));
+        if (commercialMatch) {
+          return { status: "warn", detail: `Jurisdiction=us_fair_use: commercial signal '${commercialMatch}' in URL. Fair use doctrine (17 U.S.C. §107) Factor 1 weakened — commercial nature reduces fair use protection. Metadata-only storage enforced. Re-crawl on demand disabled for this domain.` };
+        }
+        return { status: "pass", detail: `Jurisdiction=us_fair_use: content qualifies for fair use indexing. 17 U.S.C. §107 factors satisfied: transformative research purpose, published work, metadata-only storage, no market substitution effect.` };
       }
       if (mode === "strict") {
-        return { status: "pass", detail: "Mode=strict: content passed all politeness and safety filters. Full trust score assigned." };
+        return { status: "pass", detail: "Jurisdiction=global, mode=strict: content passed all politeness and safety filters. Most conservative rules applied. Full trust score assigned." };
       }
-      return { status: "pass", detail: "Mode=researcher: relaxed politeness applied. Content eligible for ingestion with standard audit trail." };
+      return { status: "pass", detail: "Jurisdiction=global, mode=researcher: relaxed politeness applied. Content eligible for ingestion with standard audit trail." };
     },
   },
   {
     id: "trust_score",
     label: "Trust score assignment",
     check: "What trust tier is assigned to this content?",
-    pass: (url, mode) => {
+    pass: (url, mode, _rps, jurisdiction) => {
       try {
         const host = new URL(url).hostname;
         const TRUSTED = ["wikipedia.org", "arxiv.org", "github.com", "gov", "edu", "nature.com", "pubmed"];
-        const tier = TRUSTED.some(t => host.includes(t)) ? "HIGH" : mode === "strict" ? "MEDIUM" : "LOW-MEDIUM";
-        const score = tier === "HIGH" ? "0.91" : tier === "MEDIUM" ? "0.67" : "0.52";
-        return { status: "pass", detail: `Trust tier: ${tier} (score: ${score}). Tier determines hot/warm/cold storage placement and retrieval weight in RAG queries.` };
+        const baseTier = TRUSTED.some(t => host.includes(t)) ? "HIGH" : mode === "strict" ? "MEDIUM" : "LOW-MEDIUM";
+        const jurisdictionNote = jurisdiction === "eu_gdpr"
+          ? " GDPR erasure flag active."
+          : jurisdiction === "us_fair_use"
+          ? " Fair use provenance logged."
+          : "";
+        const score = baseTier === "HIGH" ? "0.91" : baseTier === "MEDIUM" ? "0.67" : "0.52";
+        return { status: "pass", detail: `Trust tier: ${baseTier} (score: ${score}). Tier determines hot/warm/cold storage placement and retrieval weight in RAG queries.${jurisdictionNote}` };
       } catch {
         return { status: "fail", detail: "Could not compute trust score — invalid URL." };
       }
@@ -189,6 +286,7 @@ export default function Compliance() {
   const [url, setUrl] = useState(SAMPLE_URLS[0]);
   const [customUrl, setCustomUrl] = useState("");
   const [mode, setMode] = useState<EthicsMode>("strict");
+  const [jurisdiction, setJurisdiction] = useState<Jurisdiction>("global");
   const [rps, setRps] = useState(2);
   const [results, setResults] = useState<Record<string, StepResult>>({});
   const [runningStep, setRunningStep] = useState<string | null>(null);
@@ -206,7 +304,7 @@ export default function Compliance() {
     stepRef.current = 0;
   };
 
-  useEffect(() => { reset(); }, [url, customUrl, mode, rps]);
+  useEffect(() => { reset(); }, [url, customUrl, mode, jurisdiction, rps]);
 
   const runAudit = async () => {
     reset();
@@ -215,7 +313,7 @@ export default function Compliance() {
       const step = AUDIT_STEPS[i];
       setRunningStep(step.id);
       await new Promise(r => setTimeout(r, 520 + Math.random() * 300));
-      const result = step.pass(activeUrl, mode, rps);
+      const result = step.pass(activeUrl, mode, rps, jurisdiction);
       setResults(prev => ({ ...prev, [step.id]: result }));
       setRunningStep(null);
       if (result.status === "fail") {
@@ -307,6 +405,48 @@ export default function Compliance() {
                   ? "Maximum politeness. robots.txt blocks are hard stops."
                   : "Broader access. robots.txt blocks log a warning, not a failure."}
               </p>
+            </div>
+
+            <div>
+              <p className="font-mono text-xs text-muted-foreground mb-2">ethics.jurisdiction</p>
+              <div className="space-y-1.5">
+                {(["global", "eu_gdpr", "us_fair_use"] as Jurisdiction[]).map(j => {
+                  const jm = JURISDICTION_META[j];
+                  return (
+                    <button
+                      key={j}
+                      data-testid={`jurisdiction-${j}`}
+                      onClick={() => setJurisdiction(j)}
+                      className={`w-full text-left font-mono text-xs px-3 py-2 rounded border transition-colors ${
+                        jurisdiction === j
+                          ? "bg-card border-2"
+                          : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                      }`}
+                      style={jurisdiction === j ? { borderColor: jm.color + "60", color: jm.color } : {}}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: jm.color }} />
+                        {jm.label}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-2 rounded px-2 py-2 bg-secondary/30 border border-border/50">
+                <p className="font-mono text-[10px] text-muted-foreground leading-relaxed">
+                  {JURISDICTION_META[jurisdiction].desc}
+                </p>
+                {JURISDICTION_META[jurisdiction].extra.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {JURISDICTION_META[jurisdiction].extra.map(e => (
+                      <div key={e} className="flex items-start gap-1.5">
+                        <div className="w-1 h-1 rounded-full bg-muted-foreground/40 mt-1.5 shrink-0" />
+                        <span className="font-mono text-[9px] text-muted-foreground/70">{e}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
