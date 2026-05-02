@@ -12,6 +12,8 @@ import Configuration from "@/pages/configuration";
 import Onboarding from "@/pages/onboarding";
 import Personality from "@/pages/personality";
 import Compliance from "@/pages/compliance";
+import Network from "@/pages/network";
+import Compare from "@/pages/compare";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +28,8 @@ function Router() {
         <Route path="/onboarding" component={Onboarding} />
         <Route path="/personality" component={Personality} />
         <Route path="/compliance" component={Compliance} />
+        <Route path="/network" component={Network} />
+        <Route path="/compare" component={Compare} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
