@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Network, Blocks, Cpu, Settings, BookOpen, Terminal } from "lucide-react";
+import { Network, Blocks, Cpu, Settings, BookOpen, Terminal, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/architecture", label: "Architecture", icon: Network },
   { href: "/components", label: "Components", icon: Blocks },
   { href: "/configuration", label: "Configuration", icon: Settings },
+  { href: "/personality", label: "Personality", icon: Activity },
   { href: "/onboarding", label: "Onboarding", icon: BookOpen },
 ];
 
@@ -16,7 +17,6 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
-      {/* Sidebar */}
       <aside className="w-full md:w-64 border-r border-border/50 bg-card/50 backdrop-blur-sm shrink-0 sticky top-0 md:h-screen flex flex-col z-50">
         <div className="p-6">
           <Link href="/" className="flex items-center gap-3 text-primary transition-colors hover:text-primary/80 group">
@@ -51,7 +51,6 @@ export default function Layout({ children }: { children: ReactNode }) {
         </nav>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 min-w-0 bg-grid-pattern">
         {children}
       </main>
