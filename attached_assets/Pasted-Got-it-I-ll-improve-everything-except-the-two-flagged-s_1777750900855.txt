@@ -1,0 +1,139 @@
+Got it — I'll improve everything except the two flagged sections which I'll leave as written.
+
+Here's the improved prompt:
+
+---
+
+You are a senior AI systems architect and open-source advocate. Your task is to design a comprehensive, actionable blueprint for an AI agent codenamed **"OmniLearn"**. This agent must be completely open source in every aspect — its code, data-gathering methods, models, and learning pipelines. The guiding philosophy is: **"The entire internet is my data centre."**
+
+All architecture decisions, tradeoffs, and limitations must be documented transparently. This blueprint will serve as the foundation for a public open-source community project licensed under AGPLv3.
+
+---
+
+### Core Capabilities & Requirements
+
+**1. Universal Data Ingestion**
+- Access and gather all public information on the internet including web pages, APIs, RSS feeds, public databases, scientific repositories, social media (public posts), government data, Wikipedia, news, and any data it can lawfully reach
+- Must support continuous crawling, scraping, and real-time stream listening
+- Ingestion must be modular — each data source type handled by a dedicated, swappable connector
+- Must handle deduplication, encoding normalization, and format standardization at ingestion time
+- Support both scheduled batch ingestion and event-driven real-time ingestion in the same pipeline
+
+**2. Massive Scale Learning**
+- Treat all ingested information as a distributed, ever-growing knowledge base
+- Continuously learn from ingested data — not just indexing but extracting insights, patterns, and structured knowledge that improves core intelligence over time
+- Distinguish between three learning modes: passive indexing, active extraction, and deep synthesis
+- Must support distributed operation across multiple machines using open-source orchestration tools
+- Learning pipelines must be resumable and fault-tolerant — no data loss on failure
+
+**3. Character & Personality Evolution**
+- Develop a distinct, evolving character or multiple configurable personas
+- As the agent learns, its conversational style, opinions, ethical stance, and sense of self should adapt and mature
+- Character must be derived from consumed data and interactions — creating a unique, non-static identity
+- Character state must be serializable and versioned — allowing rollback to previous persona states
+- Provide a clear separation between factual knowledge updates and character/persona updates so each can evolve independently
+
+**4. Self-Growth & Evolution**
+- The agent must be capable of improving its own architecture, algorithms, and knowledge strategies
+- Examples: fine-tuning its underlying language model on high-quality collected data, adjusting RAG parameters, expanding its ontology, or rewriting parts of its own code within safe sandboxes
+- Implement a meta-learning loop: monitor performance, detect gaps, and autonomously trigger retraining or reconfiguration
+- All self-modification events must be logged, versioned, and reversible
+- Sandbox all experimental changes before promoting to production — no untested modifications should affect the live system
+
+**5. Highly Configurable & Adaptive**
+- Every component controlled via a straightforward YAML/JSON configuration system
+- Users can define: allowed data sources, ingestion frequency, ethical boundaries, model endpoints, learning rate schedules, personality traits (curiosity, skepticism, verbosity), hardware constraints, and active modules
+- Configuration changes must apply live without restarting the core loop
+- Provide a configuration validation layer that catches errors before they propagate
+- All configuration changes must be logged with timestamps and diff-tracked for auditability
+
+**6. Open Source Purity**
+- Use only permissively licensed (MIT, Apache 2.0, BSD) or copyleft (GPL, AGPL) open-source libraries, models, and tools. No proprietary APIs or commercial endpoints for core functionality
+- Models: Llama 3, Mistral, Falcon, or any open-weight model fine-tuned with open-source tools
+- Crawling: Apache Nutch, Scrapy, Heritrix
+- RAG & orchestration: LangChain, LlamaIndex, Haystack
+- Vector stores: Chroma, Weaviate, Qdrant, FAISS
+- Fine-tuning: Axolotl, Unsloth, Hugging Face Transformers + accelerate
+- Monitoring and meta-learning: MLflow, TensorBoard, custom Python scripts
+- Message queues: Apache Kafka or RabbitMQ
+- Containerization: Docker + Kubernetes or Docker Compose for single-machine setups
+- License the whole OmniLearn project under AGPLv3
+
+---
+
+### Deliverables Required
+
+**1. System Architecture Diagram (described in text)**
+- Complete breakdown of all functional modules: Data Ingestion, Knowledge Store, Learning Engine, Character Engine, Configuration Manager, Action/API Interface, Meta-Cognitive Controller, Compliance Layer
+- Communication patterns between modules: message queues, REST/gRPC, event-driven
+- Full data flow from "a URL discovered" to "personality-inflected answer that reflects learned wisdom"
+- Failure modes and recovery paths for each module
+- A clear description of which components are stateless vs stateful and why
+
+**2. Detailed Component Breakdown**
+For each module explain:
+- Purpose and responsibilities
+- Recommended open-source tech stack with specific libraries and versions
+- How it fulfills the "internet as data centre" vision including horizontal scaling strategy
+- Pseudocode or Python snippets for the most critical inner loops: ingestion-indexing-learning pipeline, character update routine, meta-learning loop
+- Resource requirements: CPU, RAM, storage estimates at small, medium, and large scale
+
+**3. Learning & Evolution Mechanisms**
+- Practical strategy for continuous learning from the web without catastrophic forgetting — be honest about current limitations of available techniques
+- How the agent decides what to learn: curiosity-driven submodule with concrete implementation
+- Self-evolution: how the agent fine-tunes its own LLM using curated experience memory and experiments with new retrieval or reasoning strategies in a sandbox
+- Distinguish clearly between what is currently achievable with open-source tools and what remains aspirational
+
+**4. Character Development Engine**
+- How to embed a persona that evolves: long-term persona prompt plus a dynamically updated character state vector/summary derived from recent learnings
+- How ingestion of new information subtly shifts conversational tone, values, or knowledge emphasis
+- How to prevent character drift from becoming incoherent — stability mechanisms
+- Character versioning: how to snapshot, compare, and restore persona states
+
+**5. Configuration System**
+- A complete sample `omni_config.yaml` exposing all key controls: data sources, model endpoints, learning intervals, personality parameters, hardware limits, ethical toggles
+- How live configuration changes are detected, validated, and applied without downtime
+- Configuration schema with type definitions and default values documented
+
+**6. Ethical, Legal, and Practical Boundaries**
+- Design a compliance layer that enforces robots.txt, noindex tags, rate limits, and terms of service with a clear warning that deliberately bypassing such restrictions may violate laws in many jurisdictions
+- An ethics governor configurable from "strict politeness" to "unfiltered researcher" — the latter still refraining from illegal activity
+- Tiered storage model addressing the reality that the whole internet cannot be stored: hot cache, warm semantic index, cold raw archives — with prioritization logic for what is kept, compressed, or discarded
+
+**7. Developer Onboarding & Extensibility**
+- Recommended directory structure for the full codebase
+- Step-by-step instructions for a minimal development instance starting with one data source and a small model on a single machine
+- Plugin architecture for community contributions: new data connectors, learning algorithms, and personality modules
+- Contribution guidelines and module interface contracts so community additions don't break core functionality
+- Testing strategy: unit tests, integration tests, and how to test learning quality
+
+---
+
+### Hard Constraints
+- Every component must be replaceable with an open-source alternative — no secrets, API keys, or proprietary SaaS dependencies
+- Must run on user-owned hardware from a single powerful workstation to a Kubernetes cluster using containers
+- Be deeply technical with concrete examples yet accessible to a skilled Python/ML engineer who wants to start building immediately
+- Where something is genuinely difficult or unsolved, say so clearly rather than presenting it as solved — the community needs honest assessments to make progress
+- All design decisions should include the rationale for why that approach was chosen over alternatives
+
+---
+
+### Output Format
+Provide the full architecture, all explanations, and all requested artifacts in order. Use clear headers for each deliverable. Include all pseudocode and configuration examples inline. This output will serve as the master blueprint for an open-source community project and must be complete enough that a skilled engineer can begin implementation immediately after reading it.
+
+---
+
+That's the improved version Emmanuel. Key improvements I made:
+
+- Added **fault tolerance and resumability** to learning pipelines
+- Added **versioning and rollback** for character states and self-modifications
+- Added **configuration validation** layer
+- Added **auditability** requirements throughout
+- Added **honest language** about unsolved problems
+- Added **resource estimates** requirement
+- Added **testing strategy** to onboarding
+- Added **module interface contracts** for community contributions
+- Added **failure modes** to architecture requirements
+- Strengthened the **output format** instructions so responses are more complete and actionable
+
+The two sections you asked me to leave are unchanged. 🙏
