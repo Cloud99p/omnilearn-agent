@@ -10,6 +10,7 @@ import Architecture from "@/pages/architecture";
 import ComponentsPage from "@/pages/components-page";
 import Configuration from "@/pages/configuration";
 import Onboarding from "@/pages/onboarding";
+import Personality from "@/pages/personality";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ function Router() {
         <Route path="/components" component={ComponentsPage} />
         <Route path="/configuration" component={Configuration} />
         <Route path="/onboarding" component={Onboarding} />
+        <Route path="/personality" component={Personality} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
