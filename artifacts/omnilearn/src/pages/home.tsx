@@ -7,7 +7,7 @@ import CrawlMap from "@/components/crawl-map";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer } from "recharts";
 
 const MODULES = [
-  { name: "Data Ingestion", icon: Globe, desc: "Distributed web crawlers gathering raw signals." },
+  { name: "Data Ingestion", icon: Globe, desc: "Web crawlers running on your hardware, expanding to consented volunteer nodes on demand." },
   { name: "Knowledge Store", icon: Database, desc: "Vectorized memory for semantic recall." },
   { name: "Learning Engine", icon: BrainCircuit, desc: "RAG and continuous fine-tuning pipelines." },
   { name: "Character Engine", icon: Activity, desc: "Evolving personality state and interaction styles." },

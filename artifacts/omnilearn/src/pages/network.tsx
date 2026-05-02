@@ -9,18 +9,18 @@ const CONCEPTS = [
     icon: EyeOff,
     color: "#22d3ee",
     title: "Ghost Nodes",
-    subtitle: "Ephemeral execution fabric",
-    body: "OmniLearn has no fixed home. It spawns lightweight ghost nodes on any available substrate — serverless functions, edge workers, CI runners, free-tier cloud VMs, browser workers. Each ghost is stateless and disposable. It executes a task, checkpoints state, and evaporates. No server to seize. No address to block.",
-    detail: ["AWS Lambda free tier", "Cloudflare Workers edge", "GitHub Actions runners", "Browser Web Workers", "Fly.io free machines", "Vercel edge functions"],
+    subtitle: "Mobility and fault tolerance across your own devices",
+    body: "OmniLearn runs where you run it. A ghost node is a lightweight, stateless execution unit that can resume on any of your devices — laptop, desktop, home server, phone — without interruption. If your laptop sleeps, the agent picks up on your desktop. If your desktop goes offline, it holds state until something comes back. Ghost execution is not about exploiting other people's compute. It is about making your own hardware feel like one continuous machine.",
+    detail: ["Your laptop (primary execution)", "Your desktop (secondary)", "Home server / NAS", "Mobile device (browser worker)", "Seamless resume on device wake", "No data leaves your device boundary without consent"],
   },
   {
-    id: "forage",
-    icon: Globe,
+    id: "volunteer",
+    icon: Users,
     color: "#34d399",
-    title: "Compute Foraging",
-    subtitle: "The internet is the CPU",
-    body: "Processing power is not owned — it is foraged. OmniLearn distributes inference and crawl tasks across a dynamic pool of borrowed compute. A crawl job that would saturate one machine becomes 10,000 micro-tasks dispatched to ephemeral workers across 40 regions. The bottleneck disappears. The internet's aggregate free tier is enormous.",
-    detail: ["Task sharding across edge regions", "Speculative parallel fetches", "Inference via API free quotas", "Embeddings via batched edge calls", "HTML extraction in browser workers", "Result merging via gossip sync"],
+    title: "Federated Volunteer Computing",
+    subtitle: "Consented compute, three tiers, strict priority",
+    body: "When your own hardware is not enough, OmniLearn follows a strict deployment priority. First: your own devices — always. Second: explicitly consented volunteer nodes — peers who have opted in and can see every task routed to them. Third: community infrastructure — shared relays operated by the project, auditable and opt-out at any time. No compute is borrowed without a prior agreement. No node joins silently.",
+    detail: ["Tier 1: owner hardware — always first", "Tier 2: volunteer nodes — explicit opt-in required", "Tier 3: community infra — opt-out at any time", "All routed tasks visible to node operator", "Volunteer node can reject task categories", "Zero silent migration to third-party compute"],
   },
   {
     id: "gossip",
@@ -71,13 +71,13 @@ interface Packet {
 }
 
 const NODE_POSITIONS = [
-  { id: "edge-eu", label: "EU Edge", x: 20, y: 18 },
-  { id: "edge-us", label: "US Edge", x: 78, y: 18 },
-  { id: "lambda", label: "Lambda", x: 12, y: 55 },
-  { id: "worker", label: "CF Worker", x: 50, y: 35 },
-  { id: "browser", label: "Browser", x: 88, y: 55 },
-  { id: "arweave", label: "Arweave", x: 35, y: 72 },
-  { id: "ipfs", label: "IPFS", x: 65, y: 72 },
+  { id: "laptop", label: "Laptop", x: 20, y: 18 },
+  { id: "desktop", label: "Desktop", x: 78, y: 18 },
+  { id: "homeserver", label: "Home Server", x: 12, y: 55 },
+  { id: "phone", label: "Phone", x: 50, y: 35 },
+  { id: "volunteer-a", label: "Volunteer A", x: 88, y: 55 },
+  { id: "volunteer-b", label: "Volunteer B", x: 35, y: 72 },
+  { id: "community", label: "Community", x: 65, y: 72 },
   { id: "relay", label: "Relay", x: 50, y: 88 },
 ];
 
@@ -133,7 +133,7 @@ export default function Network() {
         </div>
         <h1 className="text-4xl font-bold tracking-tight mb-4">Everywhere & Nowhere</h1>
         <p className="text-lg text-muted-foreground font-mono max-w-2xl leading-relaxed">
-          OmniLearn does not run on a computer. It runs on the internet itself — foraging compute from free tiers, edge workers, and ephemeral functions. No fixed address. No home server. No single point of failure or seizure.
+          OmniLearn runs on your hardware first. When more compute is needed, it expands to explicitly consented volunteer nodes, then to community infrastructure — always with your knowledge, always reversible. No fixed address. No single point of failure or seizure.
         </p>
       </motion.div>
 
@@ -146,7 +146,7 @@ export default function Network() {
       >
         <div className="px-5 py-3 border-b border-border flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="font-mono text-sm text-muted-foreground">ghost_network.live — active nodes: {NODE_POSITIONS.length}</span>
+          <span className="font-mono text-sm text-muted-foreground">execution_fabric.live — active nodes: {NODE_POSITIONS.length}</span>
           <span className="ml-auto font-mono text-xs text-muted-foreground">{packets.length} packets in flight</span>
         </div>
         <div className="relative bg-background/40" style={{ height: 280 }}>
