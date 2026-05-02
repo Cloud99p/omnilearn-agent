@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Fingerprint, GitBranch, Lock, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle } from "lucide-react";
+import { Fingerprint, GitBranch, Lock, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Upload, FileJson } from "lucide-react";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from "recharts";
 
 type Trait = "curiosity" | "skepticism" | "empathy" | "formality" | "verbosity";
@@ -55,7 +55,7 @@ function deriveFingerprint(t: Record<Trait, number>): string {
 const CUSTOM_A: Record<Trait, number> = { curiosity: 0.72, skepticism: 0.58, empathy: 0.69, formality: 0.44, verbosity: 0.61 };
 const CUSTOM_B: Record<Trait, number> = { curiosity: 0.55, skepticism: 0.80, empathy: 0.40, formality: 0.70, verbosity: 0.35 };
 
-type Mode = "preset" | "custom";
+type Mode = "preset" | "custom" | "dna_files";
 
 function DeltaBadge({ delta, isCoreA, isCoreB }: { delta: number; isCoreA: boolean; isCoreB: boolean }) {
   const abs = Math.abs(delta);
@@ -70,22 +70,84 @@ function DeltaBadge({ delta, isCoreA, isCoreB }: { delta: number; isCoreA: boole
   );
 }
 
+interface DnaFile {
+  label: string;
+  fingerprint: string;
+  traits: Record<Trait, number>;
+  meta: { created?: string; uptime_days?: number; version?: string; domains?: number; docs?: number };
+}
+
+function parseDnaJson(raw: unknown): DnaFile | null {
+  try {
+    const obj = raw as Record<string, unknown>;
+    const inst = obj.instance as Record<string, unknown>;
+    const char = obj.character as Record<string, unknown>;
+    const know = obj.knowledge as Record<string, unknown>;
+    const rawTraits = char?.traits as Record<string, number>;
+    // Normalise: map "boldness" → "verbosity" if needed
+    const traits: Partial<Record<Trait, number>> = {};
+    for (const t of TRAITS) {
+      if (rawTraits[t] !== undefined) traits[t] = rawTraits[t];
+    }
+    if ((rawTraits as Record<string, number>)["boldness"] !== undefined && traits.verbosity === undefined) {
+      traits.verbosity = (rawTraits as Record<string, number>)["boldness"];
+    }
+    if (TRAITS.some(t => traits[t] === undefined)) return null;
+    const fp = (char?.fingerprint ?? inst?.id ?? "0x????????") as string;
+    return {
+      label: `Instance ${fp.slice(0, 10)}`,
+      fingerprint: fp,
+      traits: traits as Record<Trait, number>,
+      meta: {
+        created:     inst?.created as string | undefined,
+        uptime_days: inst?.uptime_days as number | undefined,
+        version:     inst?.version as string | undefined,
+        domains:     (know?.domains_crawled as number | undefined),
+        docs:        (know?.total_docs as number | undefined),
+      },
+    };
+  } catch { return null; }
+}
+
 export default function Compare() {
   const [mode, setMode] = useState<Mode>("preset");
   const [customA, setCustomA] = useState(CUSTOM_A);
   const [customB, setCustomB] = useState(CUSTOM_B);
   const [tick, setTick] = useState(0);
+  const [dnaA, setDnaA] = useState<DnaFile | null>(null);
+  const [dnaB, setDnaB] = useState<DnaFile | null>(null);
+  const [dnaErrA, setDnaErrA] = useState<string | null>(null);
+  const [dnaErrB, setDnaErrB] = useState<string | null>(null);
+  const inputRefA = useRef<HTMLInputElement>(null);
+  const inputRefB = useRef<HTMLInputElement>(null);
+
+  function loadDnaFile(file: File, side: "A" | "B") {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const parsed = parseDnaJson(JSON.parse(e.target!.result as string));
+        if (!parsed) throw new Error("Could not find trait data in this file.");
+        if (side === "A") { setDnaA(parsed); setDnaErrA(null); }
+        else              { setDnaB(parsed); setDnaErrB(null); }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Invalid JSON";
+        if (side === "A") setDnaErrA(msg);
+        else              setDnaErrB(msg);
+      }
+    };
+    reader.readAsText(file);
+  }
 
   useEffect(() => {
     const t = setInterval(() => setTick(p => p + 1), 180);
     return () => clearInterval(t);
   }, []);
 
-  const instA = mode === "preset" ? INSTANCE_A.traits : customA;
-  const instB = mode === "preset" ? INSTANCE_B.traits : customB;
+  const instA = mode === "preset" ? INSTANCE_A.traits : mode === "custom" ? customA : (dnaA?.traits ?? INSTANCE_A.traits);
+  const instB = mode === "preset" ? INSTANCE_B.traits : mode === "custom" ? customB : (dnaB?.traits ?? INSTANCE_B.traits);
 
-  const fpA = mode === "preset" ? INSTANCE_A.fingerprint : deriveFingerprint(customA);
-  const fpB = mode === "preset" ? INSTANCE_B.fingerprint : deriveFingerprint(customB);
+  const fpA = mode === "preset" ? INSTANCE_A.fingerprint : mode === "custom" ? deriveFingerprint(customA) : (dnaA?.fingerprint ?? "—");
+  const fpB = mode === "preset" ? INSTANCE_B.fingerprint : mode === "custom" ? deriveFingerprint(customB) : (dnaB?.fingerprint ?? "—");
 
   const radarData = TRAITS.map(t => ({
     trait: t.charAt(0).toUpperCase() + t.slice(1),
@@ -115,21 +177,109 @@ export default function Compare() {
       </motion.div>
 
       {/* Mode toggle */}
-      <div className="flex gap-2 mb-8">
-        {(["preset", "custom"] as Mode[]).map(m => (
+      <div className="flex flex-wrap gap-2 mb-8">
+        {([
+          { key: "preset",    label: "Real instance pair" },
+          { key: "custom",    label: "Custom trait sliders" },
+          { key: "dna_files", label: "Load DNA files" },
+        ] as { key: Mode; label: string }[]).map(m => (
           <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={`font-mono text-xs px-4 py-2 rounded border transition-all ${
-              mode === m
+            key={m.key}
+            onClick={() => setMode(m.key)}
+            className={`font-mono text-xs px-4 py-2 rounded border transition-all flex items-center gap-1.5 ${
+              mode === m.key
                 ? "bg-primary/10 border-primary/40 text-primary"
                 : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/30"
             }`}
           >
-            {m === "preset" ? "Real instance pair" : "Custom trait sliders"}
+            {m.key === "dna_files" && <Upload className="w-3 h-3" />}
+            {m.label}
           </button>
         ))}
       </div>
+
+      {/* DNA file upload zones */}
+      <AnimatePresence>
+        {mode === "dna_files" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-8 overflow-hidden"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {([
+                { side: "A" as const, color: "#22d3ee", dna: dnaA, err: dnaErrA, ref: inputRefA },
+                { side: "B" as const, color: "#a78bfa", dna: dnaB, err: dnaErrB, ref: inputRefB },
+              ]).map(({ side, color, dna, err, ref }) => (
+                <div key={side}>
+                  <input
+                    ref={ref}
+                    type="file"
+                    accept=".json,application/json"
+                    className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) loadDnaFile(f, side); }}
+                  />
+                  {dna ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="rounded-xl border p-4"
+                      style={{ borderColor: color + "40", backgroundColor: color + "08" }}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <FileJson className="w-4 h-4" style={{ color }} />
+                          <span className="font-mono text-xs font-bold" style={{ color }}>{dna.fingerprint}</span>
+                        </div>
+                        <button
+                          onClick={() => ref.current?.click()}
+                          className="font-mono text-[10px] text-muted-foreground hover:text-foreground border border-border rounded px-2 py-0.5 transition-colors"
+                        >
+                          swap
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        {[
+                          { l: "Domains",   v: dna.meta.domains?.toString() ?? "—" },
+                          { l: "Docs",      v: dna.meta.docs ? `${(dna.meta.docs/1000).toFixed(0)}k` : "—" },
+                          { l: "Uptime",    v: dna.meta.uptime_days ? `${dna.meta.uptime_days}d` : "—" },
+                        ].map(s => (
+                          <div key={s.l} className="bg-secondary/30 rounded p-2">
+                            <p className="font-mono text-[9px] text-muted-foreground">{s.l}</p>
+                            <p className="font-mono text-xs font-bold text-foreground">{s.v}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <button
+                      onClick={() => ref.current?.click()}
+                      className="w-full rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all p-8 text-center group"
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) loadDnaFile(f, side); }}
+                    >
+                      <Upload className="w-6 h-6 text-muted-foreground group-hover:text-primary mx-auto mb-2 transition-colors" />
+                      <p className="font-mono text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                        Instance {side} — drop a DNA .json here
+                      </p>
+                      <p className="font-mono text-[10px] text-muted-foreground/50 mt-1">
+                        exported from Instance DNA page
+                      </p>
+                    </button>
+                  )}
+                  {err && <p className="font-mono text-[10px] text-red-400 mt-2 px-1">{err}</p>}
+                </div>
+              ))}
+            </div>
+            {(!dnaA || !dnaB) && (
+              <p className="font-mono text-[10px] text-muted-foreground/50 text-center mt-3">
+                Load both files to run the divergence analysis
+              </p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Header cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
