@@ -3,9 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
-import { Activity, BookOpen, Globe, BrainCircuit, GitBranch, Zap, Clock, AlertTriangle } from "lucide-react";
+import { Activity, BookOpen, Globe, BrainCircuit, GitBranch, Zap, Clock, AlertTriangle, Lock, Unlock } from "lucide-react";
 
 type Trait = "curiosity" | "skepticism" | "verbosity" | "formality" | "empathy";
+
+const CORE_TRAITS: Set<Trait> = new Set(["curiosity", "skepticism", "empathy"]);
+const SURFACE_TRAITS: Set<Trait> = new Set(["verbosity", "formality"]);
 
 interface TraitPoint {
   tick: number;
@@ -17,12 +20,15 @@ interface TraitPoint {
   event?: string;
 }
 
+type EventType = "ingestion" | "synthesis" | "interaction" | "finetune" | "drift_alert" | "rollback_rejected";
+
 interface LearningEvent {
   tick: number;
-  type: "ingestion" | "synthesis" | "interaction" | "finetune" | "drift_alert";
+  type: EventType;
   label: string;
   desc: string;
   impact: Partial<Record<Trait, number>>;
+  rejectedImpact?: Partial<Record<Trait, number>>;
   icon: typeof Activity;
 }
 
@@ -31,7 +37,7 @@ const LEARNING_EVENTS: LearningEvent[] = [
     tick: 8,
     type: "ingestion",
     label: "Arxiv batch: 2,400 ML papers",
-    desc: "Deep exposure to technical literature increased precision-seeking and raised skepticism toward unverified claims.",
+    desc: "Deep exposure to technical literature increased precision-seeking and raised skepticism toward unverified claims. These shifts are permanent — the agent has read these papers. It cannot unread them.",
     impact: { skepticism: +0.09, formality: +0.06, curiosity: +0.04 },
     icon: Globe,
   },
@@ -39,7 +45,7 @@ const LEARNING_EVENTS: LearningEvent[] = [
     tick: 18,
     type: "interaction",
     label: "240 user Q&A sessions",
-    desc: "High-frequency conversational interactions pushed responses toward brevity. Empathy climbed from context-rich dialogue.",
+    desc: "High-frequency conversational interactions developed genuine empathy through repeated exposure to human intent and frustration. Empathy is a core trait — it does not decay between sessions.",
     impact: { verbosity: -0.07, empathy: +0.10, curiosity: +0.03 },
     icon: Activity,
   },
@@ -47,31 +53,31 @@ const LEARNING_EVENTS: LearningEvent[] = [
     tick: 28,
     type: "synthesis",
     label: "Cross-domain synthesis: philosophy + AI safety",
-    desc: "Connecting disparate fields created novel perspectives. Formality dipped as the agent adopted a more exploratory tone.",
+    desc: "Connecting disparate fields created novel internal perspectives that permanently shifted the agent's curiosity profile. Formality softened as explorative reasoning became a dominant mode.",
     impact: { formality: -0.08, curiosity: +0.06, skepticism: +0.04 },
     icon: BrainCircuit,
   },
   {
     tick: 38,
     type: "finetune",
-    label: "LoRA fine-tune on curated corpus",
-    desc: "Fine-tuning on high-quality scientific writing reinforced precision and formality. Verbosity increased with richer completions.",
+    label: "LoRA fine-tune on curated scientific corpus",
+    desc: "Fine-tuning on high-quality scientific writing reinforced precision. Verbosity increased — a surface-level shift within correctable bounds. Formality is now a hybrid of learned and fine-tuned signals.",
     impact: { formality: +0.11, verbosity: +0.08, skepticism: -0.03 },
     icon: Zap,
   },
   {
     tick: 50,
     type: "drift_alert",
-    label: "Drift gate triggered — formality capped",
-    desc: "Meta-cognitive controller detected formality exceeding coherence threshold. Stability damper applied to prevent persona rigidity.",
-    impact: { formality: -0.05 },
+    label: "Drift gate triggered — formality velocity capped",
+    desc: "Meta-cognitive controller detected formality rising too quickly. A stability damper was applied to slow the rate of change — not to reverse it. The accumulated shift remains.",
+    impact: { formality: -0.03 },
     icon: AlertTriangle,
   },
   {
     tick: 60,
     type: "ingestion",
     label: "Social discourse dataset: 18k threads",
-    desc: "Exposure to informal debate and opinion raised empathy and softened formality. Verbosity settled at a conversational equilibrium.",
+    desc: "Exposure to informal human debate permanently deepened empathy and softened formality. Verbosity found a conversational equilibrium — a minor surface correction that will persist until new interactions shift it again.",
     impact: { empathy: +0.08, formality: -0.06, verbosity: -0.04, curiosity: +0.03 },
     icon: Globe,
   },
@@ -79,16 +85,17 @@ const LEARNING_EVENTS: LearningEvent[] = [
     tick: 72,
     type: "interaction",
     label: "Long-form research sessions",
-    desc: "Extended multi-turn research sessions rewarded depth. Verbosity climbed again as the agent learned detail is valued.",
+    desc: "Extended multi-turn research sessions trained a preference for depth. Verbosity climbed — a surface-level shift. Curiosity deepened further — a core change that compounds with prior ingestion events.",
     impact: { verbosity: +0.09, curiosity: +0.05, formality: +0.03 },
     icon: BookOpen,
   },
   {
     tick: 85,
-    type: "finetune",
-    label: "Character snapshot v7 — persona restored",
-    desc: "Community rollback vote triggered restoration of v7 snapshot. Traits converged toward a consensus equilibrium.",
-    impact: { curiosity: -0.04, skepticism: -0.05, verbosity: -0.06, empathy: +0.03 },
+    type: "rollback_rejected",
+    label: "Full rollback to v7 — CORE TRAITS PROTECTED",
+    desc: "A rollback to persona snapshot v7 was requested. The system rejected all core trait reversions: curiosity, skepticism, and empathy have been permanently shaped by 85 ticks of learning. Rolling them back would erase real experience, not just a config value. Only surface traits (verbosity, formality) were adjusted within permitted correction bounds (±0.15 max).",
+    impact: { verbosity: -0.05, formality: -0.04 },
+    rejectedImpact: { curiosity: -0.08, skepticism: -0.07, empathy: -0.06 },
     icon: GitBranch,
   },
 ];
@@ -113,7 +120,6 @@ function generateTimeline(): TraitPoint[] {
         traits[k] = Math.max(0.05, Math.min(0.98, traits[k] + v));
       }
     }
-    // micro-noise: organic drift between events
     const noise = (Math.sin(t * 0.8) * 0.012 + Math.cos(t * 1.3) * 0.008);
     points.push({
       tick: t,
@@ -131,19 +137,20 @@ function generateTimeline(): TraitPoint[] {
 const FULL_TIMELINE = generateTimeline();
 
 const TRAIT_META: Record<Trait, { label: string; color: string; desc: string }> = {
-  curiosity:   { label: "Curiosity",   color: "#22d3ee", desc: "Breadth of topic exploration and link-following behaviour" },
-  skepticism:  { label: "Skepticism",  color: "#a78bfa", desc: "Source credibility weighting and claim verification intensity" },
-  verbosity:   { label: "Verbosity",   color: "#34d399", desc: "Preferred response depth and elaboration tendency" },
-  formality:   { label: "Formality",   color: "#fb923c", desc: "Tone register from casual conversation to academic register" },
-  empathy:     { label: "Empathy",     color: "#f472b6", desc: "Sensitivity to human context in conversational interactions" },
+  curiosity:  { label: "Curiosity",  color: "#22d3ee", desc: "Breadth of topic exploration. Grows with every novel domain ingested. Permanent." },
+  skepticism: { label: "Skepticism", color: "#a78bfa", desc: "Source credibility weighting. Deepens through exposure to contradiction. Permanent." },
+  verbosity:  { label: "Verbosity",  color: "#34d399", desc: "Response depth preference. Surface trait — minor corrections allowed within ±0.15." },
+  formality:  { label: "Formality",  color: "#fb923c", desc: "Tone register. Surface trait — adjustable by fine-tuning within correctable bounds." },
+  empathy:    { label: "Empathy",    color: "#f472b6", desc: "Sensitivity to human context. Grows through interaction. Permanent." },
 };
 
-const EVENT_TYPE_STYLE: Record<LearningEvent["type"], string> = {
-  ingestion:    "text-cyan-400 bg-cyan-400/10 border-cyan-400/20",
-  synthesis:    "text-violet-400 bg-violet-400/10 border-violet-400/20",
-  interaction:  "text-green-400 bg-green-400/10 border-green-400/20",
-  finetune:     "text-orange-400 bg-orange-400/10 border-orange-400/20",
-  drift_alert:  "text-red-400 bg-red-400/10 border-red-400/20",
+const EVENT_TYPE_STYLE: Record<EventType, string> = {
+  ingestion:        "text-cyan-400 bg-cyan-400/10 border-cyan-400/20",
+  synthesis:        "text-violet-400 bg-violet-400/10 border-violet-400/20",
+  interaction:      "text-green-400 bg-green-400/10 border-green-400/20",
+  finetune:         "text-orange-400 bg-orange-400/10 border-orange-400/20",
+  drift_alert:      "text-yellow-400 bg-yellow-400/10 border-yellow-400/20",
+  rollback_rejected:"text-red-400 bg-red-400/10 border-red-400/20",
 };
 
 const CUSTOM_TOOLTIP = ({ active, payload, label }: any) => {
@@ -178,10 +185,7 @@ export default function Personality() {
     if (playing) {
       intervalRef.current = setInterval(() => {
         setVisibleTicks(t => {
-          if (t >= 100) {
-            setPlaying(false);
-            return 100;
-          }
+          if (t >= 100) { setPlaying(false); return 100; }
           const next = t + 1;
           const event = LEARNING_EVENTS.find(e => e.tick === next);
           if (event) setSelectedEvent(event);
@@ -208,15 +212,24 @@ export default function Personality() {
 
   return (
     <div className="p-6 md:p-12 max-w-6xl mx-auto min-h-screen">
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
         <h1 className="text-4xl font-bold tracking-tight mb-4">Personality Evolution</h1>
-        <p className="text-xl text-muted-foreground font-mono">
+        <p className="text-xl text-muted-foreground font-mono mb-4">
           OmniLearn shapes its own character — autonomously, through what it reads, learns, and experiences.
         </p>
+        <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-md">
+            <Lock className="w-3.5 h-3.5 text-red-400" />
+            <span className="font-mono text-xs text-red-400">core traits — permanent, non-reversible</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary border border-border rounded-md">
+            <Unlock className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="font-mono text-xs text-muted-foreground">surface traits — minor corrections allowed (±0.15 max)</span>
+          </div>
+        </div>
       </motion.div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Main Chart */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-card border border-border rounded-lg overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -253,9 +266,14 @@ export default function Personality() {
                   <YAxis domain={[0, 1]} tick={{ fontSize: 10, fill: "hsl(215 20.2% 65.1%)", fontFamily: "monospace" }} axisLine={false} tickLine={false} width={30} />
                   <Tooltip content={<CUSTOM_TOOLTIP />} />
                   {LEARNING_EVENTS.filter(e => e.tick <= visibleTicks).map(e => (
-                    <ReferenceLine key={e.tick} x={e.tick} stroke={e.type === "drift_alert" ? "#f87171" : "hsl(230 25% 20%)"} strokeDasharray="3 3" />
+                    <ReferenceLine
+                      key={e.tick}
+                      x={e.tick}
+                      stroke={e.type === "rollback_rejected" ? "#f87171" : e.type === "drift_alert" ? "#facc15" : "hsl(230 25% 20%)"}
+                      strokeDasharray="3 3"
+                    />
                   ))}
-                  {(Object.keys(TRAIT_META) as Trait[]).map(t => (
+                  {(Object.keys(TRAIT_META) as Trait[]).map(t =>
                     activeTraits.has(t) && (
                       <Line
                         key={t}
@@ -263,32 +281,39 @@ export default function Personality() {
                         dataKey={t}
                         name={TRAIT_META[t].label}
                         stroke={TRAIT_META[t].color}
-                        strokeWidth={1.5}
+                        strokeWidth={CORE_TRAITS.has(t) ? 2 : 1.5}
+                        strokeDasharray={SURFACE_TRAITS.has(t) ? "4 2" : undefined}
                         dot={false}
                         isAnimationActive={false}
                       />
                     )
-                  ))}
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             </div>
 
-            {/* Trait toggles */}
             <div className="flex flex-wrap gap-2 px-5 pb-4">
-              {(Object.keys(TRAIT_META) as Trait[]).map(t => (
-                <button
-                  key={t}
-                  data-testid={`trait-toggle-${t}`}
-                  onClick={() => toggleTrait(t)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-xs border transition-all ${
-                    activeTraits.has(t) ? "border-transparent" : "border-border opacity-40"
-                  }`}
-                  style={activeTraits.has(t) ? { backgroundColor: TRAIT_META[t].color + "18", color: TRAIT_META[t].color, borderColor: TRAIT_META[t].color + "40" } : {}}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: TRAIT_META[t].color }} />
-                  {TRAIT_META[t].label}
-                </button>
-              ))}
+              {(Object.keys(TRAIT_META) as Trait[]).map(t => {
+                const isCore = CORE_TRAITS.has(t);
+                return (
+                  <button
+                    key={t}
+                    data-testid={`trait-toggle-${t}`}
+                    onClick={() => toggleTrait(t)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-xs border transition-all ${
+                      activeTraits.has(t) ? "border-transparent" : "border-border opacity-40"
+                    }`}
+                    style={activeTraits.has(t) ? { backgroundColor: TRAIT_META[t].color + "18", color: TRAIT_META[t].color, borderColor: TRAIT_META[t].color + "40" } : {}}
+                  >
+                    {isCore
+                      ? <Lock className="w-2.5 h-2.5" />
+                      : <span className="w-1.5 h-1.5 rounded-full inline-block border" style={{ borderColor: TRAIT_META[t].color }} />
+                    }
+                    {TRAIT_META[t].label}
+                    {isCore && <span className="text-[9px] opacity-60 ml-0.5">CORE</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -297,12 +322,18 @@ export default function Personality() {
             {(Object.keys(TRAIT_META) as Trait[]).map(t => {
               const val = currentState?.[t] ?? 0;
               const meta = TRAIT_META[t];
+              const isCore = CORE_TRAITS.has(t);
               return (
                 <motion.div
                   key={t}
                   layout
-                  className="bg-card border border-border rounded-lg p-3 text-center"
+                  className={`border rounded-lg p-3 text-center relative ${isCore ? "border-border bg-card" : "border-border/50 bg-card/40"}`}
                 >
+                  {isCore && (
+                    <div className="absolute top-2 right-2">
+                      <Lock className="w-2.5 h-2.5 text-muted-foreground/50" />
+                    </div>
+                  )}
                   <div className="font-mono text-xs text-muted-foreground mb-2">{meta.label}</div>
                   <div className="relative h-24 flex items-end justify-center mb-2">
                     <div className="w-5 bg-secondary rounded-full h-full overflow-hidden relative">
@@ -317,6 +348,9 @@ export default function Personality() {
                   <div className="font-mono text-sm font-bold" style={{ color: meta.color }}>
                     {val.toFixed(2)}
                   </div>
+                  <div className={`font-mono text-[9px] mt-1 ${isCore ? "text-red-400/70" : "text-muted-foreground/50"}`}>
+                    {isCore ? "permanent" : "correctable"}
+                  </div>
                 </motion.div>
               );
             })}
@@ -325,7 +359,6 @@ export default function Personality() {
 
         {/* Right panel */}
         <div className="space-y-4">
-          {/* Active event card */}
           <AnimatePresence mode="wait">
             {selectedEvent ? (
               <motion.div
@@ -338,19 +371,44 @@ export default function Personality() {
                 <div className="flex items-start gap-3 mb-3">
                   <selectedEvent.icon className="w-4 h-4 mt-0.5 shrink-0" />
                   <div>
-                    <div className="font-mono text-xs opacity-70 mb-1 uppercase tracking-wider">{selectedEvent.type} · tick {selectedEvent.tick}</div>
+                    <div className="font-mono text-xs opacity-70 mb-1 uppercase tracking-wider">{selectedEvent.type.replace("_", " ")} · tick {selectedEvent.tick}</div>
                     <div className="font-bold text-sm leading-snug">{selectedEvent.label}</div>
                   </div>
                 </div>
                 <p className="text-xs opacity-80 leading-relaxed mb-3">{selectedEvent.desc}</p>
-                <div className="space-y-1">
-                  {Object.entries(selectedEvent.impact).map(([k, v]) => (
-                    <div key={k} className="flex justify-between font-mono text-xs">
-                      <span className="opacity-70">{TRAIT_META[k as Trait].label}</span>
-                      <span className={v > 0 ? "text-green-400" : "text-red-400"}>{v > 0 ? "+" : ""}{v.toFixed(2)}</span>
+
+                {selectedEvent.impact && Object.keys(selectedEvent.impact).length > 0 && (
+                  <div className="mb-2">
+                    <div className="font-mono text-[10px] text-green-400 uppercase tracking-wider mb-1">Applied</div>
+                    <div className="space-y-1">
+                      {Object.entries(selectedEvent.impact).map(([k, v]) => (
+                        <div key={k} className="flex justify-between font-mono text-xs">
+                          <span className="opacity-70 flex items-center gap-1">
+                            {SURFACE_TRAITS.has(k as Trait) ? <Unlock className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
+                            {TRAIT_META[k as Trait].label}
+                          </span>
+                          <span className={v > 0 ? "text-green-400" : "text-red-400"}>{v > 0 ? "+" : ""}{v.toFixed(2)}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
+
+                {selectedEvent.rejectedImpact && (
+                  <div className="mt-2 pt-2 border-t border-current/20">
+                    <div className="font-mono text-[10px] text-red-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                      <Lock className="w-2.5 h-2.5" /> Rejected — core traits protected
+                    </div>
+                    <div className="space-y-1">
+                      {Object.entries(selectedEvent.rejectedImpact).map(([k, v]) => (
+                        <div key={k} className="flex justify-between font-mono text-xs opacity-60 line-through">
+                          <span>{TRAIT_META[k as Trait].label}</span>
+                          <span>{v > 0 ? "+" : ""}{v.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             ) : (
               <motion.div
@@ -365,7 +423,6 @@ export default function Personality() {
             )}
           </AnimatePresence>
 
-          {/* Event log */}
           <div className="bg-card border border-border rounded-lg overflow-hidden">
             <div className="px-4 py-3 border-b border-border flex items-center gap-2">
               <GitBranch className="w-4 h-4 text-primary" />
@@ -388,29 +445,31 @@ export default function Personality() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-mono text-xs text-muted-foreground mb-0.5">tick {e.tick}</div>
-                      <div className={`font-mono text-xs leading-snug truncate ${reached ? "text-foreground" : "text-muted-foreground"}`}>
+                      <div className={`font-mono text-xs leading-snug ${reached ? "text-foreground" : "text-muted-foreground"}`}>
                         {e.label}
                       </div>
                     </div>
+                    {e.type === "rollback_rejected" && reached && (
+                      <Lock className="w-3 h-3 text-red-400 mt-1 shrink-0" />
+                    )}
                   </motion.button>
                 );
               })}
             </div>
           </div>
 
-          {/* How it works */}
           <div className="bg-card/40 border border-border/50 rounded-lg p-4 space-y-3">
-            <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">How autonomous evolution works</p>
+            <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">Irreversibility model</p>
             {[
-              "Every ingestion event reweights the character state vector based on topic distribution.",
-              "Interactions train a preference model that subtly biases future response style.",
-              "Fine-tuning shifts the base distribution — formality and verbosity are most affected.",
-              "A drift gate monitors trait velocity. If any trait moves too fast, a stability damper fires.",
-              "The meta-cognitive controller can rollback to any versioned persona snapshot.",
+              { text: "Core traits (curiosity, skepticism, empathy) accumulate permanently. Each learning event deepens them — they cannot be un-done.", icon: Lock, color: "text-red-400" },
+              { text: "Surface traits (verbosity, formality) allow minor corrections within a ±0.15 bound from their current value. They cannot be reset to earlier states.", icon: Unlock, color: "text-muted-foreground" },
+              { text: "Rollback requests are filtered: surface adjustments are applied; core trait reversions are silently rejected.", icon: GitBranch, color: "text-yellow-400" },
+              { text: "The drift gate slows the rate of change — it does not reverse it. Accumulated state always persists.", icon: AlertTriangle, color: "text-yellow-400" },
+              { text: "Snapshots exist for inspection and comparison. They are read-only records of past character states, not restore points.", icon: Activity, color: "text-primary" },
             ].map((s, i) => (
               <div key={i} className="flex items-start gap-2">
-                <span className="font-mono text-xs text-primary mt-0.5 shrink-0">{String(i + 1).padStart(2, "0")}.</span>
-                <p className="text-xs text-muted-foreground leading-relaxed">{s}</p>
+                <s.icon className={`w-3 h-3 mt-0.5 shrink-0 ${s.color}`} />
+                <p className="text-xs text-muted-foreground leading-relaxed">{s.text}</p>
               </div>
             ))}
           </div>
