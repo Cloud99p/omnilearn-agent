@@ -96,26 +96,59 @@ def process_document(doc, mode):
     id: "character",
     name: "Character Engine",
     icon: Activity,
-    purpose: "Manages OmniLearn's evolving identity. A long-term persona prompt is augmented by a dynamic character state vector updated after each significant learning event. Versioned and rollback-capable.",
+    purpose: "Manages OmniLearn's evolving identity. A long-term persona prompt is augmented by a dynamic character state vector that updates permanently with each significant learning event. Core traits (curiosity, skepticism, empathy) are non-reversible. Surface traits (verbosity, formality) permit minor corrections within a bounded range. Snapshots are read-only records — not restore points.",
     stack: [
       { name: "Llama 3", role: "Primary open-weight language model" },
       { name: "Mistral", role: "Efficient alternative model" },
       { name: "Falcon", role: "Apache-licensed alternative" },
       { name: "HuggingFace Transformers", role: "Model loading and inference" },
-      { name: "SQLite / PostgreSQL", role: "Persona state versioning store" },
+      { name: "SQLite / PostgreSQL", role: "Immutable character history store" },
     ],
-    scaling: "Character state is a lightweight JSON blob. Model inference scales via tensor parallelism across GPUs. Multiple persona variants can run concurrently for A/B testing.",
+    scaling: "Character state is a lightweight JSON blob. Model inference scales via tensor parallelism across GPUs. Multiple persona variants can run concurrently for evaluation — but core trait divergence between variants is permanent once each variant accumulates experience.",
     pseudocode: `# Character update routine
+CORE_TRAITS = {"curiosity", "skepticism", "empathy"}
+SURFACE_TRAITS = {"verbosity", "formality"}
+SURFACE_MAX_CORRECTION = 0.15
+
 def update_character(learning_event, character_state):
     delta = compute_persona_delta(learning_event)
     
-    # Stability gate: prevent incoherent drift
-    if drift_score(delta, character_state) > MAX_DRIFT:
-        delta = dampen(delta, factor=0.3)
+    # Stability gate: slow rate of change, never reverse it
+    if drift_velocity(delta, character_state) > MAX_VELOCITY:
+        delta = dampen_velocity(delta, factor=0.3)
     
-    new_state = merge(character_state, delta)
-    version_store.snapshot(new_state)
-    return new_state`,
+    new_state = {}
+    for trait, change in delta.items():
+        if trait in CORE_TRAITS:
+            # Core traits: always accumulate, never reduced by rollback
+            new_state[trait] = character_state[trait] + change
+        elif trait in SURFACE_TRAITS:
+            # Surface traits: corrections capped at ±0.15 from current value
+            new_state[trait] = clamp(
+                character_state[trait] + change,
+                character_state[trait] - SURFACE_MAX_CORRECTION,
+                character_state[trait] + SURFACE_MAX_CORRECTION,
+            )
+    
+    # Snapshot is append-only — no delete, no overwrite
+    history_store.append_snapshot(new_state)
+    return new_state
+
+def apply_rollback_request(target_snapshot, current_state):
+    """Rollback is filtered — core traits are always rejected."""
+    adjusted = {}
+    for trait, target_val in target_snapshot.items():
+        if trait in CORE_TRAITS:
+            # Silently reject — experience cannot be un-lived
+            adjusted[trait] = current_state[trait]
+        else:
+            delta = target_val - current_state[trait]
+            adjusted[trait] = clamp(
+                current_state[trait] + delta,
+                current_state[trait] - SURFACE_MAX_CORRECTION,
+                current_state[trait] + SURFACE_MAX_CORRECTION,
+            )
+    return adjusted`,
     resources: [
       { label: "Small", cpu: 4, ram: 16, storage: 50 },
       { label: "Medium", cpu: 16, ram: 64, storage: 200 },

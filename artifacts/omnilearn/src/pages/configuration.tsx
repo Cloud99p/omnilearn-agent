@@ -109,7 +109,7 @@ const SCHEMA = [
   { field: "personality.curiosity", type: "float [0,1]", default: "0.8", desc: "Controls breadth of topic exploration" },
   { field: "personality.skepticism", type: "float [0,1]", default: "0.6", desc: "Source credibility weighting bias" },
   { field: "personality.verbosity", type: "float [0,1]", default: "0.5", desc: "Response length preference" },
-  { field: "personality.persona_version", type: "integer", default: "latest", desc: "Snapshot ID to restore. Enables rollback" },
+  { field: "personality.persona_version", type: "integer", default: "latest", desc: "Snapshot ID for inspection only. Core traits are permanent — snapshots cannot be fully restored." },
   { field: "hardware.max_ram_gb", type: "integer", default: "64", desc: "System RAM cap for OmniLearn processes" },
   { field: "hardware.gpu_enabled", type: "boolean", default: "true", desc: "Enable CUDA/MPS acceleration" },
   { field: "hardware.crawler_workers", type: "integer", default: "8", desc: "Concurrent crawler threads" },
