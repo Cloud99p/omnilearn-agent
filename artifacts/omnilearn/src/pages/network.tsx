@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Globe, Zap, GitBranch, Shield, Radio, Cpu, Cloud, Eye, EyeOff, ArrowRight, Wifi } from "lucide-react";
+import { Globe, Zap, GitBranch, Shield, Radio, Cpu, Cloud, Eye, EyeOff, ArrowRight, Wifi, Users, TrendingUp, CheckCircle, Vote, Lightbulb, Upload } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const CONCEPTS = [
   {
@@ -280,7 +281,7 @@ export default function Network() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8 }}
-        className="p-6 bg-primary/5 border border-primary/20 rounded-xl"
+        className="p-6 bg-primary/5 border border-primary/20 rounded-xl mb-16"
       >
         <div className="flex items-start gap-4">
           <Eye className="w-5 h-5 text-primary mt-0.5 shrink-0" />
@@ -292,6 +293,277 @@ export default function Network() {
           </div>
         </div>
       </motion.div>
+
+      <CollectiveEvolution />
     </div>
+  );
+}
+
+// ─── Collective Evolution ────────────────────────────────────────────────────
+
+const GROWTH_DATA = [
+  { month: "M1",  nodes: 1,    improvements: 0,  knowledge: 0 },
+  { month: "M2",  nodes: 3,    improvements: 0,  knowledge: 2 },
+  { month: "M3",  nodes: 9,    improvements: 1,  knowledge: 8 },
+  { month: "M4",  nodes: 22,   improvements: 2,  knowledge: 21 },
+  { month: "M5",  nodes: 47,   improvements: 4,  knowledge: 55 },
+  { month: "M6",  nodes: 110,  improvements: 9,  knowledge: 140 },
+  { month: "M7",  nodes: 240,  improvements: 18, knowledge: 380 },
+  { month: "M8",  nodes: 510,  improvements: 31, knowledge: 890 },
+  { month: "M9",  nodes: 980,  improvements: 52, knowledge: 2100 },
+  { month: "M10", nodes: 1800, improvements: 88, knowledge: 5200 },
+  { month: "M11", nodes: 3100, improvements: 140,knowledge: 12000 },
+  { month: "M12", nodes: 5400, improvements: 220,knowledge: 28000 },
+];
+
+const CONTRIBUTION_TYPES = [
+  { label: "knowledge delta", color: "#22d3ee", icon: Upload },
+  { label: "retrieval strategy", color: "#34d399", icon: Lightbulb },
+  { label: "compliance signal", color: "#f472b6", icon: Shield },
+  { label: "character insight", color: "#fb923c", icon: Radio },
+  { label: "crawl efficiency", color: "#a78bfa", icon: Globe },
+];
+
+const DOMAINS = [
+  "arxiv.org", "pubmed.ncbi", "en.wikipedia", "nature.com",
+  "hacker-news", "openreview.net", "github.com", "bbc.co.uk",
+];
+
+const IMPROVEMENT_MILESTONES = [
+  { epoch: 3,   label: "Retrieval precision +4.2%",    votes: 12,  threshold: 5,  status: "ratified" },
+  { epoch: 7,   label: "Robots.txt edge case handled",  votes: 28,  threshold: 10, status: "ratified" },
+  { epoch: 12,  label: "Gossip delta compression ×2",   votes: 51,  threshold: 20, status: "ratified" },
+  { epoch: 18,  label: "Trust score recalibration",     votes: 94,  threshold: 50, status: "ratified" },
+  { epoch: 24,  label: "Core embedding model upgrade",  votes: 180, threshold: 100,status: "ratified" },
+];
+
+interface ContribEvent {
+  id: number;
+  ts: string;
+  type: typeof CONTRIBUTION_TYPES[0];
+  agent: string;
+  domain: string;
+  votes: number;
+  status: "proposed" | "voting" | "ratified";
+}
+
+let ceid = 0;
+function makeContrib(): ContribEvent {
+  const t = CONTRIBUTION_TYPES[Math.floor(Math.random() * CONTRIBUTION_TYPES.length)];
+  const now = new Date();
+  const ts = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`;
+  const status = (["proposed", "voting", "voting", "ratified"] as ContribEvent["status"][])[Math.floor(Math.random() * 4)];
+  return {
+    id: ++ceid,
+    ts,
+    type: t,
+    agent: `0x${Math.random().toString(16).slice(2,10).toUpperCase()}`,
+    domain: DOMAINS[Math.floor(Math.random() * DOMAINS.length)],
+    votes: status === "proposed" ? 0 : status === "voting" ? Math.floor(Math.random() * 40) + 1 : Math.floor(Math.random() * 200) + 50,
+    status,
+  };
+}
+
+const INIT_CONTRIBS: ContribEvent[] = Array.from({ length: 6 }, makeContrib).reverse();
+
+function CollectiveEvolution() {
+  const [contribs, setContribs] = useState<ContribEvent[]>(INIT_CONTRIBS);
+  const [activeTab, setActiveTab] = useState<"growth" | "feed" | "protocol">("growth");
+  const [nodeCount] = useState(5400);
+  const [epoch] = useState(24);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setContribs(prev => [makeContrib(), ...prev.slice(0, 14)]);
+    }, 2200);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+      {/* Header */}
+      <div className="mb-8">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-xs mb-5">
+          <Users className="w-3.5 h-3.5" />
+          <span>collective evolution — federation protocol</span>
+        </div>
+        <h2 className="text-3xl font-bold tracking-tight mb-3">The Network Grows With Every Instance</h2>
+        <p className="text-muted-foreground max-w-2xl leading-relaxed">
+          OmniLearn agents are not isolated. Each instance can optionally contribute anonymised learning deltas back to the collective. When enough independent agents agree on an improvement, it is ratified and propagated to every node via gossip. The more instances exist, the smarter the whole network becomes — and the faster it grows.
+        </p>
+      </div>
+
+      {/* Live health stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        {[
+          { label: "Active nodes", value: nodeCount.toLocaleString(), color: "#22d3ee", icon: Cpu },
+          { label: "Current epoch", value: `#${epoch}`, color: "#34d399", icon: TrendingUp },
+          { label: "Improvements ratified", value: "220", color: "#a78bfa", icon: CheckCircle },
+          { label: "Contributions this epoch", value: "1,847", color: "#fb923c", icon: Upload },
+        ].map(s => (
+          <div key={s.label} className="bg-card border border-border rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <s.icon className="w-3.5 h-3.5" style={{ color: s.color }} />
+              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
+            </div>
+            <p className="font-mono text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        {(["growth", "feed", "protocol"] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setActiveTab(t)}
+            className={`font-mono text-xs px-4 py-2 rounded border transition-all ${
+              activeTab === t
+                ? "bg-primary/10 border-primary/40 text-primary"
+                : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+            }`}
+          >
+            {t === "growth" ? "Network growth" : t === "feed" ? "Contribution feed" : "Federation protocol"}
+          </button>
+        ))}
+      </div>
+
+      <AnimatePresence mode="wait">
+        {activeTab === "growth" && (
+          <motion.div key="growth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="bg-card border border-border rounded-xl p-6 mb-6">
+              <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-1">Node count & knowledge base — months 1–12</p>
+              <p className="font-mono text-[10px] text-muted-foreground mb-4">Exponential: each new node accelerates the collective learning rate</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={GROWTH_DATA} margin={{ top: 5, right: 10, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="gnodes" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gimprove" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#34d399" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(215 20.2% 45%)", fontFamily: "monospace" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(215 20.2% 45%)", fontFamily: "monospace" }} axisLine={false} tickLine={false} width={40} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "hsl(224 71% 6%)", border: "1px solid hsl(214.3 31.8% 16%)", borderRadius: 8, fontFamily: "monospace", fontSize: 11 }}
+                    labelStyle={{ color: "hsl(210 40% 80%)" }}
+                  />
+                  <Area type="monotone" dataKey="nodes" stroke="#22d3ee" strokeWidth={2} fill="url(#gnodes)" name="Active nodes" />
+                  <Area type="monotone" dataKey="improvements" stroke="#34d399" strokeWidth={1.5} fill="url(#gimprove)" name="Improvements ratified" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="space-y-3">
+              <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-3">Improvement milestones</p>
+              {IMPROVEMENT_MILESTONES.map(m => (
+                <div key={m.epoch} className="flex items-center gap-4 bg-card border border-border rounded-lg px-4 py-3">
+                  <span className="font-mono text-[10px] text-muted-foreground w-12 shrink-0">epoch {m.epoch}</span>
+                  <div className="flex-1 font-mono text-sm text-foreground">{m.label}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${Math.min(100, (m.votes / m.threshold) * 100)}%` }} />
+                    </div>
+                    <span className="font-mono text-[10px] text-muted-foreground">{m.votes}/{m.threshold} votes</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-emerald-400 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" /> ratified
+                  </span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === "feed" && (
+          <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-mono text-sm text-muted-foreground">federation.contributions — live</span>
+              </div>
+              <AnimatePresence initial={false}>
+                {contribs.map(c => (
+                  <motion.div
+                    key={c.id}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex items-center gap-3 px-5 py-2.5 border-b border-border/40 last:border-b-0"
+                  >
+                    <span className="font-mono text-[10px] text-muted-foreground/60 w-16 shrink-0">{c.ts}</span>
+                    <div className="font-mono text-[10px] px-1.5 py-0.5 rounded border shrink-0"
+                      style={{ color: c.type.color, borderColor: c.type.color + "40", backgroundColor: c.type.color + "10" }}>
+                      {c.type.label}
+                    </div>
+                    <c.type.icon className="w-3 h-3 shrink-0" style={{ color: c.type.color }} />
+                    <span className="font-mono text-[10px] text-muted-foreground shrink-0">{c.agent}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground/50 shrink-0">via {c.domain}</span>
+                    <div className="flex-1" />
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Vote className="w-3 h-3 text-muted-foreground" />
+                      <span className="font-mono text-[10px] text-muted-foreground">{c.votes}</span>
+                    </div>
+                    <span className={`font-mono text-[10px] shrink-0 ${
+                      c.status === "ratified" ? "text-emerald-400" :
+                      c.status === "voting" ? "text-yellow-400" : "text-muted-foreground"
+                    }`}>{c.status}</span>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === "protocol" && (
+          <motion.div key="protocol" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="grid md:grid-cols-2 gap-5">
+              {[
+                {
+                  step: "01", color: "#22d3ee", title: "Opt-in contribution",
+                  body: "Each agent independently decides whether to contribute. Contribution is never assumed. When enabled, the agent submits anonymised knowledge deltas — never raw data, never identity information.",
+                  bullets: ["Zero raw data leaves the instance", "Contribution flag in omni_config.yaml", "Can be disabled at any time", "Gradient-only submissions"],
+                },
+                {
+                  step: "02", color: "#34d399", title: "Delta computation",
+                  body: "The agent computes what it has learned that differs from the last known collective baseline. Only the delta — the difference — is submitted. The baseline is distributed via gossip so the agent always knows what is already known.",
+                  bullets: ["Merkle diff against collective baseline", "Compressed to <4 KB per submission", "Cryptographically signed by instance fingerprint", "Submitted to nearest relay node"],
+                },
+                {
+                  step: "03", color: "#a78bfa", title: "Trust-weighted voting",
+                  body: "Every delta is broadcast to other nodes. Nodes vote based on their own corroborating evidence. Votes are weighted by the voter's trust score — older agents with proven accuracy carry more weight. Quorum threshold scales with network size.",
+                  bullets: ["Vote weight = f(age, accuracy, diversity)", "Threshold = sqrt(active_nodes)", "Voting window = 48 hours", "Abstain by default — no vote ≠ rejection"],
+                },
+                {
+                  step: "04", color: "#fb923c", title: "Ratification & propagation",
+                  body: "When the quorum threshold is reached, the improvement is ratified. It is written to the shared improvement ledger and propagated via gossip to all nodes. Each node applies it at next startup or live-patches if safe to do so.",
+                  bullets: ["Improvement hash appended to ledger", "Gossiped with TTL=∞", "Nodes verify signature before applying", "Rollback possible if >30% nodes reject"],
+                },
+              ].map(s => (
+                <div key={s.step} className="bg-card border border-border rounded-xl p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="font-mono text-2xl font-bold" style={{ color: s.color }}>{s.step}</span>
+                    <h3 className="font-bold text-sm">{s.title}</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-4">{s.body}</p>
+                  <div className="space-y-1.5">
+                    {s.bullets.map(b => (
+                      <div key={b} className="flex items-center gap-2">
+                        <div className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                        <span className="font-mono text-[11px] text-muted-foreground">{b}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
