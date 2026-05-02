@@ -295,7 +295,366 @@ export default function Network() {
       </motion.div>
 
       <CollectiveEvolution />
+      <ProofOfExistence />
     </div>
+  );
+}
+
+// ─── Proof of Independent Existence ─────────────────────────────────────────
+
+const PHASES = [
+  {
+    id: "observer",
+    label: "Observer",
+    days: "Day 0 – 30",
+    color: "#f87171",
+    weight: "×0 voting weight",
+    badge: "burn-in",
+    badgeColor: "#f87171",
+    capabilities: ["Crawl & index content", "Sync knowledge deltas via gossip", "Propose improvements to the feed", "Accumulate domain & accuracy history"],
+    blocked: ["Cast votes on any proposal", "Have contributions weighted", "Influence quorum outcomes"],
+    why: "A brand-new node has no track record. Even if it submits 1,000 contributions in 30 days, they cannot be verified — accuracy is only established over independent, time-separated observations.",
+  },
+  {
+    id: "probationary",
+    label: "Probationary",
+    days: "Day 31 – 90",
+    color: "#facc15",
+    weight: "×0.1 – ×0.7 weight",
+    badge: "scaling",
+    badgeColor: "#facc15",
+    capabilities: ["Cast votes (partial weight)", "Contributions counted toward quorum", "Trust score begins accumulating", "Relay routes diversifying"],
+    blocked: ["Full weight until 90 days + formula satisfied"],
+    why: "The node has survived the burn-in window and shown consistent behaviour. Weight scales linearly with age and grows with domain diversity and accuracy rate. A node that only knows one domain cannot influence multi-domain decisions.",
+  },
+  {
+    id: "member",
+    label: "Voting Member",
+    days: "Day 91+",
+    color: "#34d399",
+    weight: "Full weight (0–1.0)",
+    badge: "established",
+    badgeColor: "#34d399",
+    capabilities: ["Full voting weight per formula", "Weighted contributions to quorum", "Can co-sign relay introductions", "Trust score used as jury weight"],
+    blocked: [],
+    why: "Full membership is not binary — weight is continuously calculated. A node that stops learning, reduces domain diversity, or has contributions rejected sees its weight decay. There is no permanent tenure.",
+  },
+];
+
+const WEIGHT_FORMULA_FACTORS = [
+  {
+    id: "domain", label: "Domain diversity", color: "#22d3ee", weight: 0.4,
+    desc: "Unique second-level domains crawled × category spread multiplier. Requires real crawl effort across genuinely different knowledge areas — not 1,000 pages of the same site.",
+    formula: "min(1.0, (unique_domains / 50)^0.7 × category_spread)",
+    whyHard: "Takes weeks of real crawling across genuinely different domains. Mirrors of the same content don't count — deduplication runs on content hash.",
+  },
+  {
+    id: "accuracy", label: "Accuracy history", color: "#a78bfa", weight: 0.4,
+    desc: "Ratio of contributions ratified by quorum to total contributions submitted. Requires ≥30 contributions before the score activates — a brand-new node has no accuracy record.",
+    formula: "ratified_count / total_submitted  (min 30 required)",
+    whyHard: "Requires months of participation, each contribution independently evaluated by peers who have no reason to be biased. A bad actor submitting false data gets a low accuracy score permanently.",
+  },
+  {
+    id: "topology", label: "Topology diversity", color: "#fb923c", weight: 0.2,
+    desc: "Number of distinct relay paths the node has participated through. Proxy farms and datacenter clusters have low topology diversity — they share the same AS number and routing prefixes.",
+    formula: "min(1.0, unique_relay_paths / 10)",
+    whyHard: "Different ASNs, routing prefixes, geographic regions. A thousand VMs in the same datacenter all look the same topologically — they contribute one topology unit, not a thousand.",
+  },
+];
+
+function calcNodeWeight(domainCount: number, accuracyPct: number, topoPaths: number, ageDays: number): {
+  domain: number; accuracy: number; topology: number; age: number; total: number;
+} {
+  const domain = Math.min(1.0, Math.pow(domainCount / 50, 0.7) * Math.min(1.0, domainCount / 10));
+  const accuracy = ageDays >= 30 ? Math.min(1.0, accuracyPct / 100) : 0;
+  const topology = Math.min(1.0, topoPaths / 10);
+  const age = ageDays < 30 ? 0 : Math.min(1.0, (ageDays - 30) / 60);
+  const raw = domain * 0.4 + accuracy * 0.4 + topology * 0.2;
+  const total = raw * age;
+  return { domain, accuracy, topology, age, total };
+}
+
+function ProofOfExistence() {
+  const [activePhase, setActivePhase] = useState<string>("observer");
+  const [domainCount, setDomainCount] = useState(25);
+  const [accuracyPct, setAccuracyPct] = useState(72);
+  const [topoPaths, setTopoPaths] = useState(4);
+  const [ageDays, setAgeDays] = useState(45);
+  const [showSybil, setShowSybil] = useState(false);
+
+  const w = calcNodeWeight(domainCount, accuracyPct, topoPaths, ageDays);
+  const phase = ageDays < 30 ? "observer" : ageDays < 90 ? "probationary" : "member";
+  const phaseColor = phase === "observer" ? "#f87171" : phase === "probationary" ? "#facc15" : "#34d399";
+
+  const activePhaseData = PHASES.find(p => p.id === activePhase)!;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="mt-16"
+    >
+      {/* Header */}
+      <div className="mb-8">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 font-mono text-xs mb-5">
+          <Shield className="w-3.5 h-3.5" />
+          <span>proof of independent existence — sybil resistance</span>
+        </div>
+        <h2 className="text-3xl font-bold tracking-tight mb-3">Trust Is Earned Over Time</h2>
+        <p className="text-muted-foreground max-w-2xl leading-relaxed">
+          New nodes join the network with zero voting weight. Influence cannot be bought, injected, or bootstrapped.
+          It accumulates from real work across diverse domains, validated by independent peers over months — not milliseconds.
+          Spinning up 10,000 nodes overnight gives you 10,000 × 0 = 0 influence.
+        </p>
+      </div>
+
+      {/* Phase timeline */}
+      <div className="grid md:grid-cols-3 gap-4 mb-8">
+        {PHASES.map((p, i) => (
+          <button
+            key={p.id}
+            onClick={() => setActivePhase(p.id)}
+            className={`rounded-xl border p-5 text-left transition-all ${
+              activePhase === p.id
+                ? "bg-card border-2"
+                : "bg-card/60 border-border hover:border-border/80"
+            }`}
+            style={activePhase === p.id ? { borderColor: p.color + "60" } : {}}
+          >
+            {/* Phase number + timeline line */}
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono font-bold shrink-0" style={{ backgroundColor: p.color + "20", color: p.color }}>
+                {i + 1}
+              </div>
+              {i < 2 && <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${p.color}40, transparent)` }} />}
+              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded border" style={{ color: p.badgeColor, borderColor: p.badgeColor + "30", backgroundColor: p.badgeColor + "10" }}>
+                {p.badge}
+              </span>
+            </div>
+            <p className="font-mono text-sm font-bold mb-0.5" style={{ color: p.color }}>{p.label}</p>
+            <p className="font-mono text-[10px] text-muted-foreground mb-2">{p.days}</p>
+            <p className="font-mono text-xs font-bold text-foreground">{p.weight}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* Phase detail */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activePhase}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          className="bg-card border border-border rounded-xl p-6 mb-8 grid md:grid-cols-2 gap-6"
+        >
+          <div>
+            <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Allowed during this phase
+            </p>
+            <div className="space-y-2">
+              {activePhaseData.capabilities.map(c => (
+                <div key={c} className="flex items-start gap-2">
+                  <CheckCircle className="w-3 h-3 text-emerald-400 mt-0.5 shrink-0" />
+                  <span className="font-mono text-xs text-foreground">{c}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            {activePhaseData.blocked.length > 0 && (
+              <>
+                <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Vote className="w-3.5 h-3.5 text-red-400" /> Not yet available
+                </p>
+                <div className="space-y-2 mb-4">
+                  {activePhaseData.blocked.map(b => (
+                    <div key={b} className="flex items-start gap-2">
+                      <div className="w-3 h-3 rounded-full border border-red-400/40 mt-0.5 shrink-0" />
+                      <span className="font-mono text-xs text-muted-foreground">{b}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            <p className="font-mono text-[11px] text-muted-foreground leading-relaxed italic">{activePhaseData.why}</p>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Voting weight formula */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden mb-6">
+        <div className="px-6 py-4 border-b border-border">
+          <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-1">Voting weight formula — interactive</p>
+          <p className="font-mono text-[10px] text-muted-foreground">Adjust the sliders to see how each factor affects this node's influence.</p>
+        </div>
+        <div className="p-6 grid md:grid-cols-2 gap-8">
+          {/* Sliders */}
+          <div className="space-y-5">
+            {[
+              { label: "Unique domains crawled", value: domainCount, min: 0, max: 120, step: 1, set: setDomainCount, color: "#22d3ee", unit: "domains", score: w.domain, factor: "×0.40" },
+              { label: "Contribution accuracy", value: accuracyPct, min: 0, max: 100, step: 1, set: setAccuracyPct, color: "#a78bfa", unit: "%", score: w.accuracy, factor: "×0.40" },
+              { label: "Unique relay paths", value: topoPaths, min: 0, max: 20, step: 1, set: setTopoPaths, color: "#fb923c", unit: "paths", score: w.topology, factor: "×0.20" },
+              { label: "Node age (days)", value: ageDays, min: 0, max: 180, step: 1, set: setAgeDays, color: phaseColor, unit: "days", score: w.age, factor: "age mult." },
+            ].map(s => (
+              <div key={s.label}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono text-xs text-muted-foreground">{s.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] text-muted-foreground/50">{s.factor}</span>
+                    <span className="font-mono text-sm font-bold" style={{ color: s.color }}>{s.value}{s.unit === "%" ? "%" : ""}{s.unit !== "%" ? ` ${s.unit}` : ""}</span>
+                  </div>
+                </div>
+                <input
+                  type="range" min={s.min} max={s.max} step={s.step}
+                  value={s.value}
+                  onChange={e => s.set(+e.target.value)}
+                  className="w-full h-1.5 appearance-none rounded cursor-pointer"
+                  style={{ accentColor: s.color }}
+                />
+                <div className="mt-1.5 h-1 bg-secondary rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${s.score * 100}%`, backgroundColor: s.color }} />
+                </div>
+                <div className="flex justify-between font-mono text-[9px] text-muted-foreground/50 mt-0.5">
+                  <span>score: {s.score.toFixed(3)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Weight gauge */}
+          <div className="flex flex-col items-center justify-center">
+            <div className="relative w-40 h-40 mb-4">
+              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="hsl(214 31.8% 12%)" strokeWidth="10" />
+                <circle
+                  cx="50" cy="50" r="40" fill="none"
+                  stroke={phaseColor}
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray={`${w.total * 251.2} 251.2`}
+                  className="transition-all duration-500"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="font-mono text-3xl font-bold" style={{ color: phaseColor }}>{(w.total * 100).toFixed(0)}</span>
+                <span className="font-mono text-xs text-muted-foreground">/ 100</span>
+              </div>
+            </div>
+            <div className="font-mono text-sm font-bold mb-1" style={{ color: phaseColor }}>
+              {phase === "observer" ? "Observer — no vote" : phase === "probationary" ? "Probationary" : "Voting Member"}
+            </div>
+            <div className="font-mono text-[10px] text-muted-foreground text-center max-w-xs">
+              {phase === "observer"
+                ? "Age < 30 days. Voting locked regardless of other factors."
+                : `weight = (${(w.domain * 0.4).toFixed(3)} + ${(w.accuracy * 0.4).toFixed(3)} + ${(w.topology * 0.2).toFixed(3)}) × ${w.age.toFixed(3)}`}
+            </div>
+
+            {/* Factor breakdown */}
+            <div className="mt-4 w-full max-w-xs space-y-2">
+              {WEIGHT_FORMULA_FACTORS.map(f => {
+                const score = f.id === "domain" ? w.domain : f.id === "accuracy" ? w.accuracy : w.topology;
+                return (
+                  <div key={f.id} className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] text-muted-foreground w-20 shrink-0">{f.label.split(" ")[0]}</span>
+                    <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${score * 100}%`, backgroundColor: f.color }} />
+                    </div>
+                    <span className="font-mono text-[10px] w-8 text-right" style={{ color: f.color }}>{(score * f.weight).toFixed(3)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Why it's expensive to fake */}
+      <div className="grid md:grid-cols-3 gap-4 mb-6">
+        {WEIGHT_FORMULA_FACTORS.map(f => (
+          <div key={f.id} className="bg-card border border-border rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: f.color }} />
+              <p className="font-mono text-xs font-bold text-foreground">{f.label}</p>
+              <span className="font-mono text-[10px] text-muted-foreground ml-auto">×{f.weight.toFixed(2)}</span>
+            </div>
+            <p className="font-mono text-[10px] text-muted-foreground leading-relaxed mb-3">{f.desc}</p>
+            <div className="bg-secondary/40 rounded px-2 py-1.5">
+              <p className="font-mono text-[9px]" style={{ color: f.color }}>{f.formula}</p>
+            </div>
+            <p className="font-mono text-[10px] text-muted-foreground leading-relaxed mt-3 border-t border-border/50 pt-2">
+              <span className="text-foreground">Why it's hard to fake:</span> {f.whyHard}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Sybil resistance */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <button
+          onClick={() => setShowSybil(s => !s)}
+          className="w-full flex items-center gap-3 px-6 py-4 text-left hover:bg-secondary/20 transition-colors"
+        >
+          <Users className="w-4 h-4 text-violet-400" />
+          <span className="font-mono text-sm font-bold">Sybil resistance — why mass-spawning fails</span>
+          <span className="ml-auto font-mono text-xs text-muted-foreground">{showSybil ? "collapse" : "expand"}</span>
+        </button>
+        <AnimatePresence>
+          {showSybil && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="px-6 pb-6 border-t border-border grid md:grid-cols-2 gap-6 pt-5">
+                <div>
+                  <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-4">If an attacker spawns 10,000 nodes at once</p>
+                  <div className="space-y-3">
+                    {[
+                      { label: "Each node's age", value: "0 days", result: "Voting weight = ×0", bad: true },
+                      { label: "Domain diversity", value: "All new — no history", result: "domain_score = 0.0", bad: true },
+                      { label: "Accuracy score", value: "< 30 contributions", result: "Not activated yet", bad: true },
+                      { label: "Topology", value: "Same datacenter", result: "1 topology unit total", bad: true },
+                      { label: "Total influence", value: "10,000 × 0", result: "= 0 votes", bad: true },
+                    ].map(r => (
+                      <div key={r.label} className="flex items-center gap-3 font-mono text-xs">
+                        <div className="w-32 shrink-0 text-muted-foreground">{r.label}</div>
+                        <div className="flex-1 text-foreground">{r.value}</div>
+                        <div className={r.bad ? "text-red-400" : "text-emerald-400"}>{r.result}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-4">To achieve meaningful influence</p>
+                  <div className="space-y-2">
+                    {[
+                      "Wait 30 days (calendar time, not compute time) per node",
+                      "Crawl 50+ genuinely different domains from each node",
+                      "Submit 30+ contributions and have them validated by existing peers",
+                      "Route through 10+ distinct relay paths (different ASNs)",
+                      "Sustain all of the above for 90 days to reach full weight",
+                    ].map((s, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="font-mono text-[10px] text-violet-400 w-4 shrink-0">{i + 1}.</span>
+                        <span className="font-mono text-[10px] text-muted-foreground leading-relaxed">{s}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 rounded-lg bg-violet-500/10 border border-violet-500/20 px-4 py-3">
+                    <p className="font-mono text-[10px] text-violet-300 leading-relaxed">
+                      Cost of a viable Sybil attack = months of real crawl time × 10,000 nodes × real compute × ASN diversity.
+                      At that investment level, the attacker is genuinely contributing to the network's knowledge base — which is the point.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
   );
 }
 
