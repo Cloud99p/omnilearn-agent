@@ -17,6 +17,7 @@ import Compare from "@/pages/compare";
 import DnaPage from "@/pages/dna";
 import Governance from "@/pages/governance";
 import Ingestion from "@/pages/ingestion";
+import StoragePage from "@/pages/storage";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ function Router() {
         <Route path="/dna" component={DnaPage} />
         <Route path="/governance" component={Governance} />
         <Route path="/ingestion" component={Ingestion} />
+        <Route path="/storage" component={StoragePage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
