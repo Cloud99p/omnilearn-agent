@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Network, Blocks, Cpu, Settings, BookOpen, Terminal, Activity } from "lucide-react";
+import { Network, Blocks, Cpu, Settings, BookOpen, Terminal, Activity, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/components", label: "Components", icon: Blocks },
   { href: "/configuration", label: "Configuration", icon: Settings },
   { href: "/personality", label: "Personality", icon: Activity },
+  { href: "/compliance", label: "Compliance", icon: Shield },
   { href: "/onboarding", label: "Onboarding", icon: BookOpen },
 ];
 

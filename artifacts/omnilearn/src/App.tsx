@@ -11,6 +11,7 @@ import ComponentsPage from "@/pages/components-page";
 import Configuration from "@/pages/configuration";
 import Onboarding from "@/pages/onboarding";
 import Personality from "@/pages/personality";
+import Compliance from "@/pages/compliance";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ function Router() {
         <Route path="/configuration" component={Configuration} />
         <Route path="/onboarding" component={Onboarding} />
         <Route path="/personality" component={Personality} />
+        <Route path="/compliance" component={Compliance} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
