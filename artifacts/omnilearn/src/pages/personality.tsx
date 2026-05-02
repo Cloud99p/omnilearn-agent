@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
-import { Activity, BookOpen, Globe, BrainCircuit, GitBranch, Zap, Clock, AlertTriangle, Lock, Unlock } from "lucide-react";
+import { Activity, BookOpen, Globe, BrainCircuit, GitBranch, Zap, Clock, AlertTriangle, Lock, Unlock, Fingerprint } from "lucide-react";
 
 type Trait = "curiosity" | "skepticism" | "verbosity" | "formality" | "empathy";
 
@@ -99,6 +99,96 @@ const LEARNING_EVENTS: LearningEvent[] = [
     icon: GitBranch,
   },
 ];
+
+function deriveFingerprint(traits: Record<Trait, number>): string {
+  const vals = [traits.curiosity, traits.skepticism, traits.empathy, traits.formality, traits.verbosity];
+  const seed = vals.reduce((acc, v, i) => acc + Math.round(v * 1000) * (i + 1) * 31337, 0);
+  const hex = (seed >>> 0).toString(16).toUpperCase().padStart(8, "0");
+  return `0x${hex}`;
+}
+
+function CharacterFingerprint() {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick(p => (p + 1) % 120), 200);
+    return () => clearInterval(t);
+  }, []);
+
+  const base: Record<Trait, number> = { curiosity: 0.55, skepticism: 0.42, verbosity: 0.50, formality: 0.38, empathy: 0.45 };
+  const evolved: Record<Trait, number> = { curiosity: 0.81, skepticism: 0.65, verbosity: 0.58, formality: 0.41, empathy: 0.76 };
+  const other: Record<Trait, number>  = { curiosity: 0.64, skepticism: 0.38, verbosity: 0.79, formality: 0.30, empathy: 0.88 };
+
+  const pulse = 0.002 * Math.sin(tick * 0.26);
+  const liveTraits: Record<Trait, number> = {
+    curiosity: +(evolved.curiosity + pulse).toFixed(4),
+    skepticism: +(evolved.skepticism - pulse * 0.4).toFixed(4),
+    verbosity: +(evolved.verbosity + pulse * 0.6).toFixed(4),
+    formality: +(evolved.formality + pulse * 0.2).toFixed(4),
+    empathy: +(evolved.empathy + pulse * 0.8).toFixed(4),
+  };
+
+  const fp = deriveFingerprint(liveTraits);
+  const fpOther = deriveFingerprint(other);
+
+  const divergence = (["curiosity", "skepticism", "empathy", "formality", "verbosity"] as Trait[]).reduce(
+    (acc, t) => acc + Math.abs(liveTraits[t] - other[t]), 0
+  ) / 5;
+
+  return (
+    <div className="bg-card/40 border border-primary/20 rounded-lg p-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Fingerprint className="w-4 h-4 text-primary" />
+        <p className="font-mono text-xs text-primary uppercase tracking-wider">Character fingerprint</p>
+        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+        Every OmniLearn instance accumulates a unique character state vector. Its fingerprint — a hash of the complete trait trajectory — is globally unique. No reset, no duplication, no convergence.
+      </p>
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-card border border-border rounded-lg p-3">
+          <p className="font-mono text-[10px] text-muted-foreground mb-1">This instance</p>
+          <p className="font-mono text-sm text-primary font-bold tracking-widest">{fp}</p>
+          <div className="mt-2 space-y-1">
+            {(Object.entries(liveTraits) as [Trait, number][]).map(([t, v]) => (
+              <div key={t} className="flex items-center gap-2">
+                <span className="font-mono text-[10px] text-muted-foreground w-16">{t}</span>
+                <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-primary rounded-full"
+                    style={{ width: `${v * 100}%` }}
+                    animate={{ width: `${v * 100}%` }}
+                    transition={{ duration: 0.2 }}
+                  />
+                </div>
+                <span className="font-mono text-[10px] text-muted-foreground">{v.toFixed(3)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-3">
+          <p className="font-mono text-[10px] text-muted-foreground mb-1">Another instance</p>
+          <p className="font-mono text-sm text-violet-400 font-bold tracking-widest">{fpOther}</p>
+          <div className="mt-2 space-y-1">
+            {(Object.entries(other) as [Trait, number][]).map(([t, v]) => (
+              <div key={t} className="flex items-center gap-2">
+                <span className="font-mono text-[10px] text-muted-foreground w-16">{t}</span>
+                <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
+                  <div className="h-full bg-violet-400/60 rounded-full" style={{ width: `${v * 100}%` }} />
+                </div>
+                <span className="font-mono text-[10px] text-muted-foreground">{v.toFixed(3)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center justify-between bg-secondary/40 rounded p-2">
+        <span className="font-mono text-[10px] text-muted-foreground">instance divergence</span>
+        <span className="font-mono text-xs font-bold text-primary">{(divergence * 100).toFixed(1)}% mean deviation</span>
+        <span className="font-mono text-[10px] text-muted-foreground">irreconcilable</span>
+      </div>
+    </div>
+  );
+}
 
 function generateTimeline(): TraitPoint[] {
   const TICKS = 100;
@@ -457,6 +547,9 @@ export default function Personality() {
               })}
             </div>
           </div>
+
+          {/* Character fingerprint */}
+          <CharacterFingerprint />
 
           <div className="bg-card/40 border border-border/50 rounded-lg p-4 space-y-3">
             <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">Irreversibility model</p>
