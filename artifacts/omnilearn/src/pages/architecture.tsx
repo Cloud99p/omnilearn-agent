@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Database, BrainCircuit, Globe, Activity, Shield, Code, Server, Zap } from "lucide-react";
+import { ArrowRight, Database, BrainCircuit, Globe, Activity, Shield, Code, Server, Zap, Terminal } from "lucide-react";
 
 const ARCH_MODULES = [
   { id: "1", name: "Data Ingestion", type: "Stateless", icon: Globe, tools: ["Scrapy", "Apache Nutch"] },
