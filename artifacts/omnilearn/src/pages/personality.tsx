@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
+  AreaChart, Area, ReferenceArea,
 } from "recharts";
-import { Activity, BookOpen, Globe, BrainCircuit, GitBranch, Zap, Clock, AlertTriangle, Lock, Unlock, Fingerprint } from "lucide-react";
+import { Activity, BookOpen, Globe, BrainCircuit, GitBranch, Zap, Clock, AlertTriangle, Lock, Unlock, Fingerprint, ShieldAlert } from "lucide-react";
 
 type Trait = "curiosity" | "skepticism" | "verbosity" | "formality" | "empathy";
 
@@ -187,6 +188,280 @@ function CharacterFingerprint() {
         <span className="font-mono text-[10px] text-muted-foreground">irreconcilable</span>
       </div>
     </div>
+  );
+}
+
+// ── Homeostasis constants ────────────────────────────────────────────────────
+const HEALTHY_LOW  = 0.15;
+const HEALTHY_HIGH = 0.85;
+
+function calcResistance(value: number, delta: number, isCore: boolean): number {
+  // Resistance only activates when pushing further toward an extreme
+  const towardExtreme = (delta > 0 && value >= 0.5) || (delta < 0 && value <= 0.5);
+  if (!towardExtreme) return 1.0;
+  const beyond = value > 0.5
+    ? Math.max(0, value - HEALTHY_HIGH)
+    : Math.max(0, HEALTHY_LOW - value);
+  const lambda = isCore ? 14 : 9;
+  return Math.exp(-lambda * beyond);
+}
+
+type ZoneLabel = "optimal" | "healthy" | "caution" | "extreme";
+function getZone(v: number): ZoneLabel {
+  const dist = Math.abs(v - 0.5) * 2; // 0 = center, 1 = absolute extreme
+  if (dist < 0.5)  return "optimal";
+  if (dist < 0.7)  return "healthy";
+  if (dist < 0.85) return "caution";
+  return "extreme";
+}
+const ZONE_STYLE: Record<ZoneLabel, { label: string; color: string; bg: string }> = {
+  optimal: { label: "optimal",  color: "#22d3ee", bg: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20" },
+  healthy: { label: "healthy",  color: "#34d399", bg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
+  caution: { label: "caution",  color: "#facc15", bg: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
+  extreme: { label: "extreme",  color: "#f87171", bg: "bg-red-500/10 text-red-400 border-red-500/20" },
+};
+
+// resistance curve data: for a small positive delta, what's the multiplier at each position?
+const RESISTANCE_CURVE = Array.from({ length: 101 }, (_, i) => {
+  const v = i / 100;
+  return {
+    v,
+    core:    +calcResistance(v, 0.01, true).toFixed(3),
+    surface: +calcResistance(v, 0.01, false).toFixed(3),
+  };
+});
+
+function HomeostasisPanel({ currentTraits }: { currentTraits: TraitPoint }) {
+  const [rawDelta, setRawDelta] = useState(8); // integer 1-20 maps to 0.01-0.20
+  const proposedDelta = rawDelta / 100;
+
+  const traits: Trait[] = ["curiosity", "skepticism", "empathy", "verbosity", "formality"];
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5 }}
+      className="mt-10 space-y-6"
+    >
+      {/* Header */}
+      <div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 font-mono text-xs mb-4">
+          <ShieldAlert className="w-3.5 h-3.5" />
+          <span>homeostasis mechanism — healthy-range resistance</span>
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Character Has a Healthy Range</h2>
+        <p className="text-muted-foreground max-w-3xl leading-relaxed">
+          No factory reset — that principle is absolute. But OmniLearn resists traits drifting into
+          dysfunctional extremes. Inside the healthy zone (0.15–0.85), learning deltas apply in full.
+          Outside it, each additional push requires exponentially stronger evidence. You can still get
+          there — but you have to really earn it.
+        </p>
+      </div>
+
+      {/* Resistance curve + explanation */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="bg-card border border-border rounded-xl p-5">
+          <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-1">Resistance multiplier vs. trait position</p>
+          <p className="font-mono text-[10px] text-muted-foreground mb-4">
+            Applying a positive delta pushing toward the upper extreme. Mirror image applies for lower extreme.
+          </p>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={RESISTANCE_CURVE} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+              <defs>
+                <linearGradient id="gradCore" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#a78bfa" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#a78bfa" stopOpacity={0}   />
+                </linearGradient>
+                <linearGradient id="gradSurf" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#22d3ee" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#22d3ee" stopOpacity={0}   />
+                </linearGradient>
+              </defs>
+              {/* healthy zone shading */}
+              <ReferenceArea x1={HEALTHY_LOW} x2={HEALTHY_HIGH} fill="#22d3ee" fillOpacity={0.04} />
+              <XAxis dataKey="v" domain={[0, 1]} tick={{ fontSize: 9, fill: "hsl(215 20% 55%)", fontFamily: "monospace" }} tickLine={false} axisLine={false} interval={19} tickFormatter={v => v.toFixed(1)} />
+              <YAxis domain={[0, 1]} tick={{ fontSize: 9, fill: "hsl(215 20% 55%)", fontFamily: "monospace" }} tickLine={false} axisLine={false} width={24} tickFormatter={v => `×${v.toFixed(1)}`} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "hsl(224 71% 6%)", border: "1px solid hsl(214 31% 16%)", borderRadius: 6, fontFamily: "monospace", fontSize: 10 }}
+                formatter={(v: number, name: string) => [`×${v.toFixed(3)}`, name]}
+                labelFormatter={l => `position: ${(+l).toFixed(2)}`}
+              />
+              <Area type="monotone" dataKey="surface" name="surface trait" stroke="#22d3ee" fill="url(#gradSurf)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+              <Area type="monotone" dataKey="core"    name="core trait"    stroke="#a78bfa" fill="url(#gradCore)" strokeWidth={2}   dot={false} isAnimationActive={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+          <div className="flex items-center justify-center gap-6 mt-2">
+            {[{ color: "#a78bfa", label: "core trait (λ=14)" }, { color: "#22d3ee", label: "surface trait (λ=9)" }].map(s => (
+              <div key={s.label} className="flex items-center gap-1.5">
+                <div className="w-4 h-0.5 rounded" style={{ backgroundColor: s.color }} />
+                <span className="font-mono text-[10px] text-muted-foreground">{s.label}</span>
+              </div>
+            ))}
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-sm bg-cyan-500/10 border border-cyan-500/20" />
+              <span className="font-mono text-[10px] text-muted-foreground">healthy zone</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="bg-card border border-border rounded-xl p-5">
+            <p className="font-mono text-xs font-bold text-foreground mb-3">How the governor works</p>
+            <div className="space-y-3">
+              {[
+                { heading: "No reversal", body: "The mechanism never pushes a trait back toward center. Accumulated state is permanent. The governor only slows further drift." },
+                { heading: "Direction-sensitive", body: "A delta pushing toward center always applies in full. Resistance only activates when a trait is already outside the healthy zone and keeps going further." },
+                { heading: "Exponential, not linear", body: "resistance = e^(−λ × distance_beyond_boundary). At 0.05 outside the boundary, ~50% of the delta applies. At 0.10 outside, ~25%. At 0.20 outside, ~6%." },
+                { heading: "Core traits resist harder", body: "λ=14 for core traits, λ=9 for surface traits. Curiosity, skepticism, and empathy approaching an extreme require dramatically stronger evidence to shift further." },
+              ].map(s => (
+                <div key={s.heading} className="flex gap-2.5">
+                  <div className="w-1 rounded-full bg-yellow-500/40 shrink-0 mt-1" />
+                  <div>
+                    <p className="font-mono text-xs font-bold text-foreground">{s.heading}</p>
+                    <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">{s.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Per-trait status */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+          <ShieldAlert className="w-4 h-4 text-yellow-400" />
+          <p className="font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground">Current homeostasis status — this instance</p>
+        </div>
+        <div className="divide-y divide-border/50">
+          {traits.map(t => {
+            const v = currentTraits?.[t] ?? 0;
+            const isCore = CORE_TRAITS.has(t);
+            const zone = getZone(v);
+            const zs = ZONE_STYLE[zone];
+            const rf = calcResistance(v, proposedDelta, isCore);
+            const effective = proposedDelta * rf;
+            const beyond = v > 0.5
+              ? Math.max(0, v - HEALTHY_HIGH)
+              : Math.max(0, HEALTHY_LOW - v);
+
+            return (
+              <div key={t} className="flex items-center gap-4 px-5 py-3.5 flex-wrap">
+                {/* Trait name */}
+                <div className="w-24 shrink-0 flex items-center gap-1.5">
+                  {isCore ? <Lock className="w-3 h-3 text-primary/60" /> : <Unlock className="w-3 h-3 text-muted-foreground/40" />}
+                  <span className="font-mono text-xs text-foreground capitalize">{t}</span>
+                </div>
+
+                {/* Position bar with zones */}
+                <div className="flex-1 min-w-36 relative h-4">
+                  <div className="absolute inset-0 rounded-full bg-secondary overflow-hidden flex">
+                    {/* extreme low */}
+                    <div className="h-full bg-red-900/40" style={{ width: `${HEALTHY_LOW * 100}%` }} />
+                    {/* healthy zone */}
+                    <div className="h-full bg-emerald-900/20" style={{ width: `${(HEALTHY_HIGH - HEALTHY_LOW) * 100}%` }} />
+                    {/* extreme high */}
+                    <div className="h-full bg-red-900/40 flex-1" />
+                  </div>
+                  {/* current value marker */}
+                  <div
+                    className="absolute top-0.5 w-3 h-3 rounded-full border-2 border-background shadow"
+                    style={{ left: `calc(${v * 100}% - 6px)`, backgroundColor: zs.color }}
+                  />
+                </div>
+
+                {/* Value */}
+                <span className="font-mono text-xs text-foreground w-12 text-right">{v.toFixed(3)}</span>
+
+                {/* Zone badge */}
+                <div className={`px-2 py-0.5 rounded text-[10px] font-mono border w-20 text-center ${zs.bg}`}>
+                  {zs.label}
+                </div>
+
+                {/* Resistance for the proposed delta */}
+                <div className="w-36 shrink-0">
+                  {beyond > 0 ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-mono text-[10px] text-muted-foreground">resistance</span>
+                        <span className="font-mono text-[10px] font-bold" style={{ color: rf < 0.3 ? "#f87171" : rf < 0.7 ? "#facc15" : "#34d399" }}>
+                          ×{rf.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${rf * 100}%`, backgroundColor: rf < 0.3 ? "#f87171" : rf < 0.7 ? "#facc15" : "#34d399" }} />
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="font-mono text-[10px] text-emerald-400">full delta applies</span>
+                  )}
+                </div>
+
+                {/* Effective vs proposed */}
+                {beyond > 0 && (
+                  <div className="font-mono text-[10px] text-muted-foreground shrink-0">
+                    <span className="text-muted-foreground/50 line-through">+{proposedDelta.toFixed(2)}</span>
+                    {" → "}
+                    <span className="text-foreground font-bold">+{effective.toFixed(3)}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Interactive simulator */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <p className="font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Propose a learning delta — see what actually applies</p>
+        <p className="font-mono text-[10px] text-muted-foreground mb-4">
+          Simulates a learning event pushing all traits upward by the proposed amount, starting from current simulation state.
+        </p>
+        <div className="flex items-center gap-4 mb-5">
+          <span className="font-mono text-sm text-muted-foreground w-28">Proposed Δ</span>
+          <input
+            type="range" min={1} max={25} step={1}
+            value={rawDelta}
+            onChange={e => setRawDelta(+e.target.value)}
+            className="flex-1 h-1.5 appearance-none rounded cursor-pointer"
+            style={{ accentColor: "#22d3ee" }}
+          />
+          <span className="font-mono text-lg font-bold text-primary w-14 text-right">+{proposedDelta.toFixed(2)}</span>
+        </div>
+
+        <div className="grid grid-cols-5 gap-3">
+          {traits.map(t => {
+            const v = currentTraits?.[t] ?? 0;
+            const isCore = CORE_TRAITS.has(t);
+            const rf = calcResistance(v, proposedDelta, isCore);
+            const effective = proposedDelta * rf;
+            const zone = getZone(v);
+            const zs = ZONE_STYLE[zone];
+            const newVal = Math.min(0.99, v + effective);
+            return (
+              <div key={t} className="bg-secondary/30 rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center gap-1 mb-2">
+                  {isCore && <Lock className="w-2.5 h-2.5 text-muted-foreground/50" />}
+                  <span className="font-mono text-[10px] text-muted-foreground capitalize">{t}</span>
+                </div>
+                <div className="font-mono text-base font-bold mb-0.5" style={{ color: zs.color }}>{newVal.toFixed(3)}</div>
+                <div className="font-mono text-[9px] text-muted-foreground/60">{v.toFixed(3)} + {effective.toFixed(3)}</div>
+                {rf < 0.99 && (
+                  <div className="mt-1.5 font-mono text-[9px] font-bold" style={{ color: rf < 0.3 ? "#f87171" : "#facc15" }}>
+                    {Math.round(rf * 100)}% applied
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <p className="font-mono text-[10px] text-muted-foreground mt-3">
+          Traits within the healthy zone receive the full delta. Those outside it receive only a fraction — the further beyond the boundary, the smaller that fraction becomes.
+        </p>
+      </div>
+    </motion.section>
   );
 }
 
@@ -548,7 +823,6 @@ export default function Personality() {
             </div>
           </div>
 
-          {/* Character fingerprint */}
           <CharacterFingerprint />
 
           <div className="bg-card/40 border border-border/50 rounded-lg p-4 space-y-3">
@@ -568,6 +842,8 @@ export default function Personality() {
           </div>
         </div>
       </div>
+
+      <HomeostasisPanel currentTraits={currentState} />
     </div>
   );
 }
