@@ -162,8 +162,7 @@ export default function Ingestion() {
         </div>
         <h1 className="text-4xl font-bold mb-3">Metadata-First Ingestion</h1>
         <p className="text-muted-foreground max-w-2xl leading-relaxed">
-          The agent knows about everything. It stores only what it has the right to store.
-          Copyrighted content stays on the internet — the agent knows where it is, what it says in summary,
+          The agent knows about everything. Copyrighted content stays on the internet — the agent knows where it is, what it says in summary,
           and how to retrieve it on demand. PII never enters the pipeline at all.
         </p>
       </motion.div>
