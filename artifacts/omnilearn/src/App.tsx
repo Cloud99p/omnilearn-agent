@@ -18,6 +18,7 @@ import DnaPage from "@/pages/dna";
 import Governance from "@/pages/governance";
 import Ingestion from "@/pages/ingestion";
 import StoragePage from "@/pages/storage";
+import MemoryPage from "@/pages/memory";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ function Router() {
         <Route path="/governance" component={Governance} />
         <Route path="/ingestion" component={Ingestion} />
         <Route path="/storage" component={StoragePage} />
+        <Route path="/memory" component={MemoryPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
