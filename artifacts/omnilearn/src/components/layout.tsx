@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Network, Blocks, Cpu, Settings, BookOpen, Terminal, Activity, Shield, Globe, GitBranch, Dna } from "lucide-react";
+import { Network, Blocks, Cpu, Settings, BookOpen, Terminal, Activity, Shield, Globe, GitBranch, Dna, Gavel } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: "/compare", label: "Compare", icon: GitBranch },
   { href: "/onboarding", label: "Onboarding", icon: BookOpen },
   { href: "/dna", label: "Instance DNA", icon: Dna },
+  { href: "/governance", label: "Governance", icon: Gavel },
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {

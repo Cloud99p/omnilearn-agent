@@ -539,6 +539,146 @@ const CUSTOM_TOOLTIP = ({ active, payload, label }: any) => {
   );
 };
 
+// ── Trait Pressure Log ───────────────────────────────────────────────────────
+
+interface PressureEntry {
+  tick: number;
+  eventLabel: string;
+  eventType: EventType;
+  decisions: {
+    trait: Trait;
+    isCore: boolean;
+    traitValueAtTick: number;
+    proposed: number;
+    resistanceFactor: number;
+    effective: number;
+  }[];
+}
+
+function buildPressureLog(): PressureEntry[] {
+  return LEARNING_EVENTS.map(e => {
+    const snapshot = FULL_TIMELINE[e.tick] ?? FULL_TIMELINE[FULL_TIMELINE.length - 1];
+    const decisions = (Object.entries(e.impact) as [Trait, number][]).map(([trait, proposed]) => {
+      const v = (snapshot as any)[trait] as number ?? 0.5;
+      const isCore = CORE_TRAITS.has(trait);
+      const rf = calcResistance(v, proposed, isCore);
+      return { trait, isCore, traitValueAtTick: v, proposed, resistanceFactor: rf, effective: proposed * rf };
+    });
+    return { tick: e.tick, eventLabel: e.label, eventType: e.type, decisions };
+  });
+}
+
+const PRESSURE_LOG = buildPressureLog();
+
+function TraitPressureLog({ visibleTicks }: { visibleTicks: number }) {
+  const visible = PRESSURE_LOG.filter(e => e.tick <= visibleTicks).slice().reverse();
+
+  const outcomeColor = (rf: number) => rf >= 0.95 ? "#34d399" : rf >= 0.5 ? "#facc15" : "#f87171";
+  const outcomeLabel = (rf: number) => rf >= 0.95 ? "full" : rf >= 0.5 ? "partial" : "resisted";
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5 }}
+      className="mt-10"
+    >
+      <div className="mb-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-mono text-xs mb-4">
+          <Activity className="w-3.5 h-3.5" />
+          <span>governor.pressure_log — per-event trait decisions</span>
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Trait Pressure Log</h2>
+        <p className="text-muted-foreground max-w-3xl leading-relaxed">
+          Every learning event that arrives at the homeostasis governor is logged here — what was proposed, what the trait's position was, how much resistance applied, and what actually landed.
+          Simulation must be running for new entries to appear.
+        </p>
+      </div>
+
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        {/* Column headers */}
+        <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-3 px-5 py-3 border-b border-border bg-secondary/20">
+          {["Trait", "Zone at event", "Proposed Δ", "Resistance", "Effective Δ", "Outcome"].map(h => (
+            <span key={h} className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">{h}</span>
+          ))}
+        </div>
+
+        {visible.length === 0 ? (
+          <div className="px-5 py-8 text-center font-mono text-xs text-muted-foreground">
+            Run the simulation to populate the pressure log.
+          </div>
+        ) : (
+          <AnimatePresence initial={false}>
+            {visible.map(entry => (
+              <motion.div
+                key={entry.tick}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="border-b border-border/50 last:border-b-0"
+              >
+                {/* Event header row */}
+                <div className="flex items-center gap-3 px-5 py-2 bg-secondary/10">
+                  <div className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded border text-[10px] font-mono ${EVENT_TYPE_STYLE[entry.eventType]}`}>
+                    <span>tick {entry.tick}</span>
+                  </div>
+                  <span className="font-mono text-xs text-foreground">{entry.eventLabel}</span>
+                </div>
+
+                {/* Per-trait decision rows */}
+                {entry.decisions.map(d => {
+                  const rf = d.resistanceFactor;
+                  const oc = outcomeColor(rf);
+                  const ol = outcomeLabel(rf);
+                  const zone = d.traitValueAtTick < HEALTHY_LOW ? "extreme-low"
+                    : d.traitValueAtTick > HEALTHY_HIGH ? "extreme-high"
+                    : d.traitValueAtTick < 0.25 || d.traitValueAtTick > 0.75 ? "caution"
+                    : "optimal";
+                  const zoneColor = zone.startsWith("extreme") ? "#f87171" : zone === "caution" ? "#facc15" : "#34d399";
+                  return (
+                    <div key={d.trait} className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-3 items-center px-5 py-2 border-t border-border/30 first:border-t-0">
+                      {/* Trait */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: TRAIT_META[d.trait].color }} />
+                        <span className="font-mono text-xs capitalize text-foreground">{d.trait}</span>
+                        {d.isCore && <Lock className="w-2.5 h-2.5 text-muted-foreground/50" />}
+                        <span className="font-mono text-[10px] text-muted-foreground">({d.traitValueAtTick.toFixed(3)})</span>
+                      </div>
+                      {/* Zone */}
+                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded" style={{ color: zoneColor, backgroundColor: zoneColor + "15" }}>
+                        {zone}
+                      </span>
+                      {/* Proposed */}
+                      <span className={`font-mono text-xs font-bold ${d.proposed > 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                        {d.proposed > 0 ? "+" : ""}{d.proposed.toFixed(3)}
+                      </span>
+                      {/* Resistance bar */}
+                      <div className="flex items-center gap-1.5 w-20">
+                        <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${rf * 100}%`, backgroundColor: oc }} />
+                        </div>
+                        <span className="font-mono text-[10px]" style={{ color: oc }}>×{rf.toFixed(2)}</span>
+                      </div>
+                      {/* Effective */}
+                      <span className={`font-mono text-xs ${rf < 0.99 ? "font-bold" : "text-muted-foreground"}`} style={rf < 0.99 ? { color: oc } : {}}>
+                        {d.effective > 0 ? "+" : ""}{d.effective.toFixed(3)}
+                      </span>
+                      {/* Outcome badge */}
+                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded border" style={{ color: oc, borderColor: oc + "40", backgroundColor: oc + "10" }}>
+                        {ol}
+                      </span>
+                    </div>
+                  );
+                })}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
+      </div>
+    </motion.section>
+  );
+}
+
 export default function Personality() {
   const [visibleTicks, setVisibleTicks] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -844,6 +984,7 @@ export default function Personality() {
       </div>
 
       <HomeostasisPanel currentTraits={currentState} />
+      <TraitPressureLog visibleTicks={visibleTicks} />
     </div>
   );
 }
