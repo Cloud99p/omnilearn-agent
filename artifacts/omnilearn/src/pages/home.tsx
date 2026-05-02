@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowRight, Terminal, Database, BrainCircuit, Globe, Activity, Fingerprint, GitBranch, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LiveFeed from "@/components/live-feed";
+import CrawlMap from "@/components/crawl-map";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer } from "recharts";
 
 const MODULES = [
@@ -238,27 +239,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Live activity feed */}
+      {/* Crawl footprint map */}
       <section className="px-6 py-20">
         <div className="max-w-5xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-8"
-          >
-            <h2 className="text-2xl font-bold tracking-tight mb-2">System Activity</h2>
-            <p className="text-muted-foreground font-mono text-sm">
-              A live window into OmniLearn's continuous operation — crawling, learning, and evolving in real time.
-            </p>
-          </motion.div>
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
           >
-            <LiveFeed />
+            <CrawlMap />
           </motion.div>
+
+          <div className="mt-14 border-t border-border/40 pt-10">
+            <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-5">Live system activity</p>
+            <LiveFeed />
+          </div>
 
           <div className="mt-12 flex flex-wrap gap-4 items-center justify-center">
             <Link href="/personality">
@@ -268,9 +263,9 @@ export default function Home() {
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <Link href="/compliance">
+            <Link href="/network">
               <Button variant="outline" className="font-mono border-border hover:bg-secondary group">
-                Run compliance audit
+                View distributed network
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
