@@ -27,6 +27,7 @@ import AccountPage from "@/pages/account";
 import RepositoriesPage from "@/pages/repositories";
 import IntelligencePage from "@/pages/intelligence";
 import GhostNetworkPage from "@/pages/ghost-network";
+import WorkerPage from "@/pages/worker";
 
 const queryClient = new QueryClient();
 
@@ -212,6 +213,7 @@ function ClerkProviderWithRoutes() {
           <Switch>
             <Route path="/sign-in/*?" component={WrappedSignIn} />
             <Route path="/sign-up/*?" component={WrappedSignUp} />
+            <Route path="/worker" component={WorkerPage} />
             <Route component={Router} />
           </Switch>
           <Toaster />
