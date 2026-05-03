@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Database, Globe, Lock, ShieldAlert, FileText, RefreshCw, Archive, Zap, CheckCircle, XCircle, AlertTriangle, ChevronRight } from "lucide-react";
 
@@ -144,10 +144,20 @@ const SAMPLE_URLS = [
   "https://someunknownblog.com/post/interesting-article",
 ];
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 export default function Ingestion() {
   const [detectUrl, setDetectUrl] = useState(SAMPLE_URLS[0]);
   const [customDetect, setCustomDetect] = useState("");
   const [activeUrl, setActiveUrl] = useState(SAMPLE_URLS[0]);
+  const [liveKnowledge, setLiveKnowledge] = useState<{ nodeCount: number; edgeCount: number; logCount: number } | null>(null);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/omni/knowledge/stats`)
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+      .then(data => { if (data) setLiveKnowledge({ nodeCount: data.nodeCount, edgeCount: data.edgeCount, logCount: data.logCount }); });
+  }, []);
 
   const detected = detectTier(customDetect.trim() || activeUrl);
   const detectedTier = TIER_MAP[detected.tier] ?? TIERS[0];
@@ -164,6 +174,17 @@ export default function Ingestion() {
         <p className="text-muted-foreground max-w-2xl leading-relaxed">
           The agent knows about everything. It stores only what it has legitimate access to — permissive content in full, restricted content as metadata, and PII not at all.
         </p>
+        {liveKnowledge && (
+          <div className="mt-5 flex flex-wrap items-center gap-4 px-4 py-2.5 rounded-lg border border-primary/20 bg-primary/5 w-fit">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-mono text-xs text-muted-foreground">
+              Current index:{" "}
+              <span className="text-primary font-bold">{liveKnowledge.nodeCount.toLocaleString()}</span> nodes ·{" "}
+              <span className="text-foreground">{liveKnowledge.edgeCount.toLocaleString()}</span> edges ·{" "}
+              <span className="text-foreground">{liveKnowledge.logCount}</span> ingestion events
+            </span>
+          </div>
+        )}
       </motion.div>
 
       {/* Four-tier storage model */}

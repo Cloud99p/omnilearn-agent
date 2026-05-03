@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { HardDrive, TrendingUp, Layers, GitMerge, Zap, AlertTriangle, CheckCircle, Database, Archive, Flame } from "lucide-react";
 
@@ -133,10 +133,20 @@ function CapacityBar({ value, max, color, label }: { value: number; max: number;
   );
 }
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 export default function StoragePage() {
   const [docCount, setDocCount] = useState(100);          // millions
   const [agentCount, setAgentCount] = useState(10);
   const [mode, setMode] = useState<StorageMode>("naive");
+  const [liveNodes, setLiveNodes] = useState<{ nodeCount: number; edgeCount: number } | null>(null);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/omni/knowledge/stats`)
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+      .then(data => { if (data) setLiveNodes({ nodeCount: data.nodeCount, edgeCount: data.edgeCount }); });
+  }, []);
 
   const AGENT_CAPACITY_GB = 500; // per agent assumed capacity
 
@@ -176,6 +186,21 @@ export default function StoragePage() {
           Storage failure is a hard ceiling on growth. This page makes the math visible and shows how the
           architecture keeps that ceiling above internet scale.
         </p>
+        {liveNodes && (
+          <div className="mt-5 inline-flex items-center gap-3 px-4 py-2.5 rounded-lg border border-primary/20 bg-primary/5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-mono text-xs text-muted-foreground">
+              Current knowledge base:{" "}
+              <span className="text-primary font-bold">{liveNodes.nodeCount.toLocaleString()} nodes</span>
+              {" / "}
+              <span className="text-foreground">{liveNodes.edgeCount.toLocaleString()} edges</span>
+              {" — "}
+              <span className="text-muted-foreground">
+                {((liveNodes.nodeCount * 1.8) / 1024).toFixed(3)} MB at metadata-first scale
+              </span>
+            </span>
+          </div>
+        )}
       </motion.div>
 
       {/* The ceiling problem */}

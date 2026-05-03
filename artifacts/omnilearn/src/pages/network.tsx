@@ -99,11 +99,28 @@ const EDGES = [
 let pid = 0;
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+interface GhostStatus {
+  total: number;
+  online: number;
+  offline: number;
+  totalTasksProcessed: number;
+}
+
 export default function Network() {
   const [active, setActive] = useState<string | null>(null);
   const [packets, setPackets] = useState<Packet[]>([]);
   const [tick, setTick] = useState(0);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [ghostStatus, setGhostStatus] = useState<GhostStatus | null>(null);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/ghost/status`)
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+      .then(data => setGhostStatus(data));
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => setTick(p => p + 1), 120);
@@ -146,8 +163,15 @@ export default function Network() {
       >
         <div className="px-5 py-3 border-b border-border flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="font-mono text-sm text-muted-foreground">execution_fabric.live — active nodes: {NODE_POSITIONS.length}</span>
-          <span className="ml-auto font-mono text-xs text-muted-foreground">{packets.length} packets in flight</span>
+          <span className="font-mono text-sm text-muted-foreground">
+            execution_fabric.live — registered nodes: {ghostStatus ? ghostStatus.total : NODE_POSITIONS.length}
+            {ghostStatus && ghostStatus.online > 0 && (
+              <span className="ml-2 text-emerald-400">{ghostStatus.online} online</span>
+            )}
+          </span>
+          <span className="ml-auto font-mono text-xs text-muted-foreground">
+            {ghostStatus ? `${ghostStatus.totalTasksProcessed} tasks processed` : `${packets.length} packets in flight`}
+          </span>
         </div>
         <div className="relative bg-background/40" style={{ height: 280 }}>
           <svg ref={svgRef} className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">

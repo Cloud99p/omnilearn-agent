@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Brain, TrendingUp, TrendingDown, Link, FileText, Layers, Star, Clock, Activity, AlertTriangle, ChevronRight, Zap } from "lucide-react";
 
@@ -219,11 +219,21 @@ function ScoreBar({ value, label, color, weight }: { value: number; label: strin
   );
 }
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 export default function MemoryPage() {
   const [accessCount, setAccessCount] = useState(0);
   const [trustScore, setTrustScore] = useState(0.65);
   const [relevance, setRelevance] = useState(0.3);
   const [daysSinceCrawl, setDaysSinceCrawl] = useState(1);
+  const [liveKnowledge, setLiveKnowledge] = useState<{ nodeCount: number; edgeCount: number; logCount: number } | null>(null);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/omni/knowledge/stats`)
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+      .then(data => { if (data) setLiveKnowledge({ nodeCount: data.nodeCount, edgeCount: data.edgeCount, logCount: data.logCount }); });
+  }, []);
 
   const [accessPattern, setAccessPattern] = useState<"never" | "once_early" | "frequent" | "bursty">("never");
   const [timelineTrust, setTimelineTrust] = useState(0.7);
@@ -263,6 +273,21 @@ export default function MemoryPage() {
           learning goals. A document crawled once and never accessed becomes a URL-only record within days.
           The agent doesn't forget — it knows exactly where to look things up again.
         </p>
+        {liveKnowledge && (
+          <div className="mt-5 flex flex-wrap items-center gap-4 px-4 py-2.5 rounded-lg border border-primary/20 bg-primary/5 w-fit">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            {[
+              { label: "Nodes indexed", value: liveKnowledge.nodeCount.toLocaleString(), color: "#22d3ee" },
+              { label: "Graph edges",   value: liveKnowledge.edgeCount.toLocaleString(), color: "#a78bfa" },
+              { label: "Learning events", value: liveKnowledge.logCount.toLocaleString(), color: "#34d399" },
+            ].map(s => (
+              <div key={s.label} className="flex items-center gap-1.5">
+                <span className="font-mono text-xs font-bold" style={{ color: s.color }}>{s.value}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">{s.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </motion.div>
 
       {/* Core insight */}
