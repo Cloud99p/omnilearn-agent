@@ -732,6 +732,12 @@ export default function Onboarding() {
                   You'll install a few tools, download an AI model, and start the system with one command. 
                   Good starting point if you have a reasonably modern laptop or desktop.
                 </p>
+                <ul className="mt-3 grid gap-2 text-sm text-muted-foreground">
+                  <li>• Fastest onboarding: one machine, one setup, one place to debug</li>
+                  <li>• Lets you make controlled local changes without touching a network of nodes</li>
+                  <li>• Keeps your data and workflows on-device for privacy and simplicity</li>
+                  <li>• Easier to iterate before scaling into Ghost mode or distributed nodes</li>
+                </ul>
               </div>
             </div>
 
