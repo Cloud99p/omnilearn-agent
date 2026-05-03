@@ -1,9 +1,17 @@
 // Web access tools for OmniLearn brain
-// Used as Claude tool_use callbacks during message processing.
+// Search:  DuckDuckGo Lite HTML — single-quote class names, uddg-encoded redirect URLs
+// Fetch:   Jina AI Reader (r.jina.ai) — strips HTML/JS, returns clean markdown text
+//
+// DDG Lite actual HTML structure (verified 2026-05):
+//   <a rel="nofollow" href="//duckduckgo.com/l/?uddg=URL&amp;rut=..." class='result-link'>Title</a>
+//   <td class='result-snippet'>Snippet text</td>
+// Note: href comes BEFORE class — regex must be attribute-order-independent.
 
-const USER_AGENT = "OmniLearn/1.0 (research assistant; respects robots.txt)";
+import { logger } from "../lib/logger.js";
 
-// ─── Web Search (DuckDuckGo Instant Answer + HTML results) ───────────────────
+const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0";
+
+// ─── Web Search ───────────────────────────────────────────────────────────────
 
 export interface SearchResult {
   title: string;
@@ -12,12 +20,69 @@ export interface SearchResult {
 }
 
 export async function webSearch(query: string): Promise<{ results: SearchResult[]; abstract?: string }> {
-  const results: SearchResult[] = [];
-  let abstract: string | undefined;
-
+  // ── DuckDuckGo Lite HTML ──────────────────────────────────────────────────
+  // DDG Lite uses single-quoted class attributes:
+  //   <a class='result-link' href="//duckduckgo.com/l/?uddg=ENCODED_URL">Title</a>
+  //   <td class='result-snippet'>Snippet text</td>
   try {
-    // 1. DuckDuckGo Instant Answer API (no key needed)
-    const iaUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1&t=OmniLearn`;
+    const liteUrl = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`;
+    const res = await fetch(liteUrl, {
+      headers: {
+        "User-Agent": USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (res.ok) {
+      const html = await res.text();
+
+      // Two-pass extraction — attribute order in DDG Lite is href THEN class,
+      // so we cannot use a single regex that requires class before href.
+      //
+      // Pass 1: find all <a ...>...</a> blocks, keep those with class='result-link'
+      const anchorRe = /<a([^>]+)>([\s\S]*?)<\/a>/gi;
+      // Pass 2: extract snippet text from <td class='result-snippet'>...</td>
+      const snippetRe = /<td[^>]*class='result-snippet'[^>]*>([\s\S]*?)<\/td>/gi;
+
+      const links: Array<{ url: string; title: string }> = [];
+      const snippets: string[] = [];
+
+      let m: RegExpExecArray | null;
+
+      while ((m = anchorRe.exec(html)) !== null && links.length < 8) {
+        const attrs = m[1];
+        const content = m[2];
+        if (!attrs.includes("result-link")) continue;
+        // href may contain HTML entities — decode &amp; before URL parsing
+        const hrefMatch = /href="([^"]+)"/.exec(attrs);
+        if (!hrefMatch) continue;
+        const rawHref = hrefMatch[1].replace(/&amp;/g, "&");
+        const url = extractDdgUrl(rawHref);
+        const title = stripHtml(content).trim();
+        if (url && title) links.push({ url, title });
+      }
+
+      while ((m = snippetRe.exec(html)) !== null && snippets.length < 8) {
+        const text = stripHtml(m[1]).trim();
+        if (text) snippets.push(text);
+      }
+
+      logger.info({ linksFound: links.length, snippetsFound: snippets.length, query }, "DDG Lite parse result");
+
+      const results: SearchResult[] = [];
+      for (let i = 0; i < Math.min(links.length, snippets.length, 6); i++) {
+        results.push({ title: links[i].title, url: links[i].url, snippet: snippets[i] });
+      }
+
+      if (results.length > 0) return { results };
+    }
+  } catch { /* fall through */ }
+
+  // ── DuckDuckGo Instant Answer API (good for factual/definition queries) ──
+  try {
+    const iaUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
     const iaRes = await fetch(iaUrl, {
       headers: { "User-Agent": USER_AGENT },
       signal: AbortSignal.timeout(8000),
@@ -28,9 +93,12 @@ export async function webSearch(query: string): Promise<{ results: SearchResult[
         Abstract?: string;
         AbstractSource?: string;
         AbstractURL?: string;
-        RelatedTopics?: Array<{ Text?: string; FirstURL?: string; Name?: string; Topics?: unknown[] }>;
+        RelatedTopics?: Array<{ Text?: string; FirstURL?: string; Topics?: unknown[] }>;
         Results?: Array<{ Text?: string; FirstURL?: string }>;
       };
+
+      const results: SearchResult[] = [];
+      let abstract: string | undefined;
 
       if (data.Abstract) {
         abstract = `${data.Abstract}${data.AbstractSource ? ` (Source: ${data.AbstractSource})` : ""}`;
@@ -38,8 +106,6 @@ export async function webSearch(query: string): Promise<{ results: SearchResult[
           results.push({ title: data.AbstractSource ?? "Summary", url: data.AbstractURL, snippet: data.Abstract });
         }
       }
-
-      // Related topics as additional results
       if (data.RelatedTopics) {
         for (const t of data.RelatedTopics.slice(0, 6)) {
           if (t.Text && t.FirstURL && !t.Topics) {
@@ -47,7 +113,6 @@ export async function webSearch(query: string): Promise<{ results: SearchResult[
           }
         }
       }
-
       if (data.Results) {
         for (const r of data.Results.slice(0, 4)) {
           if (r.Text && r.FirstURL) {
@@ -55,60 +120,59 @@ export async function webSearch(query: string): Promise<{ results: SearchResult[
           }
         }
       }
+      if (results.length > 0) return { results, abstract };
     }
-  } catch { /* network error — fall through */ }
+  } catch { /* ignore */ }
 
-  // 2. DuckDuckGo Lite HTML fallback if instant answer had no results
-  if (results.length === 0) {
-    try {
-      const liteUrl = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`;
-      const htmlRes = await fetch(liteUrl, {
-        headers: { "User-Agent": USER_AGENT, "Accept": "text/html" },
-        signal: AbortSignal.timeout(8000),
-      });
+  return { results: [] };
+}
 
-      if (htmlRes.ok) {
-        const html = await htmlRes.text();
-        // Extract result snippets from DDG lite HTML
-        const snippetRe = /<td[^>]*class="result-snippet"[^>]*>([\s\S]*?)<\/td>/gi;
-        const linkRe = /<a[^>]*class="result-link"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-
-        const links: Array<{ url: string; title: string }> = [];
-        let m: RegExpExecArray | null;
-        while ((m = linkRe.exec(html)) !== null && links.length < 5) {
-          links.push({ url: decodeURIComponent(m[1].replace(/^\/\/duckduckgo\.com\/l\/\?uddg=/, "")), title: stripHtml(m[2]).trim() });
-        }
-
-        const snippets: string[] = [];
-        while ((m = snippetRe.exec(html)) !== null && snippets.length < 5) {
-          snippets.push(stripHtml(m[1]).trim());
-        }
-
-        for (let i = 0; i < Math.min(links.length, snippets.length, 5); i++) {
-          results.push({ title: links[i].title, url: links[i].url, snippet: snippets[i] });
-        }
-      }
-    } catch { /* ignore */ }
+/** Extract the real URL from a DDG redirect link like //duckduckgo.com/l/?uddg=ENCODED&rut=... */
+function extractDdgUrl(rawHref: string): string {
+  try {
+    // Normalise protocol-relative URLs
+    const href = rawHref.startsWith("//") ? `https:${rawHref}` : rawHref;
+    const parsed = new URL(href);
+    const uddg = parsed.searchParams.get("uddg");
+    if (uddg) return decodeURIComponent(uddg);
+    return href;
+  } catch {
+    return rawHref;
   }
-
-  return { results: results.slice(0, 6), abstract };
 }
 
 // ─── URL Fetch & Extract ─────────────────────────────────────────────────────
 
 export async function fetchUrl(url: string): Promise<{ title: string; text: string; url: string }> {
-  // Validate URL
   let parsed: URL;
+  try { parsed = new URL(url); } catch { throw new Error(`Invalid URL: ${url}`); }
+  if (!["http:", "https:"].includes(parsed.protocol)) throw new Error(`Unsupported protocol: ${parsed.protocol}`);
+
+  // ── Primary: Jina AI Reader — returns clean markdown, no API key needed ──
   try {
-    parsed = new URL(url);
-  } catch {
-    throw new Error(`Invalid URL: ${url}`);
-  }
+    const jinaUrl = `https://r.jina.ai/${url}`;
+    const res = await fetch(jinaUrl, {
+      headers: {
+        "User-Agent": USER_AGENT,
+        "Accept": "text/plain,text/markdown,*/*;q=0.8",
+        "X-Return-Format": "markdown",
+        "X-Timeout": "10",
+      },
+      signal: AbortSignal.timeout(20000),
+    });
 
-  if (!["http:", "https:"].includes(parsed.protocol)) {
-    throw new Error(`Unsupported protocol: ${parsed.protocol}`);
-  }
+    if (res.ok) {
+      const raw = await res.text();
+      // Jina returns: "Title: ...\n\nURL Source: ...\n\nMarkdown Content:\n..."
+      const titleMatch = /^Title:\s*(.+)$/m.exec(raw);
+      const contentMatch = /Markdown Content:\s*\n([\s\S]+)/.exec(raw);
+      const title = titleMatch ? titleMatch[1].trim() : url;
+      const text = contentMatch ? contentMatch[1].trim().slice(0, 6000) : raw.slice(0, 6000);
+      if (text.length > 100) return { title, text, url };
+    }
+  } catch { /* fall through */ }
 
+  // ── Fallback: Direct HTML fetch ───────────────────────────────────────────
   const res = await fetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
@@ -122,15 +186,11 @@ export async function fetchUrl(url: string): Promise<{ title: string; text: stri
   const contentType = res.headers.get("content-type") ?? "";
   const raw = await res.text();
 
-  if (contentType.includes("application/json")) {
-    return { title: url, text: raw.slice(0, 4000), url };
-  }
+  if (contentType.includes("application/json")) return { title: url, text: raw.slice(0, 4000), url };
 
-  // Extract title
   const titleMatch = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(raw);
   const title = titleMatch ? stripHtml(titleMatch[1]).trim() : url;
 
-  // Remove noisy elements before extracting text
   const cleaned = raw
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -158,5 +218,6 @@ function stripHtml(html: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ")
+    .replace(/&#x27;/g, "'")
     .replace(/\s+/g, " ");
 }
