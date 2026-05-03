@@ -692,20 +692,7 @@ function ProofOfExistence() {
 
 // ─── Collective Evolution ────────────────────────────────────────────────────
 
-const GROWTH_DATA = [
-  { month: "M1",  nodes: 1,    improvements: 0,  knowledge: 0 },
-  { month: "M2",  nodes: 3,    improvements: 0,  knowledge: 2 },
-  { month: "M3",  nodes: 9,    improvements: 1,  knowledge: 8 },
-  { month: "M4",  nodes: 22,   improvements: 2,  knowledge: 21 },
-  { month: "M5",  nodes: 47,   improvements: 4,  knowledge: 55 },
-  { month: "M6",  nodes: 110,  improvements: 9,  knowledge: 140 },
-  { month: "M7",  nodes: 240,  improvements: 18, knowledge: 380 },
-  { month: "M8",  nodes: 510,  improvements: 31, knowledge: 890 },
-  { month: "M9",  nodes: 980,  improvements: 52, knowledge: 2100 },
-  { month: "M10", nodes: 1800, improvements: 88, knowledge: 5200 },
-  { month: "M11", nodes: 3100, improvements: 140,knowledge: 12000 },
-  { month: "M12", nodes: 5400, improvements: 220,knowledge: 28000 },
-];
+// Growth data is fetched live — no static fallback
 
 const CONTRIBUTION_TYPES = [
   { label: "knowledge delta", color: "#22d3ee", icon: Upload },
@@ -720,13 +707,7 @@ const DOMAINS = [
   "hacker-news", "openreview.net", "github.com", "bbc.co.uk",
 ];
 
-const IMPROVEMENT_MILESTONES = [
-  { epoch: 3,   label: "Retrieval precision +4.2%",    votes: 12,  threshold: 5,  status: "ratified" },
-  { epoch: 7,   label: "Robots.txt edge case handled",  votes: 28,  threshold: 10, status: "ratified" },
-  { epoch: 12,  label: "Gossip delta compression ×2",   votes: 51,  threshold: 20, status: "ratified" },
-  { epoch: 18,  label: "Trust score recalibration",     votes: 94,  threshold: 50, status: "ratified" },
-  { epoch: 24,  label: "Core embedding model upgrade",  votes: 180, threshold: 100,status: "ratified" },
-];
+// Milestones come from the real learning log — no static fallback
 
 interface ContribEvent {
   id: number;
@@ -759,17 +740,21 @@ const INIT_CONTRIBS: ContribEvent[] = Array.from({ length: 6 }, makeContrib).rev
 
 interface CollectiveProps { serverNodes: number; tasksProcessed: number; browserWorkers: number; }
 
+interface GrowthPoint { label: string; nodes: number; added: number; bucket: string; }
+interface LogMilestone { index: number; label: string; nodesAdded: number; source: string; createdAt: string; age: string; }
+interface GrowthHistory { useHours: boolean; spanLabel: string; series: GrowthPoint[]; milestones: LogMilestone[]; totalNodes: number; }
+
 function CollectiveEvolution({ serverNodes, tasksProcessed, browserWorkers }: CollectiveProps) {
   const [contribs, setContribs] = useState<ContribEvent[]>(INIT_CONTRIBS);
   const [activeTab, setActiveTab] = useState<"growth" | "feed" | "protocol">("growth");
   const [netStats, setNetStats] = useState<{ neurons: number; coreNeurons: number; agents: number } | null>(null);
   const [character, setCharacter] = useState<{ totalInteractions: number } | null>(null);
-  const [pulses, setPulses] = useState<Array<{ id: number; eventType: string; neuronsAffected: number; details: string | null; createdAt: string }>>([]);
+  const [growth, setGrowth] = useState<GrowthHistory | null>(null);
 
   useEffect(() => {
     fetch(`${BASE}/api/network/stats`).then(r => r.ok ? r.json() : null).catch(() => null).then(d => setNetStats(d));
     fetch(`${BASE}/api/omni/character`).then(r => r.ok ? r.json() : null).catch(() => null).then(d => setCharacter(d));
-    fetch(`${BASE}/api/network/pulses?limit=8`).then(r => r.ok ? r.json() : null).catch(() => null).then(d => setPulses(Array.isArray(d) ? d : []));
+    fetch(`${BASE}/api/omni/growth-history`).then(r => r.ok ? r.json() : null).catch(() => null).then(d => setGrowth(d));
   }, []);
 
   useEffect(() => {
@@ -785,16 +770,14 @@ function CollectiveEvolution({ serverNodes, tasksProcessed, browserWorkers }: Co
   const improvementsRatified = netStats ? (netStats.coreNeurons + netStats.agents) : 0;
   const contributionsThisEpoch = (character?.totalInteractions ?? 0) + tasksProcessed;
 
-  // Milestones: real pulses if available, else static fallback
-  const liveMilestones = pulses.length >= 3
-    ? pulses.slice(0, 5).map((p, i) => ({
-        epoch: Math.max(1, epoch - (pulses.length - 1 - i)),
-        label: p.details ?? p.eventType,
-        votes: (p.neuronsAffected || 1) * 3,
-        threshold: Math.max(5, (p.neuronsAffected || 1)),
-        status: "ratified" as const,
-      }))
-    : IMPROVEMENT_MILESTONES;
+  // Live chart data — real cumulative node counts
+  const chartData = growth?.series ?? [];
+  const chartLabel = growth
+    ? `knowledge graph growth — ${growth.spanLabel}`
+    : "knowledge graph growth";
+
+  // Live milestones from real learning log
+  const liveMilestones = growth?.milestones ?? [];
 
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
@@ -849,48 +832,64 @@ function CollectiveEvolution({ serverNodes, tasksProcessed, browserWorkers }: Co
         {activeTab === "growth" && (
           <motion.div key="growth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="bg-card border border-border rounded-xl p-6 mb-6">
-              <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-1">Node count & knowledge base — months 1–12</p>
-              <p className="font-mono text-[10px] text-muted-foreground mb-4">Exponential: each new node accelerates the collective learning rate</p>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={GROWTH_DATA} margin={{ top: 5, right: 10, bottom: 0, left: 0 }}>
-                  <defs>
-                    <linearGradient id="gnodes" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gimprove" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#34d399" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(215 20.2% 45%)", fontFamily: "monospace" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: "hsl(215 20.2% 45%)", fontFamily: "monospace" }} axisLine={false} tickLine={false} width={40} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "hsl(224 71% 6%)", border: "1px solid hsl(214.3 31.8% 16%)", borderRadius: 8, fontFamily: "monospace", fontSize: 11 }}
-                    labelStyle={{ color: "hsl(210 40% 80%)" }}
-                  />
-                  <Area type="monotone" dataKey="nodes" stroke="#22d3ee" strokeWidth={2} fill="url(#gnodes)" name="Active nodes" />
-                  <Area type="monotone" dataKey="improvements" stroke="#34d399" strokeWidth={1.5} fill="url(#gimprove)" name="Improvements ratified" />
-                </AreaChart>
-              </ResponsiveContainer>
+              <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-1">{chartLabel}</p>
+              <p className="font-mono text-[10px] text-muted-foreground mb-4">
+                {growth
+                  ? `${growth.totalNodes} knowledge node${growth.totalNodes !== 1 ? "s" : ""} accumulated — each interaction adds more`
+                  : "Loading…"}
+              </p>
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: 0 }}>
+                    <defs>
+                      <linearGradient id="gnodes" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="gadded" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#34d399" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(215 20.2% 45%)", fontFamily: "monospace" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "hsl(215 20.2% 45%)", fontFamily: "monospace" }} axisLine={false} tickLine={false} width={36} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "hsl(224 71% 6%)", border: "1px solid hsl(214.3 31.8% 16%)", borderRadius: 8, fontFamily: "monospace", fontSize: 11 }}
+                      labelStyle={{ color: "hsl(210 40% 80%)" }}
+                    />
+                    <Area type="monotone" dataKey="nodes" stroke="#22d3ee" strokeWidth={2} fill="url(#gnodes)" name="Total nodes" />
+                    <Area type="monotone" dataKey="added" stroke="#34d399" strokeWidth={1.5} fill="url(#gadded)" name="Added this period" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[220px] flex items-center justify-center text-muted-foreground font-mono text-xs">
+                  No data yet — start a chat to build the knowledge graph
+                </div>
+              )}
             </div>
             <div className="space-y-3">
-              <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-3">Improvement milestones</p>
-              {liveMilestones.map((m, i) => (
-                <div key={`${m.epoch}-${i}`} className="flex items-center gap-4 bg-card border border-border rounded-lg px-4 py-3">
-                  <span className="font-mono text-[10px] text-muted-foreground w-12 shrink-0">epoch {m.epoch}</span>
-                  <div className="flex-1 font-mono text-sm text-foreground">{m.label}</div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${Math.min(100, (m.votes / m.threshold) * 100)}%` }} />
-                    </div>
-                    <span className="font-mono text-[10px] text-muted-foreground">{m.votes}/{m.threshold} votes</span>
-                  </div>
-                  <span className="font-mono text-[10px] text-emerald-400 flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" /> ratified
-                  </span>
+              <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-3">Learning log</p>
+              {liveMilestones.length === 0 ? (
+                <div className="bg-card border border-border rounded-lg px-4 py-4 text-center font-mono text-xs text-muted-foreground">
+                  No learning events yet — interact with the agent to generate entries
                 </div>
-              ))}
+              ) : (
+                liveMilestones.map((m) => (
+                  <div key={m.index} className="flex items-start gap-4 bg-card border border-border rounded-lg px-4 py-3">
+                    <span className="font-mono text-[10px] text-muted-foreground w-14 shrink-0 pt-0.5">{m.age}</span>
+                    <div className="flex-1 font-mono text-sm text-foreground leading-snug">{m.label}</div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {m.nodesAdded > 0 && (
+                        <span className="font-mono text-[10px] text-primary">+{m.nodesAdded} nodes</span>
+                      )}
+                      <span className="font-mono text-[10px] text-muted-foreground">{m.source}</span>
+                      <span className="font-mono text-[10px] text-emerald-400 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" /> logged
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </motion.div>
         )}

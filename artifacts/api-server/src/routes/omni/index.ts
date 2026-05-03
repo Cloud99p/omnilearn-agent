@@ -5,6 +5,7 @@ import trainRouter from "./train.js";
 import characterRouter from "./character.js";
 import benchmarkRouter from "./benchmark.js";
 import smarterProofRouter from "./smarter-proof.js";
+import growthHistoryRouter from "./growth-history.js";
 
 const router = Router();
 
@@ -14,5 +15,6 @@ router.use("/omni/train", trainRouter);
 router.use("/omni/character", characterRouter);
 router.use("/omni", benchmarkRouter);
 router.use("/omni", smarterProofRouter);
+router.use("/omni", growthHistoryRouter);
 
 export default router;
