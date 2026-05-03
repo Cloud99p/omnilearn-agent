@@ -4,6 +4,7 @@ import { knowledgeNodes, knowledgeEdges, learningLog } from "@workspace/db/schem
 import { eq, desc, sql, like, or } from "drizzle-orm";
 import { retrieveRelevantNodes, addDirectFact, seedIfEmpty } from "../../brain/index.js";
 import { tokenize } from "../../brain/tfidf.js";
+import { contributeNeurons } from "../../brain/network.js";
 
 const router = Router();
 
@@ -93,6 +94,10 @@ router.post("/", async (req, res) => {
   }
 
   const node = await addDirectFact(content.trim(), type, tags, confidence, null);
+
+  // Feed into shared network brain (fire-and-forget)
+  contributeNeurons([{ content: content.trim(), type, tags }], "self").catch(() => {});
+
   res.status(201).json(node);
 });
 

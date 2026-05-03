@@ -6,6 +6,7 @@ import meRouter from "./me/index.js";
 import githubRouter from "./github/index.js";
 import omniRouter from "./omni/index.js";
 import ghostRouter from "./ghost/index.js";
+import networkRouter from "./network.js";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(meRouter);
 router.use(githubRouter);
 router.use(omniRouter);
 router.use(ghostRouter);
+router.use(networkRouter);
 
 export default router;

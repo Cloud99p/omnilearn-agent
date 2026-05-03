@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { trainOnText, seedIfEmpty } from "../../brain/index.js";
+import { contributeNeurons } from "../../brain/network.js";
 
 const router = Router();
 
@@ -15,6 +16,19 @@ router.post("/", async (req, res) => {
   await seedIfEmpty();
 
   const result = await trainOnText(text.trim(), source, null);
+
+  // Feed extracted knowledge into the shared network brain (fire-and-forget)
+  if (result.nodes && result.nodes.length > 0) {
+    contributeNeurons(
+      result.nodes.map((n: { content: string; type?: string; tags?: string[] }) => ({
+        content: n.content,
+        type: n.type,
+        tags: n.tags ?? [],
+      })),
+      "self"
+    ).catch(() => {});
+  }
+
   res.json({
     ...result,
     message: result.added > 0

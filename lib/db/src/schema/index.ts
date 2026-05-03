@@ -8,3 +8,4 @@ export * from "./knowledge-edges";
 export * from "./character-state";
 export * from "./learning-log";
 export * from "./ghost-nodes";
+export * from "./network";
