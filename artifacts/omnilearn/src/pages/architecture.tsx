@@ -1,8 +1,94 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Database, BrainCircuit, Globe, Activity, Shield, Code, Server, Zap, Terminal } from "lucide-react";
+import { ArrowRight, Database, BrainCircuit, Globe, Activity, Shield, Code, Server, Zap, Terminal, Brain, Radio } from "lucide-react";
 import KnowledgeGraph from "@/components/knowledge-graph";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+interface SystemSnapshot {
+  knowledge: { nodeCount: number; edgeCount: number; logCount: number } | null;
+  network:   { neurons: number; synapses: number; health: number; agents: number } | null;
+  ghost:     { total: number; online: number; totalTasksProcessed: number } | null;
+  character: { totalInteractions: number; curiosity: number; empathy: number } | null;
+}
+
+function LiveSystemStats() {
+  const [snap, setSnap] = useState<SystemSnapshot>({ knowledge: null, network: null, ghost: null, character: null });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`${BASE}/api/omni/knowledge/stats`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${BASE}/api/network/stats`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${BASE}/api/ghost/status`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${BASE}/api/omni/character`).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([knowledge, network, ghost, character]) => {
+      setSnap({ knowledge, network, ghost, character });
+      setLoading(false);
+    });
+  }, []);
+
+  const stats = [
+    {
+      icon: Database,
+      label: "Knowledge nodes",
+      value: snap.knowledge ? snap.knowledge.nodeCount.toLocaleString() : "—",
+      sub:   snap.knowledge ? `${snap.knowledge.edgeCount.toLocaleString()} edges · ${snap.knowledge.logCount} events` : "fetching…",
+      color: "#22d3ee",
+    },
+    {
+      icon: Brain,
+      label: "Neural neurons",
+      value: snap.network ? snap.network.neurons.toLocaleString() : "—",
+      sub:   snap.network ? `${snap.network.synapses} synapses · ${snap.network.agents} agents` : "fetching…",
+      color: "#a78bfa",
+    },
+    {
+      icon: Radio,
+      label: "Ghost nodes",
+      value: snap.ghost ? `${snap.ghost.online}/${snap.ghost.total}` : "—",
+      sub:   snap.ghost ? `online/registered · ${snap.ghost.totalTasksProcessed} tasks processed` : "fetching…",
+      color: "#34d399",
+    },
+    {
+      icon: Activity,
+      label: "Interactions",
+      value: snap.character ? snap.character.totalInteractions.toLocaleString() : "—",
+      sub:   snap.character ? `curiosity ${snap.character.curiosity.toFixed(1)} · empathy ${snap.character.empathy.toFixed(1)}` : "fetching…",
+      color: "#fb923c",
+    },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.9 }}
+      className="mt-10 mb-8"
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider">Live system state</span>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {stats.map(s => (
+          <div key={s.label} className="bg-card border border-border rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <s.icon className="w-3.5 h-3.5" style={{ color: s.color }} />
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</span>
+            </div>
+            <div className="font-mono text-2xl font-bold mb-1" style={{ color: loading ? "hsl(215 20.2% 35%)" : s.color }}>
+              {loading ? "…" : s.value}
+            </div>
+            <div className="font-mono text-[10px] text-muted-foreground">{loading ? "fetching…" : s.sub}</div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
 
 const ARCH_MODULES = [
   { id: "1", name: "Data Ingestion", type: "Stateless", icon: Globe, tools: ["Scrapy", "Apache Nutch"] },
@@ -95,6 +181,7 @@ export default function Architecture() {
         </div>
       </motion.div>
 
+      <LiveSystemStats />
       <KnowledgeGraph />
     </div>
   );

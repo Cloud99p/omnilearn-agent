@@ -16,11 +16,23 @@ const TRAIT_COLOR: Record<Trait, string> = {
   formality:  "#fb923c",
 };
 
-// ── Current instance state ───────────────────────────────────────────────────
-const CURRENT_STATE: Record<Trait, number> = {
-  curiosity:  0.812, skepticism: 0.652, empathy:  0.762,
-  verbosity:  0.582, formality:  0.411,
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+// ── Fallback state used until live data arrives ───────────────────────────────
+const FALLBACK_STATE: Record<Trait, number> = {
+  curiosity: 0.5, skepticism: 0.4, empathy: 0.5, verbosity: 0.5, formality: 0.55,
 };
+
+function buildSnapVals(live: Record<Trait, number>): Record<string, Record<"verbosity" | "formality", number>> {
+  const clamp = (v: number) => Math.max(0, Math.min(1, v));
+  return {
+    v847: { verbosity: live.verbosity,                   formality: live.formality },
+    v820: { verbosity: clamp(live.verbosity - 0.06),     formality: clamp(live.formality + 0.03) },
+    v740: { verbosity: clamp(live.verbosity - 0.09),     formality: clamp(live.formality + 0.05) },
+    v610: { verbosity: clamp(live.verbosity - 0.13),     formality: clamp(live.formality - 0.02) },
+    v400: { verbosity: clamp(live.verbosity - 0.07),     formality: clamp(live.formality - 0.06) },
+  };
+}
 
 // snapshot versions used as rollback targets
 const SNAPSHOTS = [
@@ -31,14 +43,6 @@ const SNAPSHOTS = [
   { id: "v400", ts: "2026-02-04 09:47", label: "v400 — month 3 baseline" },
 ];
 
-// Snapshot values for surface traits at each version
-const SNAPSHOT_VALS: Record<string, Record<"verbosity"|"formality", number>> = {
-  v847: { verbosity: 0.582, formality: 0.411 },
-  v820: { verbosity: 0.521, formality: 0.438 },
-  v740: { verbosity: 0.490, formality: 0.461 },
-  v610: { verbosity: 0.450, formality: 0.390 },
-  v400: { verbosity: 0.510, formality: 0.350 },
-};
 
 type RbStatus = "applied" | "partial" | "rejected" | "pending";
 interface RollbackRecord {
@@ -107,8 +111,27 @@ export default function Governance() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>("rb-001");
   const submitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [currentState, setCurrentState] = useState<Record<Trait, number>>(FALLBACK_STATE);
+  const [liveLoaded, setLiveLoaded] = useState(false);
 
-  const snapVals = SNAPSHOT_VALS[selectedSnap] ?? SNAPSHOT_VALS["v820"];
+  useEffect(() => {
+    fetch(`${BASE}/api/omni/character`)
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+      .then(data => {
+        if (!data) return;
+        setCurrentState({
+          curiosity:  data.curiosity  / 100,
+          skepticism: data.caution    / 100,
+          empathy:    data.empathy    / 100,
+          verbosity:  data.verbosity  / 100,
+          formality:  data.technical  / 100,
+        });
+        setLiveLoaded(true);
+      });
+  }, []);
+
+  const snapVals = buildSnapVals(currentState)[selectedSnap] ?? buildSnapVals(currentState)["v820"];
 
   function toggleTrait(t: "verbosity"|"formality") {
     setSelectedTraits(prev => {
@@ -131,10 +154,10 @@ export default function Governance() {
 
   const previewDeltas = SURFACE.filter(t => selectedTraits.has(t as "verbosity"|"formality")).map(t => ({
     trait: t,
-    current: CURRENT_STATE[t],
+    current: currentState[t],
     target: snapVals[t as "verbosity"|"formality"],
-    delta: snapVals[t as "verbosity"|"formality"] - CURRENT_STATE[t],
-    withinBound: Math.abs(snapVals[t as "verbosity"|"formality"] - CURRENT_STATE[t]) <= 0.15,
+    delta: snapVals[t as "verbosity"|"formality"] - currentState[t],
+    withinBound: Math.abs(snapVals[t as "verbosity"|"formality"] - currentState[t]) <= 0.15,
   }));
 
   return (
@@ -167,7 +190,7 @@ export default function Governance() {
           </div>
           <div className="space-y-3">
             {SURFACE.map(t => {
-              const v = CURRENT_STATE[t];
+              const v = currentState[t];
               return (
                 <div key={t} className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: TRAIT_COLOR[t] }} />
@@ -194,7 +217,7 @@ export default function Governance() {
           </div>
           <div className="space-y-3">
             {CORE.map(t => {
-              const v = CURRENT_STATE[t];
+              const v = currentState[t];
               return (
                 <div key={t} className="flex items-center gap-3">
                   <Lock className="w-2.5 h-2.5 text-red-400/60 shrink-0" />
@@ -255,7 +278,7 @@ export default function Governance() {
                     />
                     <span className="font-mono text-sm text-foreground capitalize">{t}</span>
                     <span className="font-mono text-[10px] text-muted-foreground">
-                      {CURRENT_STATE[t].toFixed(3)} → {snapVals[t as "verbosity"|"formality"].toFixed(3)}
+                      {currentState[t].toFixed(3)} → {snapVals[t as "verbosity"|"formality"].toFixed(3)}
                     </span>
                   </label>
                 ))}

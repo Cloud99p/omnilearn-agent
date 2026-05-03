@@ -109,12 +109,35 @@ function parseDnaJson(raw: unknown): DnaFile | null {
   } catch { return null; }
 }
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 export default function Compare() {
   const [mode, setMode] = useState<Mode>("preset");
   const [customA, setCustomA] = useState(CUSTOM_A);
   const [customB, setCustomB] = useState(CUSTOM_B);
   const [tick, setTick] = useState(0);
   const [dnaA, setDnaA] = useState<DnaFile | null>(null);
+  const [liveInstanceA, setLiveInstanceA] = useState<{ traits: Record<Trait, number>; interactions: number; knowledgeNodes: number } | null>(null);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/omni/character`)
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+      .then(data => {
+        if (!data) return;
+        setLiveInstanceA({
+          traits: {
+            curiosity:  data.curiosity  / 100,
+            skepticism: data.caution    / 100,
+            empathy:    data.empathy    / 100,
+            formality:  data.technical  / 100,
+            verbosity:  data.verbosity  / 100,
+          },
+          interactions:   data.totalInteractions,
+          knowledgeNodes: data.totalKnowledgeNodes,
+        });
+      });
+  }, []);
   const [dnaB, setDnaB] = useState<DnaFile | null>(null);
   const [dnaErrA, setDnaErrA] = useState<string | null>(null);
   const [dnaErrB, setDnaErrB] = useState<string | null>(null);
@@ -143,10 +166,11 @@ export default function Compare() {
     return () => clearInterval(t);
   }, []);
 
-  const instA = mode === "preset" ? INSTANCE_A.traits : mode === "custom" ? customA : (dnaA?.traits ?? INSTANCE_A.traits);
+  const liveTraitsA = liveInstanceA?.traits ?? INSTANCE_A.traits;
+  const instA = mode === "preset" ? liveTraitsA : mode === "custom" ? customA : (dnaA?.traits ?? INSTANCE_A.traits);
   const instB = mode === "preset" ? INSTANCE_B.traits : mode === "custom" ? customB : (dnaB?.traits ?? INSTANCE_B.traits);
 
-  const fpA = mode === "preset" ? INSTANCE_A.fingerprint : mode === "custom" ? deriveFingerprint(customA) : (dnaA?.fingerprint ?? "—");
+  const fpA = mode === "preset" ? (liveInstanceA ? deriveFingerprint(liveTraitsA) : INSTANCE_A.fingerprint) : mode === "custom" ? deriveFingerprint(customA) : (dnaA?.fingerprint ?? "—");
   const fpB = mode === "preset" ? INSTANCE_B.fingerprint : mode === "custom" ? deriveFingerprint(customB) : (dnaB?.fingerprint ?? "—");
 
   const radarData = TRAITS.map(t => ({
@@ -296,27 +320,40 @@ export default function Compare() {
           >
             <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="font-mono text-xs text-muted-foreground mb-1">{profile.label}</p>
+                <p className="font-mono text-xs text-muted-foreground mb-1">
+              {profile.id === "A" && mode === "preset" ? "This Instance" : profile.label}
+              {profile.id === "A" && mode === "preset" && liveInstanceA && (
+                <span className="ml-2 font-mono text-[10px] text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-1.5 py-0.5 rounded">live</span>
+              )}
+            </p>
                 <p className="font-mono text-xl font-bold" style={{ color: profile.color }}>{fp}</p>
               </div>
               <Fingerprint className="w-5 h-5 mt-1" style={{ color: profile.color }} />
             </div>
             {mode === "preset" && (
               <>
-                <p className="font-mono text-[10px] text-muted-foreground mb-1">{profile.origin}</p>
+                <p className="font-mono text-[10px] text-muted-foreground mb-1">
+                  {profile.id === "A" && liveInstanceA ? "Live — evolving with each interaction" : profile.origin}
+                </p>
                 <div className="grid grid-cols-3 gap-2 mt-3">
-                  {[
+                  {(profile.id === "A" && liveInstanceA ? [
+                    { l: "Interactions", v: liveInstanceA.interactions.toLocaleString() },
+                    { l: "Knowledge",    v: `${liveInstanceA.knowledgeNodes} nodes` },
+                    { l: "Fingerprint",  v: fpA.slice(0, 10) + "…" },
+                  ] : [
                     { l: "Age", v: profile.age },
                     { l: "Interactions", v: profile.interactions.toLocaleString() },
                     { l: "Docs indexed", v: (profile.docsIndexed / 1000).toFixed(0) + "k" },
-                  ].map(s => (
+                  ]).map(s => (
                     <div key={s.l} className="bg-secondary/30 rounded p-2 text-center">
                       <p className="font-mono text-[10px] text-muted-foreground">{s.l}</p>
                       <p className="font-mono text-xs font-bold text-foreground">{s.v}</p>
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-3 leading-relaxed">{profile.trajectory}</p>
+                <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+                  {profile.id === "A" && liveInstanceA ? "Science-heavy ingestion pipeline. Character traits derived from live interaction and knowledge graph state." : profile.trajectory}
+                </p>
               </>
             )}
             {mode === "custom" && (
