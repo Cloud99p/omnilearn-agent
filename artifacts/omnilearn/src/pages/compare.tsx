@@ -38,12 +38,12 @@ const INSTANCE_B: InstanceProfile = {
   fingerprint: "0xB7E94A05",
   color: "#a78bfa",
   label: "Instance B",
-  origin: "Seeded: 2024-01-12 / Reddit, Twitter, PubMed",
-  age: "92 days",
-  interactions: 8910,
-  docsIndexed: 89000,
+  origin: "",
+  age: "",
+  interactions: 0,
+  docsIndexed: 0,
   traits: { curiosity: 0.64, skepticism: 0.42, empathy: 0.88, formality: 0.35, verbosity: 0.79 },
-  trajectory: "Social discourse dominated. Massive conversational interaction count drove empathy to the highest measurable level. Skepticism low — fewer adversarial signals. Formality collapsed under informal language exposure.",
+  trajectory: "",
 };
 
 function deriveFingerprint(t: Record<Trait, number>): string {
@@ -140,6 +140,7 @@ export default function Compare() {
   }, []);
   // Live simulated peer — derived from Instance A traits with seeded divergence + gentle pulse
   const [liveB, setLiveB] = useState<InstanceProfile | null>(null);
+  const [showInstanceB, setShowInstanceB] = useState(false);
   const [bPulse, setBPulse] = useState(0);
 
   useEffect(() => {
@@ -206,11 +207,11 @@ export default function Compare() {
         [t]: Math.max(0.05, Math.min(0.98, liveB.traits[t] + Math.sin(bPulse * 1.1 + TRAITS.indexOf(t) * 0.9) * 0.004)),
       }), {} as Record<Trait, number>)
     : INSTANCE_B.traits;
-  const instB = mode === "preset" ? liveBTraits : mode === "custom" ? customB : (dnaB?.traits ?? INSTANCE_B.traits);
-  const activePeerB = mode === "preset" ? (liveB ?? INSTANCE_B) : INSTANCE_B;
+  const instB = mode === "preset" ? (showInstanceB ? liveBTraits : INSTANCE_A.traits) : mode === "custom" ? customB : (dnaB?.traits ?? INSTANCE_B.traits);
+  const activePeerB = mode === "preset" ? (showInstanceB ? (liveB ?? INSTANCE_B) : null) : INSTANCE_B;
 
   const fpA = mode === "preset" ? (liveInstanceA ? deriveFingerprint(liveTraitsA) : INSTANCE_A.fingerprint) : mode === "custom" ? deriveFingerprint(customA) : (dnaA?.fingerprint ?? "—");
-  const fpB = mode === "preset" ? activePeerB.fingerprint : mode === "custom" ? deriveFingerprint(customB) : (dnaB?.fingerprint ?? "—");
+  const fpB = mode === "preset" ? (showInstanceB ? (activePeerB?.fingerprint ?? "—") : "—") : mode === "custom" ? deriveFingerprint(customB) : (dnaB?.fingerprint ?? "—");
 
   const radarData = TRAITS.map(t => ({
     trait: t.charAt(0).toUpperCase() + t.slice(1),
@@ -222,7 +223,7 @@ export default function Compare() {
   const coreDivergence = (["curiosity", "skepticism", "empathy"] as Trait[]).reduce(
     (acc, t) => acc + Math.abs(instA[t] - instB[t]), 0
   ) / 3;
-  const canMerge = coreDivergence < 0.05;
+  const canMerge = showInstanceB && coreDivergence < 0.05;
 
   const pulse = 0.001 * Math.sin(tick * 0.18);
 
@@ -260,6 +261,14 @@ export default function Compare() {
           </button>
         ))}
       </div>
+      {mode === "preset" && (
+        <button
+          onClick={() => setShowInstanceB(v => !v)}
+          className="mb-6 font-mono text-xs px-4 py-2 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary/30 transition-all"
+        >
+          {showInstanceB ? "Hide Instance B" : "Add Instance B"}
+        </button>
+      )}
 
       {/* DNA file upload zones */}
       <AnimatePresence>
@@ -350,6 +359,7 @@ export default function Compare() {
           { profile: INSTANCE_A,  traits: instA, fp: fpA },
           { profile: activePeerB, traits: instB, fp: fpB },
         ].map(({ profile, traits: _traits, fp }, idx) => (
+          profile ? (
           <motion.div
             key={profile.id}
             initial={{ opacity: 0, x: idx === 0 ? -20 : 20 }}
@@ -430,6 +440,25 @@ export default function Compare() {
               </div>
             )}
           </motion.div>
+          ) : (
+            <motion.div
+              key="instance-b-empty"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-card border border-dashed border-border rounded-xl p-5 min-h-[240px] flex items-center justify-center text-center"
+            >
+              <div className="space-y-3">
+                <p className="font-mono text-xs text-muted-foreground">Instance B is blank</p>
+                <p className="font-mono text-[10px] text-muted-foreground/50">Add it back to compare a real instance pair.</p>
+                <button
+                  onClick={() => setShowInstanceB(true)}
+                  className="font-mono text-xs px-3 py-1.5 rounded border border-primary/30 text-primary hover:bg-primary/10 transition-all"
+                >
+                  Add Instance B
+                </button>
+              </div>
+            </motion.div>
+          )
         ))}
       </div>
 
