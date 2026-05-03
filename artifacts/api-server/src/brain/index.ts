@@ -4,6 +4,7 @@ import {
   type KnowledgeNode, type CharacterState,
 } from "@workspace/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
+import { proposeHebbianDelta, type EdgeRelationship } from "./hebbian.js";
 import { tokenize, queryScore, buildTfidfVector, computeIdfFromVectors } from "./tfidf.js";
 import { extractFacts, detectQueryType, extractKeyTerms } from "./extractor.js";
 import {
@@ -280,33 +281,41 @@ export async function trainOnText(
     }
   }
 
-  // Create co-occurrence edges between nodes inserted from the same batch
+  // Propose co-occurrence Hebbian deltas between nodes from the same batch
   if (insertedNodes.length >= 2) {
     for (let i = 0; i < insertedNodes.length; i++) {
       for (let j = i + 1; j < Math.min(insertedNodes.length, i + 4); j++) {
+        const a = insertedNodes[i];
+        const b = insertedNodes[j];
+        const evidence = `${a.content} and ${b.content} were observed together in source: ${source}`;
         try {
-          await db.insert(knowledgeEdges).values({
-            fromId: insertedNodes[i].id,
-            toId: insertedNodes[j].id,
-            relationship: "co-occurs",
-            weight: 0.7,
+          await proposeHebbianDelta({
+            proposerId: "local",
+            nodeAId: a.id,
+            nodeBId: b.id,
+            edgeType: "co-occurs",
+            evidenceText: evidence,
+            deltaWeight: 0.7,
           });
-        } catch { /* skip duplicate edges */ }
+        } catch { /* skip */ }
       }
     }
   }
 
-  // For each new node, link to the most similar existing node (if any)
+  // Propose related-to deltas for each new node's nearest semantic neighbour
   for (const node of insertedNodes) {
     const similar = await retrieveRelevantNodes(node.content, clerkId, 3);
     const closeMatch = similar.find(s => s.id !== node.id && s.similarity > 0.2);
     if (closeMatch) {
+      const evidence = `"${node.content}" is semantically similar to "${closeMatch.content}" (similarity ${closeMatch.similarity.toFixed(2)}) observed in source: ${source}`;
       try {
-        await db.insert(knowledgeEdges).values({
-          fromId: node.id,
-          toId: closeMatch.id,
-          relationship: "related-to",
-          weight: closeMatch.similarity,
+        await proposeHebbianDelta({
+          proposerId: "local",
+          nodeAId: node.id,
+          nodeBId: closeMatch.id,
+          edgeType: "related-to",
+          evidenceText: evidence,
+          deltaWeight: Math.round(closeMatch.similarity * 100) / 100,
         });
       } catch { /* skip */ }
     }
@@ -339,18 +348,22 @@ export async function addDirectFact(
 ): Promise<KnowledgeNode> {
   const node = await insertNode(content, type, tags, confidence, "manual", clerkId);
 
-  // Link to similar existing nodes to build the knowledge graph
+  // Propose Hebbian deltas to link similar existing nodes
   const similar = await retrieveRelevantNodes(content, clerkId, 3);
   for (const match of similar) {
     if (match.id !== node.id && match.similarity > 0.15) {
+      const edgeType = match.similarity > 0.5 ? "related-to" : "co-occurs";
+      const evidence = `"${content}" (manually added) has semantic similarity ${match.similarity.toFixed(2)} with existing node "${match.content}"`;
       try {
-        await db.insert(knowledgeEdges).values({
-          fromId: node.id,
-          toId: match.id,
-          relationship: match.similarity > 0.5 ? "related-to" : "co-occurs",
-          weight: Math.round(match.similarity * 100) / 100,
+        await proposeHebbianDelta({
+          proposerId: "local",
+          nodeAId: node.id,
+          nodeBId: match.id,
+          edgeType: edgeType as EdgeRelationship,
+          evidenceText: evidence,
+          deltaWeight: Math.round(match.similarity * 100) / 100,
         });
-      } catch { /* skip duplicate edges */ }
+      } catch { /* skip */ }
     }
   }
 

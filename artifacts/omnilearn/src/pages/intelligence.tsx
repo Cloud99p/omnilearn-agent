@@ -5,7 +5,7 @@ import {
   RefreshCw, Database, GitBranch, Loader2,
   CheckCircle, AlertCircle, Shield,
   Lightbulb, BarChart3, Clock, Network, Users, Wifi,
-  TrendingUp, Cpu, Radio,
+  TrendingUp, Cpu, Radio, Lock, CheckCircle2, XCircle, ArrowRight, FlaskConical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -51,8 +51,37 @@ interface NetworkStats {
   neurons: number; synapses: number; coreNeurons: number; agents: number;
   totalWeight: number; avgWeight: number; maxWeight: number; health: number;
 }
+interface HebbianProposal {
+  id: number;
+  proposerId: string;
+  nodeAId: number;
+  nodeBId: number;
+  edgeType: string;
+  evidenceText: string;
+  evidenceHash: string;
+  proposalProof: string;
+  deltaWeight: number;
+  status: string;
+  validationCount: number;
+  rejectionCount: number;
+  createdAt: string;
+  appliedAt: string | null;
+  nodeA: { id: number; content: string } | null;
+  nodeB: { id: number; content: string } | null;
+}
+interface ValidationResult {
+  valid: boolean;
+  steps: {
+    evidenceHashMatch: boolean;
+    proofMatch: boolean;
+    semanticOverlap: boolean;
+    freshnessOk: boolean;
+  };
+  reason?: string;
+  proposal?: HebbianProposal;
+}
 
-type Tab = "overview" | "network" | "knowledge" | "train" | "character";
+type Tab = "overview" | "network" | "knowledge" | "train" | "character" | "proposals";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -338,6 +367,14 @@ export default function IntelligencePage() {
   const [addType, setAddType] = useState("fact");
   const [adding, setAdding] = useState(false);
 
+  // Proposals state
+  const [proposals, setProposals] = useState<HebbianProposal[]>([]);
+  const [proposalsLoading, setProposalsLoading] = useState(false);
+  const [proposalFilter, setProposalFilter] = useState<string>("all");
+  const [validatingId, setValidatingId] = useState<number | null>(null);
+  const [applyingAll, setApplyingAll] = useState(false);
+  const [validationResults, setValidationResults] = useState<Record<number, ValidationResult>>({});
+
   // Network state
   const [netStats, setNetStats] = useState<NetworkStats | null>(null);
   const [netNeurons, setNetNeurons] = useState<NetworkNeuron[]>([]);
@@ -380,6 +417,42 @@ export default function IntelligencePage() {
     } catch { /* ignore */ } finally { setSearching(false); }
   }, []);
 
+  const fetchProposals = useCallback(async (filter?: string) => {
+    setProposalsLoading(true);
+    try {
+      const f = filter && filter !== "all" ? `?status=${filter}` : "";
+      const res = await fetch(`${BASE}/api/brain/proposals${f}`);
+      if (res.ok) setProposals(await res.json());
+    } catch { /* ignore */ } finally { setProposalsLoading(false); }
+  }, []);
+
+  const handleValidate = async (id: number) => {
+    setValidatingId(id);
+    try {
+      const res = await fetch(`${BASE}/api/brain/proposals/${id}/validate`, { method: "POST" });
+      if (res.ok) {
+        const result: ValidationResult = await res.json();
+        setValidationResults(prev => ({ ...prev, [id]: result }));
+        await fetchProposals(proposalFilter);
+        fetchStats();
+      }
+    } finally { setValidatingId(null); }
+  };
+
+  const handleApplyAll = async () => {
+    setApplyingAll(true);
+    try {
+      await fetch(`${BASE}/api/brain/proposals/apply`, { method: "POST" });
+      await fetchProposals(proposalFilter);
+      fetchStats();
+    } finally { setApplyingAll(false); }
+  };
+
+  const handleRejectProposal = async (id: number) => {
+    await fetch(`${BASE}/api/brain/proposals/${id}/reject`, { method: "POST" });
+    await fetchProposals(proposalFilter);
+  };
+
   const fetchNetwork = useCallback(async () => {
     setNetLoading(true);
     try {
@@ -404,6 +477,7 @@ export default function IntelligencePage() {
 
   useEffect(() => {
     if (tab === "network") fetchNetwork();
+    if (tab === "proposals") fetchProposals(proposalFilter);
   }, [tab, fetchNetwork]);
 
   // Auto-refresh network every 15s when on that tab
@@ -511,6 +585,7 @@ export default function IntelligencePage() {
     { id: "knowledge", label: "Knowledge", icon: Database },
     { id: "train", label: "Training", icon: Zap },
     { id: "character", label: "Character", icon: Activity },
+    { id: "proposals", label: "Hebbian Proposals", icon: FlaskConical },
   ];
 
   return (
@@ -1124,6 +1199,208 @@ export default function IntelligencePage() {
       {tab === "character" && !character && (
         <div className="flex items-center justify-center py-12">
           <p className="text-muted-foreground font-mono text-sm">No character data yet. Start a conversation in Native mode.</p>
+        </div>
+      )}
+
+      {/* ── HEBBIAN PROPOSALS TAB ─────────────────────────────────────────────── */}
+      {tab === "proposals" && (
+        <div className="space-y-6">
+          {/* Explainer */}
+          <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+            <div className="flex items-center gap-2">
+              <FlaskConical className="w-4 h-4 text-primary" />
+              <h3 className="font-mono text-sm font-bold text-foreground">Verified Hebbian Deltas</h3>
+            </div>
+            <p className="font-mono text-xs text-muted-foreground leading-relaxed">
+              Each reinforcement proposal carries a source triple <span className="text-primary">(node A → edge type → node B)</span> and a cryptographic proof tying that triple to observed evidence. Before any edge is strengthened, local validation re-derives both the evidence hash and the proposal proof from stored fields. Semantic overlap is also checked — the evidence text must mention tokens from both nodes.
+            </p>
+            <div className="flex items-center gap-4 pt-1 font-mono text-[10px] text-muted-foreground/60">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400" />pending → awaiting validation</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400" />validated → proof verified</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary" />applied → edge committed</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400" />rejected</span>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1 flex-wrap">
+              {["all", "pending", "validated", "rejected", "applied"].map(f => (
+                <button key={f}
+                  onClick={() => { setProposalFilter(f); fetchProposals(f); }}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md font-mono text-xs border transition-all",
+                    proposalFilter === f
+                      ? "bg-primary/10 border-primary/30 text-primary"
+                      : "border-border/40 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                onClick={() => fetchProposals(proposalFilter)}
+                className="p-2 rounded-md border border-border/40 text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleApplyAll}
+                disabled={applyingAll || proposals.filter(p => p.status === "validated").length === 0}
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-md font-mono text-xs hover:bg-emerald-500/20 disabled:opacity-40 transition-all"
+              >
+                {applyingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                Apply {proposals.filter(p => p.status === "validated").length} Validated
+              </button>
+            </div>
+          </div>
+
+          {/* Proposal list */}
+          {proposalsLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-5 h-5 animate-spin text-primary/60" />
+            </div>
+          ) : proposals.length === 0 ? (
+            <div className="text-center py-16 space-y-2">
+              <FlaskConical className="w-8 h-8 text-muted-foreground/20 mx-auto" />
+              <p className="font-mono text-sm text-muted-foreground/60">No proposals yet.</p>
+              <p className="font-mono text-xs text-muted-foreground/40">
+                Proposals are generated automatically when you train the model or add knowledge nodes. Each new co-occurrence or semantic similarity becomes a Hebbian proposal.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {proposals.map(p => {
+                const vr = validationResults[p.id];
+                const statusColor = {
+                  pending: "text-yellow-400 border-yellow-400/20 bg-yellow-400/5",
+                  validated: "text-emerald-400 border-emerald-500/20 bg-emerald-500/5",
+                  rejected: "text-red-400 border-red-500/20 bg-red-500/5",
+                  applied: "text-primary border-primary/20 bg-primary/5",
+                }[p.status] ?? "text-muted-foreground border-border/40 bg-card/40";
+
+                return (
+                  <motion.div
+                    key={p.id}
+                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                    className="p-4 rounded-xl border border-border/40 bg-card/40 space-y-3"
+                  >
+                    {/* Triple header */}
+                    <div className="flex items-start gap-3">
+                      <span className={cn("px-2 py-0.5 rounded text-[10px] font-mono border shrink-0 mt-0.5", statusColor)}>
+                        {p.status}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap font-mono text-xs">
+                          <span className="text-primary/80 truncate max-w-[180px]" title={p.nodeA?.content}>
+                            {p.nodeA ? `"${p.nodeA.content.slice(0, 40)}${p.nodeA.content.length > 40 ? "…" : ""}"` : `node#${p.nodeAId}`}
+                          </span>
+                          <ArrowRight className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+                          <span className="px-1.5 py-0.5 rounded bg-secondary/40 text-[10px] text-muted-foreground shrink-0">{p.edgeType}</span>
+                          <ArrowRight className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+                          <span className="text-primary/80 truncate max-w-[180px]" title={p.nodeB?.content}>
+                            {p.nodeB ? `"${p.nodeB.content.slice(0, 40)}${p.nodeB.content.length > 40 ? "…" : ""}"` : `node#${p.nodeBId}`}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 font-mono text-[10px] text-muted-foreground/50">
+                          <span>Δw = +{p.deltaWeight.toFixed(2)}</span>
+                          <span>proposer: {p.proposerId}</span>
+                          <span>#{p.id}</span>
+                          <span>{new Date(p.createdAt).toLocaleString()}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {p.status === "pending" && (
+                          <>
+                            <button
+                              onClick={() => handleValidate(p.id)}
+                              disabled={validatingId === p.id}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-mono text-[10px] transition-all disabled:opacity-50"
+                            >
+                              {validatingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                              Validate
+                            </button>
+                            <button
+                              onClick={() => handleRejectProposal(p.id)}
+                              className="p-1.5 rounded-md border border-red-500/20 text-red-400/60 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                            >
+                              <XCircle className="w-3 h-3" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Evidence text */}
+                    <div className="p-2.5 rounded-lg bg-secondary/20 border border-border/20 space-y-1">
+                      <p className="font-mono text-[10px] text-muted-foreground/60 uppercase tracking-wider">Evidence</p>
+                      <p className="font-mono text-xs text-foreground/70 leading-relaxed">{p.evidenceText}</p>
+                    </div>
+
+                    {/* Proof hashes */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2 rounded-lg bg-secondary/10 border border-border/20 space-y-0.5">
+                        <p className="font-mono text-[9px] text-muted-foreground/50 uppercase tracking-wider">Evidence Hash (SHA-256)</p>
+                        <p className="font-mono text-[9px] text-foreground/40 break-all">{p.evidenceHash}</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-secondary/10 border border-border/20 space-y-0.5">
+                        <p className="font-mono text-[9px] text-muted-foreground/50 uppercase tracking-wider">Proposal Proof (SHA-256)</p>
+                        <p className="font-mono text-[9px] text-foreground/40 break-all">{p.proposalProof}</p>
+                      </div>
+                    </div>
+
+                    {/* Validation result */}
+                    {vr && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                        className={cn(
+                          "p-3 rounded-lg border space-y-2",
+                          vr.valid ? "border-emerald-500/20 bg-emerald-500/5" : "border-red-500/20 bg-red-500/5"
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          {vr.valid
+                            ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            : <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
+                          <p className="font-mono text-xs font-bold text-foreground">
+                            {vr.valid ? "Proof verified — delta will be applied" : `Rejected: ${vr.reason}`}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[10px]">
+                          {[
+                            { key: "evidenceHashMatch", label: "Evidence hash match" },
+                            { key: "proofMatch", label: "Proposal proof match" },
+                            { key: "semanticOverlap", label: "Semantic overlap" },
+                            { key: "freshnessOk", label: "Within 72h window" },
+                          ].map(({ key, label }) => {
+                            const pass = vr.steps[key as keyof typeof vr.steps];
+                            return (
+                              <div key={key} className="flex items-center gap-1.5">
+                                {pass
+                                  ? <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                                  : <XCircle className="w-3 h-3 text-red-400 shrink-0" />}
+                                <span className={pass ? "text-foreground/70" : "text-red-400/70"}>{label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Applied stamp */}
+                    {p.status === "applied" && p.appliedAt && (
+                      <div className="flex items-center gap-1.5 font-mono text-[10px] text-primary/60">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Applied to knowledge graph at {new Date(p.appliedAt).toLocaleString()}
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
