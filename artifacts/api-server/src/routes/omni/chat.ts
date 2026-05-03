@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { conversations, messages } from "@workspace/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { processMessage, seedIfEmpty } from "../../brain/index.js";
+import { processMessage, seedIfEmpty, trainOnText } from "../../brain/index.js";
 
 const router = Router();
 
@@ -102,6 +102,10 @@ router.post("/chat", async (req, res) => {
       conversationId: convId,
       role: "assistant",
       content: result.text,
+    });
+
+    trainOnText(result.text, "chat-response", clerkId).catch((err) => {
+      req.log.warn({ err }, "Failed to learn from chat response");
     });
 
     sendEvent({ done: true, conversationId: convId });
