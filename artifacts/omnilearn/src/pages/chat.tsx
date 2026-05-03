@@ -547,7 +547,7 @@ export default function Chat() {
             {ghostStatus !== null && ghostStatus.total === 0 && (
               <div className="p-2.5 rounded-lg border border-yellow-500/20 bg-yellow-500/5 space-y-2">
                 <p className="font-mono text-[10px] text-yellow-400/80 leading-relaxed">
-                  No ghost nodes registered. Messages will fall back to local Claude.
+                  No ghost nodes registered. Messages will fall back to Omni running locally.
                 </p>
                 <Link href="/ghost-network" className="flex items-center gap-1 font-mono text-[10px] text-violet-400 hover:text-violet-300 transition-colors">
                   Set up nodes <ArrowRight className="w-2.5 h-2.5" />
@@ -573,7 +573,7 @@ export default function Chat() {
             {ghostFallback && (
               <div className="p-2.5 rounded-lg border border-yellow-500/20 bg-yellow-500/5">
                 <p className="font-mono text-[10px] text-yellow-400 leading-relaxed">
-                  Ghost nodes unreachable. Processing locally via Claude.
+                  Ghost nodes unreachable. Processing locally via Omni.
                 </p>
               </div>
             )}
@@ -608,7 +608,7 @@ export default function Chat() {
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">Native Mode</p>
             <p className="font-mono text-xs text-muted-foreground leading-relaxed">
-              Powered by Claude with real-time web search and URL reading. Learns permanently — every fact it finds goes into the knowledge graph.
+              Powered by Omni with real-time web search and URL reading. Learns permanently — every fact it finds goes into the knowledge graph.
             </p>
             {latestMeta && (
               <div className="p-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 space-y-1.5">
@@ -676,10 +676,10 @@ export default function Chat() {
               </h2>
               <p className="text-muted-foreground font-mono text-sm mb-8">
                 {mode === "native"
-                  ? "Powered by Claude with live internet access — searches the web in real time, reads pages, and stores what it learns permanently in the knowledge graph."
+                  ? "Powered by Omni with live internet access — searches the web in real time, reads pages, and stores what it learns permanently in the knowledge graph."
                   : mode === "ghost"
                   ? ghostStatus && ghostStatus.total === 0
-                    ? "No ghost nodes registered yet. Messages will run locally via Claude until you add nodes."
+                    ? "No ghost nodes registered yet. Messages will run locally via Omni until you add nodes."
                     : `${ghostStatus?.online ?? 0} node${(ghostStatus?.online ?? 0) !== 1 ? "s" : ""} online. Messages route to the least-loaded node automatically.`
                   : `Running locally on your hardware. ${installedSkillIds.length > 0 ? `${installedSkillIds.length} skill${installedSkillIds.length > 1 ? "s" : ""} active.` : "Install skills to expand capabilities."}`}
               </p>
@@ -910,7 +910,7 @@ export default function Chat() {
           </div>
           <p className="text-center font-mono text-[10px] text-muted-foreground/30 mt-2">
             {mode === "ghost"
-              ? "Routes to ghost nodes — falls back to Claude if none available"
+              ? "Routes to ghost nodes — falls back to Omni if none available"
               : mode === "native"
               ? "OmniLearn native intelligence — learns from every message"
               : "Enter to send · Shift+Enter for new line"}

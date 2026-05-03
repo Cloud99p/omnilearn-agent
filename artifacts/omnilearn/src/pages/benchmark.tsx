@@ -193,7 +193,7 @@ export default function BenchmarkPage() {
         </div>
         <h1 className="text-4xl font-bold tracking-tight mb-3">Does the knowledge pipeline work?</h1>
         <p className="text-muted-foreground font-mono text-sm max-w-2xl leading-relaxed">
-          Ask the same question two ways — once with raw Claude (no context) and once with OmniLearn's
+          Ask the same question two ways — once with Omni using no context, and once with OmniLearn's
           knowledge graph injected. See exactly which nodes were retrieved, what context was added,
           and how the answer changes.
         </p>
@@ -263,7 +263,7 @@ export default function BenchmarkPage() {
             {/* Side-by-side responses */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[320px]">
               <ResponsePanel
-                label="Raw Claude — no knowledge"
+                label="Omni — baseline (no context)"
                 color="#22d3ee"
                 icon={Zap}
                 result={result?.raw ?? null}
@@ -435,10 +435,10 @@ export default function BenchmarkPage() {
       {!result && !loading && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
           {[
-            { icon: Zap,      color: "#22d3ee", title: "Path A — Raw",
-              body: "Your question goes directly to Claude with no additional context. This is the baseline." },
+            { icon: Zap,      color: "#22d3ee", title: "Path A — Baseline",
+              body: "Your question goes directly to Omni with no additional context. This is the control." },
             { icon: Brain,    color: "#a78bfa", title: "Path B — Augmented",
-              body: "OmniLearn retrieves the top matching knowledge nodes and prepends them as a system prompt before calling Claude." },
+              body: "OmniLearn retrieves the top matching knowledge nodes and prepends them as a system prompt before Omni responds." },
             { icon: BarChart3,color: "#34d399", title: "The delta",
               body: "Word count, sentence depth, knowledge terms used, and inline citations all measure how much the context improved the answer." },
           ].map(c => (

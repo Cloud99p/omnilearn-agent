@@ -914,7 +914,7 @@ export default function IntelligencePage() {
                 { icon: Activity, title: "Character Evolution", body: "Traits like curiosity, caution, and technical depth shift gradually with every learning event, shaping how the model expresses its knowledge." },
                 { icon: Network, title: "Distributed Network", body: "A separate shared brain grows across all agents. Neurons reinforce each other via Hebbian learning — knowledge that's accessed together, wires together." },
                 { icon: Zap, title: "Response Synthesis", body: "Retrieved knowledge chunks are assembled into natural language responses using confidence-calibrated templates and character-voice modifiers." },
-                { icon: Shield, title: "No External APIs", body: "Zero dependency on Claude, GPT, or any other AI API. The model runs entirely on your own server using pure TypeScript algorithms." },
+                { icon: Shield, title: "Self-Contained Engine", body: "The knowledge graph, TF-IDF retrieval, character engine, and response synthesis all run on your own server. Omni is the agent — not a wrapper around a third-party chatbot." },
               ].map(({ icon: Icon, title, body }) => (
                 <div key={title} className="space-y-2">
                   <div className="flex items-center gap-1.5">
