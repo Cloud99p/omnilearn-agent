@@ -132,7 +132,7 @@ function WrappedSignIn() {
         routing="path"
         path={`${basePath}/sign-in`}
         signUpUrl={`${basePath}/sign-up`}
-        forceRedirectUrl={`${basePath}/chat`}
+        forceRedirectUrl={`${basePath}/account`}
         fallback={<AuthLoader />}
       />
     </div>
@@ -146,7 +146,7 @@ function WrappedSignUp() {
         routing="path"
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
-        forceRedirectUrl={`${basePath}/chat`}
+        forceRedirectUrl={`${basePath}/account`}
         fallback={<AuthLoader />}
       />
     </div>
