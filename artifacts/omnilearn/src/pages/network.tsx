@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Globe, Zap, GitBranch, Shield, Radio, Cpu, Cloud, Eye, EyeOff, ArrowRight, Wifi, Users, TrendingUp, CheckCircle, Vote, Lightbulb, Upload } from "lucide-react";
+import { Globe, Zap, GitBranch, Shield, Radio, Cpu, Cloud, Eye, EyeOff, ArrowRight, Wifi, Users, TrendingUp, CheckCircle, Vote, Lightbulb, Upload, RefreshCw, AlertTriangle } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const CONCEPTS = [
@@ -108,6 +108,21 @@ interface GhostStatus {
   totalTasksProcessed: number;
 }
 
+type GossipState = "dormant" | "staging" | "active" | "degraded";
+
+interface GossipWorker { name: string; alive: boolean; lastSeenAgo: string; tasksProcessed: number; status: string; }
+interface GossipProbe {
+  state: GossipState;
+  message: string;
+  totalRegistered: number;
+  aliveCount: number;
+  staleCount: number;
+  readiness: number;
+  minForGossip: number;
+  workers: GossipWorker[];
+  probeTime: string;
+}
+
 export default function Network() {
   const [active, setActive] = useState<string | null>(null);
   const [packets, setPackets] = useState<Packet[]>([]);
@@ -115,6 +130,18 @@ export default function Network() {
   const svgRef = useRef<SVGSVGElement>(null);
   const [ghostStatus, setGhostStatus] = useState<GhostStatus | null>(null);
   const [browserWorkers, setBrowserWorkers] = useState(0);
+  const [gossipProbe, setGossipProbe] = useState<GossipProbe | null>(null);
+  const [probeLoading, setProbeLoading] = useState(false);
+
+  const runGossipProbe = useCallback(async () => {
+    setProbeLoading(true);
+    try {
+      const d = await fetch(`${BASE}/api/ghost/gossip-probe`).then(r => r.ok ? r.json() : null).catch(() => null);
+      setGossipProbe(d);
+    } finally {
+      setProbeLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetch(`${BASE}/api/ghost/status`)
@@ -124,7 +151,8 @@ export default function Network() {
     fetch(`${BASE}/api/ghost/workers`)
       .then(r => r.ok ? r.json() : []).catch(() => [])
       .then((d: unknown[]) => setBrowserWorkers(Array.isArray(d) ? d.filter((w: unknown) => (w as { online: boolean }).online).length : 0));
-  }, []);
+    runGossipProbe();
+  }, [runGossipProbe]);
 
   useEffect(() => {
     const t = setInterval(() => setTick(p => p + 1), 120);
@@ -137,13 +165,25 @@ export default function Network() {
     const from = NODE_POSITIONS[edge.a];
     const to = NODE_POSITIONS[edge.b];
     const flip = Math.random() > 0.5;
+    // Only label packets as "gossip" when ≥2 alive peers actually exist
+    const gossipAlive = (gossipProbe?.aliveCount ?? 0) >= 2;
+    const labels = gossipAlive
+      ? ["sync", "delta", "shard", "crawl", "infer", "gossip"]
+      : ["sync", "delta", "shard", "crawl", "infer", "infer"];
     setPackets(prev => [
       ...prev.slice(-24),
-      { id: ++pid, x: flip ? from.x : to.x, y: flip ? from.y : to.y, tx: flip ? to.x : from.x, ty: flip ? to.y : from.y, color: edge.color, label: ["sync", "delta", "shard", "crawl", "infer", "gossip"][Math.floor(Math.random() * 6)] },
+      { id: ++pid, x: flip ? from.x : to.x, y: flip ? from.y : to.y, tx: flip ? to.x : from.x, ty: flip ? to.y : from.y, color: edge.color, label: labels[Math.floor(Math.random() * labels.length)] },
     ]);
   }, [tick]);
 
   const activeConcept = CONCEPTS.find(c => c.id === active);
+
+  const STATE_META: Record<GossipState, { color: string; bg: string; border: string; icon: React.ReactNode; label: string }> = {
+    dormant:  { color: "#6b7280", bg: "bg-gray-500/10",    border: "border-gray-500/25",  icon: <AlertTriangle className="w-4 h-4" />, label: "DORMANT" },
+    staging:  { color: "#facc15", bg: "bg-yellow-400/10",  border: "border-yellow-400/25", icon: <Radio className="w-4 h-4" />,        label: "STAGING" },
+    active:   { color: "#34d399", bg: "bg-emerald-400/10", border: "border-emerald-400/25",icon: <Zap className="w-4 h-4" />,           label: "ACTIVE" },
+    degraded: { color: "#fb923c", bg: "bg-orange-400/10",  border: "border-orange-400/25", icon: <AlertTriangle className="w-4 h-4" />, label: "DEGRADED" },
+  };
 
   return (
     <div className="p-6 md:p-12 max-w-6xl mx-auto min-h-screen">
@@ -235,6 +275,102 @@ export default function Network() {
             ))}
           </div>
         </div>
+      </motion.div>
+
+      {/* ── Gossip Sync Probe ─────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="mb-8"
+      >
+        {(() => {
+          const state = gossipProbe?.state ?? "dormant";
+          const meta = STATE_META[state];
+          const probe = gossipProbe;
+          return (
+            <div className={`rounded-xl border p-5 ${meta.bg} ${meta.border}`}>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg" style={{ backgroundColor: meta.color + "20", color: meta.color }}>
+                    {meta.icon}
+                  </div>
+                  <div>
+                    <p className="font-mono text-sm font-bold" style={{ color: meta.color }}>
+                      gossip sync — {meta.label}
+                    </p>
+                    <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                      {probe ? probe.message : "Running probe…"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={runGossipProbe}
+                  disabled={probeLoading}
+                  className="flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-all disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${probeLoading ? "animate-spin" : ""}`} />
+                  {probeLoading ? "probing…" : "re-probe"}
+                </button>
+              </div>
+
+              {/* Readiness bar */}
+              {probe && (
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">gossip readiness</span>
+                    <span className="font-mono text-[10px]" style={{ color: meta.color }}>
+                      {probe.aliveCount} / {probe.minForGossip} peers needed
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-secondary/60 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${probe.readiness * 100}%`, backgroundColor: meta.color }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Worker rows */}
+              {probe && probe.workers.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">registered peers</p>
+                  {probe.workers.map((w, i) => (
+                    <div key={i} className="flex items-center gap-3 bg-background/40 rounded-lg px-3 py-2">
+                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${w.alive ? "bg-emerald-400 animate-pulse" : "bg-gray-600"}`} />
+                      <span className="font-mono text-xs text-foreground flex-1">{w.name}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{w.status}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{w.tasksProcessed} tasks</span>
+                      <span className={`font-mono text-[10px] ${w.alive ? "text-emerald-400" : "text-gray-500"}`}>
+                        {w.alive ? `● ${w.lastSeenAgo}` : `○ ${w.lastSeenAgo}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : probe && (
+                <div className="bg-background/40 rounded-lg px-4 py-3 font-mono text-xs text-muted-foreground text-center">
+                  No peer nodes registered — open the Ghost Network page and run a worker to add one
+                </div>
+              )}
+
+              {/* Honest disclaimer */}
+              {probe && state !== "active" && (
+                <p className="font-mono text-[10px] text-muted-foreground mt-3 pt-3 border-t border-border/40">
+                  The animated sync lines above are architectural illustrations. Gossip protocol activates only when ≥{probe.minForGossip} peers are online simultaneously.
+                  {probe.probeTime && ` Last probe: ${new Date(probe.probeTime).toLocaleTimeString()}.`}
+                </p>
+              )}
+              {probe && state === "active" && (
+                <p className="font-mono text-[10px] text-emerald-400 mt-3 pt-3 border-t border-emerald-400/20">
+                  ✓ Gossip protocol is live. Knowledge deltas can now propagate between peers.
+                  {probe.probeTime && ` Last probe: ${new Date(probe.probeTime).toLocaleTimeString()}.`}
+                </p>
+              )}
+            </div>
+          );
+        })()}
       </motion.div>
 
       {/* Concept cards */}
@@ -750,12 +886,31 @@ function CollectiveEvolution({ serverNodes, tasksProcessed, browserWorkers }: Co
   const [netStats, setNetStats] = useState<{ neurons: number; coreNeurons: number; agents: number } | null>(null);
   const [character, setCharacter] = useState<{ totalInteractions: number } | null>(null);
   const [growth, setGrowth] = useState<GrowthHistory | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchGrowth = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const [stats, char, g] = await Promise.all([
+        fetch(`${BASE}/api/network/stats`).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`${BASE}/api/omni/character`).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`${BASE}/api/omni/growth-history`).then(r => r.ok ? r.json() : null).catch(() => null),
+      ]);
+      setNetStats(stats);
+      setCharacter(char);
+      setGrowth(g);
+      setLastRefreshed(new Date());
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetch(`${BASE}/api/network/stats`).then(r => r.ok ? r.json() : null).catch(() => null).then(d => setNetStats(d));
-    fetch(`${BASE}/api/omni/character`).then(r => r.ok ? r.json() : null).catch(() => null).then(d => setCharacter(d));
-    fetch(`${BASE}/api/omni/growth-history`).then(r => r.ok ? r.json() : null).catch(() => null).then(d => setGrowth(d));
-  }, []);
+    fetchGrowth();
+    const t = setInterval(fetchGrowth, 30_000);
+    return () => clearInterval(t);
+  }, [fetchGrowth]);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -832,10 +987,21 @@ function CollectiveEvolution({ serverNodes, tasksProcessed, browserWorkers }: Co
         {activeTab === "growth" && (
           <motion.div key="growth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="bg-card border border-border rounded-xl p-6 mb-6">
-              <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-1">{chartLabel}</p>
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">{chartLabel}</p>
+                <button
+                  onClick={fetchGrowth}
+                  disabled={refreshing}
+                  className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 shrink-0"
+                  title="Refresh now"
+                >
+                  <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
+                  {lastRefreshed ? `updated ${lastRefreshed.toLocaleTimeString()}` : "refresh"}
+                </button>
+              </div>
               <p className="font-mono text-[10px] text-muted-foreground mb-4">
                 {growth
-                  ? `${growth.totalNodes} knowledge node${growth.totalNodes !== 1 ? "s" : ""} accumulated — each interaction adds more`
+                  ? `${growth.totalNodes} knowledge node${growth.totalNodes !== 1 ? "s" : ""} accumulated — auto-refreshes every 30s`
                   : "Loading…"}
               </p>
               {chartData.length > 0 ? (
