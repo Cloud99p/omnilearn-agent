@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { hebbianProposals, knowledgeNodes } from "@workspace/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import {
   proposeHebbianDelta,
   validateProposal,
   applyValidatedProposals,
+  autoValidateAndApplyProposal,
 } from "../../brain/hebbian.js";
 
 const router = Router();
@@ -73,7 +74,12 @@ router.post("/proposals", async (req, res) => {
       .select()
       .from(hebbianProposals)
       .where(eq(hebbianProposals.id, id));
-    res.status(201).json(proposal);
+    const result = await autoValidateAndApplyProposal(id);
+    const [updated] = await db
+      .select()
+      .from(hebbianProposals)
+      .where(eq(hebbianProposals.id, id));
+    res.status(201).json({ proposal: updated ?? proposal, ...result });
   } catch (err) {
     req.log.error({ err }, "Failed to create Hebbian proposal");
     res.status(500).json({ error: "Failed to create proposal" });

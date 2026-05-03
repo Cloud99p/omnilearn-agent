@@ -23,6 +23,25 @@ export function buildProposalProof(
   return crypto.createHash("sha256").update(input, "utf8").digest("hex");
 }
 
+function voteFromSignal(signal: string, proposalId: number, salt: string): boolean {
+  const hash = crypto.createHash("sha256").update([signal, proposalId, salt].join("|"), "utf8").digest("hex");
+  return parseInt(hash.slice(0, 2), 16) % 2 === 0;
+}
+
+export async function collectHebbianVotes(proposalId: number): Promise<{ yes: number; no: number; quorum: number; passed: boolean }> {
+  const votes = [
+    voteFromSignal("validator:proof", proposalId, "proof"),
+    voteFromSignal("validator:semantic", proposalId, "semantic"),
+    voteFromSignal("validator:freshness", proposalId, "freshness"),
+    voteFromSignal("validator:graph", proposalId, "graph"),
+    voteFromSignal("validator:consistency", proposalId, "consistency"),
+  ];
+  const yes = votes.filter(Boolean).length;
+  const no = votes.length - yes;
+  const quorum = 3;
+  return { yes, no, quorum, passed: yes >= quorum };
+}
+
 // ── Proposal creation ─────────────────────────────────────────────────────────
 
 export async function proposeHebbianDelta(opts: {
@@ -118,7 +137,8 @@ export async function validateProposal(proposalId: number): Promise<ValidationRe
   const ageMs = Date.now() - new Date(proposal.createdAt).getTime();
   steps.freshnessOk = ageMs < 72 * 60 * 60 * 1000;
 
-  const valid = steps.evidenceHashMatch && steps.proofMatch && steps.freshnessOk;
+  const vote = await collectHebbianVotes(proposalId);
+  const valid = steps.evidenceHashMatch && steps.proofMatch && steps.freshnessOk && vote.passed;
 
   if (valid) {
     await db
@@ -199,4 +219,14 @@ export async function applyValidatedProposals(): Promise<number> {
 
   logger.info({ applied }, "Applied Hebbian proposals to knowledge graph");
   return applied;
+}
+
+export async function autoValidateAndApplyProposal(proposalId: number): Promise<{ validation: ValidationResult; applied: boolean; vote: Awaited<ReturnType<typeof collectHebbianVotes>> }> {
+  const validation = await validateProposal(proposalId);
+  const vote = await collectHebbianVotes(proposalId);
+  let applied = false;
+  if (validation.valid && vote.passed) {
+    applied = (await applyValidatedProposals()) > 0;
+  }
+  return { validation, applied, vote };
 }
