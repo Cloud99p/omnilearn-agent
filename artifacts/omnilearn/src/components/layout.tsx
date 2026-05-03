@@ -6,7 +6,7 @@ import {
   Cpu, Terminal, BookOpen, Activity,
   Network, Globe, Dna, GitBranch,
   Database, HardDrive, Brain, Shield, Settings, Blocks, Gavel,
-  ChevronDown, Menu, X, MessageSquare, Github, LogIn, User, Zap, FlaskConical,
+  ChevronDown, Menu, X, MessageSquare, Github, LogIn, User, Zap, FlaskConical, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +36,7 @@ const GROUPS = [
     label: "Advanced",
     items: [
       { href: "/benchmark", label: "Benchmark", icon: FlaskConical },
+      { href: "/smarter", label: "Smarter Proof", icon: TrendingUp },
       { href: "/ingestion", label: "Ingestion", icon: Database },
       { href: "/storage", label: "Storage", icon: HardDrive },
       { href: "/memory", label: "Memory", icon: Brain },
