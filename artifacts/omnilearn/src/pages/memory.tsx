@@ -185,7 +185,7 @@ function buildTimeline(
       event: day === 0 ? "Initial crawl" : changed ? "Tier change" : "Scheduled evaluation",
       outcome: reason.slice(0, 90) + (reason.length > 90 ? "…" : ""),
       depth,
-      signal: changed ? (DEPTH_SPEC[depth].tier === "url_floor" || depth < (prev?.depth ?? "") ? "demotion" : "promotion") : undefined,
+      signal: changed ? (depthIndex(depth) < depthIndex(prev?.depth ?? "url_only") ? "demotion" : "promotion") : undefined,
     });
   }
 
