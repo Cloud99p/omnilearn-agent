@@ -4,7 +4,7 @@ import {
   Send, Server, Ghost, Plus, Trash2, Bot, User, Loader2,
   Wrench, Search, Code, Brain, Globe, Shield, ChevronRight,
   X, Sparkles, MessageSquare, Zap, FileText, Database,
-  CheckCircle2, XCircle, ArrowRight, Activity,
+  CheckCircle2, XCircle, ArrowRight, Activity, ChevronDown, BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link, useSearch } from "wouter";
@@ -169,6 +169,8 @@ export default function Chat() {
   const [newSkill, setNewSkill] = useState({ name: "", description: "", icon: "Wrench", systemPrompt: "", category: "Custom" });
   const [loadingConv, setLoadingConv] = useState(false);
   const [latestMeta, setLatestMeta] = useState<Message["meta"] | null>(null);
+  const [onboarded, setOnboarded] = useState(() => localStorage.getItem("omni_onboarded") === "true");
+  const [modeOpen, setModeOpen] = useState(false);
   const [ghostStatus, setGhostStatus] = useState<GhostStatus | null>(null);
   const [ghostRouting, setGhostRouting] = useState<{ nodeName: string; region: string } | null>(null);
   const [ghostFallback, setGhostFallback] = useState(false);
@@ -449,33 +451,95 @@ export default function Chat() {
   const uninstalledCatalog = SKILL_CATALOG.filter(c => !skills.some(s => s.name === c.name));
 
   const MODE_CONFIG = {
-    local:  { label: "Local",   icon: Server,  color: "text-primary",    activeBg: "bg-primary/10 border-primary/30",    badge: "bg-primary/10 border-primary/20 text-primary" },
-    ghost:  { label: "Ghost",   icon: Ghost,   color: "text-violet-400", activeBg: "bg-violet-500/10 border-violet-500/30", badge: "bg-violet-500/10 border-violet-500/20 text-violet-400" },
-    native: { label: "Native",  icon: Brain,   color: "text-emerald-400", activeBg: "bg-emerald-500/10 border-emerald-500/30", badge: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" },
+    local:  { label: "Local",  desc: "Knowledge graph, no internet",  icon: Server, color: "text-primary",    activeBg: "bg-primary/10 border-primary/30",    badge: "bg-primary/10 border-primary/20 text-primary" },
+    ghost:  { label: "Ghost",  desc: "Routes to remote nodes",        icon: Ghost,  color: "text-violet-400", activeBg: "bg-violet-500/10 border-violet-500/30", badge: "bg-violet-500/10 border-violet-500/20 text-violet-400" },
+    native: { label: "Native", desc: "Live web search + learning",    icon: Brain,  color: "text-emerald-400",activeBg: "bg-emerald-500/10 border-emerald-500/30", badge: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" },
   };
 
   const activeCfg = MODE_CONFIG[mode];
+
+  if (!onboarded) {
+    return (
+      <div className="flex h-screen items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="max-w-md w-full text-center p-8 rounded-2xl border border-border bg-card space-y-5"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto">
+            <BookOpen className="w-7 h-7 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-2">Set up first</h2>
+            <p className="text-muted-foreground font-mono text-sm leading-relaxed">
+              Complete the quick onboarding guide before chatting — it makes sure Omni is running correctly on your system.
+            </p>
+          </div>
+          <Link href="/onboarding">
+            <button className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-mono text-sm font-semibold transition-colors">
+              Take me to setup <ArrowRight className="w-4 h-4" />
+            </button>
+          </Link>
+          <button
+            onClick={() => { localStorage.setItem("omni_onboarded", "true"); setOnboarded(true); }}
+            className="font-mono text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+          >
+            Skip for now
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* ── Conversation sidebar ── */}
       <div className="hidden md:flex w-56 border-r border-border/40 bg-card/30 flex-col shrink-0">
         <div className="px-4 py-4 border-b border-border/40">
-          <div className="grid grid-cols-3 gap-1 mb-3">
-            {(["local", "ghost", "native"] as Mode[]).map(m => {
-              const cfg = MODE_CONFIG[m];
-              const Icon = cfg.icon;
-              return (
-                <button key={m} onClick={() => setMode(m)}
-                  className={cn("flex flex-col items-center gap-0.5 py-1.5 rounded-md font-mono text-[10px] border transition-all",
-                    mode === m ? cfg.activeBg : "border-border/40 text-muted-foreground hover:text-foreground"
-                  )}
+
+          {/* Mode accordion */}
+          <div className="mb-3">
+            <button
+              onClick={() => setModeOpen(o => !o)}
+              className={cn("w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-all", activeCfg.activeBg)}
+            >
+              <activeCfg.icon className={cn("w-3.5 h-3.5 shrink-0", activeCfg.color)} />
+              <div className="flex-1 text-left">
+                <p className={cn("font-mono text-xs font-semibold leading-none", activeCfg.color)}>{activeCfg.label}</p>
+                <p className="font-mono text-[10px] text-muted-foreground mt-0.5">{activeCfg.desc}</p>
+              </div>
+              <ChevronDown className={cn("w-3.5 h-3.5 shrink-0 transition-transform duration-200", activeCfg.color, modeOpen ? "rotate-180" : "")} />
+            </button>
+
+            <AnimatePresence>
+              {modeOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.16 }}
+                  className="overflow-hidden"
                 >
-                  <Icon className={cn("w-3.5 h-3.5", mode === m ? cfg.color : "")} />
-                  {cfg.label}
-                </button>
-              );
-            })}
+                  <div className="mt-1 space-y-1">
+                    {(["local", "ghost", "native"] as Mode[]).filter(m => m !== mode).map(m => {
+                      const cfg = MODE_CONFIG[m];
+                      const Icon = cfg.icon;
+                      return (
+                        <button key={m}
+                          onClick={() => { setMode(m); setModeOpen(false); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border/30 text-muted-foreground hover:text-foreground hover:bg-secondary/30 transition-all"
+                        >
+                          <Icon className="w-3.5 h-3.5 shrink-0" />
+                          <div className="flex-1 text-left">
+                            <p className="font-mono text-xs font-medium leading-none">{cfg.label}</p>
+                            <p className="font-mono text-[10px] text-muted-foreground/60 mt-0.5">{cfg.desc}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {mode === "ghost" && (
