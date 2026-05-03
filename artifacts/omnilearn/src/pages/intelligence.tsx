@@ -548,28 +548,6 @@ export default function IntelligencePage() {
     } catch { /* ignore */ } finally { setProposalsLoading(false); }
   }, []);
 
-  const handleValidate = async (id: number) => {
-    setValidatingId(id);
-    try {
-      const res = await fetch(`${BASE}/api/brain/proposals/${id}/validate`, { method: "POST" });
-      if (res.ok) {
-        const result: ValidationResult = await res.json();
-        setValidationResults(prev => ({ ...prev, [id]: result }));
-        await fetchProposals(proposalFilter);
-        fetchStats();
-      }
-    } finally { setValidatingId(null); }
-  };
-
-  const handleApplyAll = async () => {
-    setApplyingAll(true);
-    try {
-      await fetch(`${BASE}/api/brain/proposals/apply`, { method: "POST" });
-      await fetchProposals(proposalFilter);
-      fetchStats();
-    } finally { setApplyingAll(false); }
-  };
-
   const handleRejectProposal = async (id: number) => {
     await fetch(`${BASE}/api/brain/proposals/${id}/reject`, { method: "POST" });
     await fetchProposals(proposalFilter);
@@ -1370,14 +1348,6 @@ export default function IntelligencePage() {
               >
                 <RefreshCw className="w-3.5 h-3.5" />
               </button>
-              <button
-                onClick={handleApplyAll}
-                disabled={applyingAll || proposals.filter(p => p.status === "validated").length === 0}
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-md font-mono text-xs hover:bg-emerald-500/20 disabled:opacity-40 transition-all"
-              >
-                {applyingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                Apply {proposals.filter(p => p.status === "validated").length} Validated
-              </button>
             </div>
           </div>
 
@@ -1437,22 +1407,12 @@ export default function IntelligencePage() {
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {p.status === "pending" && (
-                          <>
-                            <button
-                              onClick={() => handleValidate(p.id)}
-                              disabled={validatingId === p.id}
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-mono text-[10px] transition-all disabled:opacity-50"
-                            >
-                              {validatingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                              Validate
-                            </button>
-                            <button
-                              onClick={() => handleRejectProposal(p.id)}
-                              className="p-1.5 rounded-md border border-red-500/20 text-red-400/60 hover:bg-red-500/10 hover:text-red-400 transition-all"
-                            >
-                              <XCircle className="w-3 h-3" />
-                            </button>
-                          </>
+                          <button
+                            onClick={() => handleRejectProposal(p.id)}
+                            className="p-1.5 rounded-md border border-red-500/20 text-red-400/60 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                          >
+                            <XCircle className="w-3 h-3" />
+                          </button>
                         )}
                       </div>
                     </div>
@@ -1489,7 +1449,7 @@ export default function IntelligencePage() {
                             ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                             : <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
                           <p className="font-mono text-xs font-bold text-foreground">
-                            {vr.valid ? "Proof verified — delta will be applied" : `Rejected: ${vr.reason}`}
+                            {vr.valid ? "Proof verified — delta applied automatically" : `Rejected: ${vr.reason}`}
                           </p>
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[10px]">
