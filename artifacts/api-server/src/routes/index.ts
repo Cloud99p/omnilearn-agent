@@ -7,6 +7,7 @@ import githubRouter from "./github/index.js";
 import omniRouter from "./omni/index.js";
 import ghostRouter from "./ghost/index.js";
 import networkRouter from "./network.js";
+import brainProposalsRouter from "./brain/proposals.js";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(githubRouter);
 router.use(omniRouter);
 router.use(ghostRouter);
 router.use(networkRouter);
+router.use("/brain", brainProposalsRouter);
 
 export default router;
