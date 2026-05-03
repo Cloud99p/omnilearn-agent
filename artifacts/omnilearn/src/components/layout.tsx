@@ -17,7 +17,6 @@ const TOP_LINKS = [
   { href: "/onboarding", label: "Get Started", icon: BookOpen },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/intelligence", label: "Intelligence", icon: Brain },
-  { href: "/benchmark", label: "Benchmark", icon: FlaskConical },
   { href: "/personality", label: "Personality", icon: Activity },
 ];
 
@@ -36,6 +35,7 @@ const GROUPS = [
     id: "advanced",
     label: "Advanced",
     items: [
+      { href: "/benchmark", label: "Benchmark", icon: FlaskConical },
       { href: "/ingestion", label: "Ingestion", icon: Database },
       { href: "/storage", label: "Storage", icon: HardDrive },
       { href: "/memory", label: "Memory", icon: Brain },
