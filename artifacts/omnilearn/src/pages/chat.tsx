@@ -171,7 +171,7 @@ export default function Chat() {
   });
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
+  const [streamingSession, setStreamingSession] = useState<Mode | null>(null);
   const [streamingContent, setStreamingContent] = useState("");
   const [skills, setSkills] = useState<Skill[]>([]);
   const [showCatalog, setShowCatalog] = useState(false);
@@ -228,7 +228,7 @@ export default function Chat() {
     if (!onboarded) return;
     let timer: ReturnType<typeof setTimeout>;
     const contribute = async () => {
-      if (streaming) return;
+      if (streamingSession !== null) return;
       setContributing(true);
       try {
         const res = await fetch(`${BASE}/api/ghost/contribute`, { method: "POST" });
@@ -249,7 +249,7 @@ export default function Chat() {
     };
     timer = setTimeout(contribute, 30_000);
     return () => clearTimeout(timer);
-  }, [onboarded, streaming]);
+  }, [onboarded, streamingSession]);
 
   useEffect(() => {
     if (!modeInitialized.current) { modeInitialized.current = true; return; }
@@ -360,7 +360,7 @@ export default function Chat() {
   const sendNativeMessage = useCallback(async (content: string) => {
     const tempUserMsg: Message = { id: Date.now(), role: "user", content, createdAt: new Date().toISOString() };
     setMessages(prev => [...prev, tempUserMsg]);
-    setStreaming(true);
+    setStreamingSession("native");
     setStreamingContent("");
     setLatestMeta(null);
     setWebActivity(null);
@@ -407,7 +407,7 @@ export default function Chat() {
       setMessages(prev => [...prev, { id: Date.now() + 2, role: "assistant", content: "Connection error. Make sure the API server is running.", createdAt: new Date().toISOString() }]);
       setStreamingContent("");
     } finally {
-      setStreaming(false);
+      setStreamingSession(null);
     }
   }, [nativeConvId, createConversation]);
 
@@ -415,7 +415,7 @@ export default function Chat() {
   const sendGhostMessage = useCallback(async (content: string) => {
     const tempUserMsg: Message = { id: Date.now(), role: "user", content, createdAt: new Date().toISOString() };
     setMessages(prev => [...prev, tempUserMsg]);
-    setStreaming(true);
+    setStreamingSession("ghost");
     setStreamingContent("");
     setLatestMeta(null);
     setGhostRouting(null);
@@ -461,7 +461,7 @@ export default function Chat() {
       setMessages(prev => [...prev, { id: Date.now() + 2, role: "assistant", content: "Connection error. Make sure the API server is running.", createdAt: new Date().toISOString() }]);
       setStreamingContent("");
     } finally {
-      setStreaming(false);
+      setStreamingSession(null);
     }
   }, [ghostConvId]);
 
@@ -469,7 +469,7 @@ export default function Chat() {
   const sendClaudeMessage = useCallback(async (content: string) => {
     const tempUserMsg: Message = { id: Date.now(), role: "user", content, createdAt: new Date().toISOString() };
     setMessages(prev => [...prev, tempUserMsg]);
-    setStreaming(true);
+    setStreamingSession("local");
     setStreamingContent("");
 
     try {
@@ -507,18 +507,18 @@ export default function Chat() {
       setMessages(prev => [...prev, { id: Date.now() + 2, role: "assistant", content: "Connection error. Make sure the API server is running.", createdAt: new Date().toISOString() }]);
       setStreamingContent("");
     } finally {
-      setStreaming(false);
+      setStreamingSession(null);
     }
   }, [activeConvId, mode, installedSkillIds]);
 
   const sendMessage = useCallback(async () => {
-    if (!input.trim() || streaming) return;
+    if (!input.trim() || streamingSession !== null) return;
     const content = input.trim();
     setInput("");
     if (mode === "native") await sendNativeMessage(content);
     else if (mode === "ghost") await sendGhostMessage(content);
     else await sendClaudeMessage(content);
-  }, [input, streaming, mode, sendNativeMessage, sendGhostMessage, sendClaudeMessage]);
+  }, [input, streamingSession, mode, sendNativeMessage, sendGhostMessage, sendClaudeMessage]);
 
   const installSkill = async (catalog: typeof SKILL_CATALOG[0]) => {
     const res = await fetch(`${BASE}/api/skills`, {
@@ -730,7 +730,7 @@ export default function Chat() {
             )}
 
             {/* Routing indicator */}
-            {ghostRouting && streaming && (
+            {ghostRouting && streamingSession === "ghost" && (
               <div className="p-2.5 rounded-lg border border-violet-500/20 bg-violet-500/5 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <Activity className="w-3 h-3 text-violet-400 animate-pulse" />
@@ -885,7 +885,7 @@ export default function Chat() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6">
-          {messages.length === 0 && !streaming && (
+          {messages.length === 0 && streamingSession === null && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto text-center py-16">
               <div className={cn("w-16 h-16 rounded-2xl border flex items-center justify-center mx-auto mb-6",
                 mode === "native" ? "bg-emerald-500/10 border-emerald-500/20" :
@@ -999,7 +999,7 @@ export default function Chat() {
           </AnimatePresence>
 
           {/* Streaming message */}
-          {streaming && streamingContent && (
+          {streamingSession !== null && streamingContent && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 max-w-3xl">
               <div className={cn("w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 mt-0.5",
                 mode === "ghost" ? "bg-violet-500/10 border-violet-500/20" :
@@ -1021,7 +1021,7 @@ export default function Chat() {
 
           {/* Web activity indicator (searching / fetching) */}
           <AnimatePresence>
-            {streaming && webActivity && (
+            {streamingSession === "native" && webActivity && (
               <motion.div
                 key="web-activity"
                 initial={{ opacity: 0, y: 8 }}
@@ -1049,7 +1049,7 @@ export default function Chat() {
           </AnimatePresence>
 
           {/* Routing / thinking indicator */}
-          {streaming && !streamingContent && !webActivity && (
+          {streamingSession !== null && !streamingContent && !webActivity && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
               <div className={cn("w-7 h-7 rounded-lg border flex items-center justify-center shrink-0",
                 mode === "ghost" ? "bg-violet-500/10 border-violet-500/20" :
@@ -1123,16 +1123,16 @@ export default function Chat() {
               className="flex-1 bg-transparent font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none resize-none max-h-32"
               style={{ lineHeight: "1.5" }}
             />
-            <button onClick={sendMessage} disabled={streaming || !input.trim()}
+            <button onClick={sendMessage} disabled={streamingSession !== null || !input.trim()}
               className={cn("p-2 rounded-xl transition-all shrink-0",
-                streaming || !input.trim()
+                streamingSession !== null || !input.trim()
                   ? "bg-muted text-muted-foreground/30"
                   : mode === "ghost" ? "bg-violet-500 text-white hover:bg-violet-400"
                   : mode === "native" ? "bg-emerald-600 text-white hover:bg-emerald-500"
                   : "bg-primary text-primary-foreground hover:bg-primary/90"
               )}
             >
-              {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {streamingSession !== null ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </div>
           <p className="text-center font-mono text-[10px] text-muted-foreground/30 mt-2">
