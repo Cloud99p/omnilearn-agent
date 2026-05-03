@@ -7,3 +7,4 @@ export * from "./knowledge-nodes";
 export * from "./knowledge-edges";
 export * from "./character-state";
 export * from "./learning-log";
+export * from "./ghost-nodes";

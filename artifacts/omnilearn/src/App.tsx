@@ -26,6 +26,7 @@ import Chat from "@/pages/chat";
 import AccountPage from "@/pages/account";
 import RepositoriesPage from "@/pages/repositories";
 import IntelligencePage from "@/pages/intelligence";
+import GhostNetworkPage from "@/pages/ghost-network";
 
 const queryClient = new QueryClient();
 
@@ -171,6 +172,7 @@ function Router() {
         <Route path="/account" component={AccountPage} />
         <Route path="/repositories" component={RepositoriesPage} />
         <Route path="/intelligence" component={IntelligencePage} />
+        <Route path="/ghost-network" component={GhostNetworkPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
