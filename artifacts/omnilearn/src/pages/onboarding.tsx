@@ -8,6 +8,7 @@ import {
   Zap, Monitor, Cloud,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -670,6 +671,12 @@ export default function Onboarding() {
     return next;
   });
 
+  useEffect(() => {
+    if (completed.size === LOCAL_STEPS.length) {
+      localStorage.setItem("omni_onboarded", "true");
+    }
+  }, [completed]);
+
   const progress = Math.round((completed.size / LOCAL_STEPS.length) * 100);
 
   return (
@@ -739,9 +746,16 @@ export default function Onboarding() {
                   <motion.div className="h-full bg-primary rounded-full" animate={{ width: `${progress}%` }} transition={{ duration: 0.4 }} />
                 </div>
                 {completed.size === LOCAL_STEPS.length && (
-                  <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-2 text-xs text-primary flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> All steps complete — your system is running.
-                  </motion.p>
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 flex flex-wrap items-center gap-3">
+                    <p className="text-xs text-primary flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> All steps complete — your system is running.
+                    </p>
+                    <Link href="/chat">
+                      <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-mono text-xs font-semibold hover:bg-primary/90 transition-colors">
+                        Start chatting <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </Link>
+                  </motion.div>
                 )}
               </div>
             )}
