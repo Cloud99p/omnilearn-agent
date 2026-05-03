@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-type Mode = "local" | "ghost";
+type Mode = "local" | "ghost" | "native";
 type Role = "user" | "assistant";
 
 interface Message {
@@ -17,6 +17,7 @@ interface Message {
   role: Role;
   content: string;
   createdAt: string;
+  meta?: { nodesUsed?: number; newNodesAdded?: number };
 }
 
 interface Conversation {
@@ -136,6 +137,7 @@ export default function Chat() {
   const [mode, setMode] = useState<Mode>("local");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<number | null>(null);
+  const [nativeConvId, setNativeConvId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -145,6 +147,7 @@ export default function Chat() {
   const [showSkillCreator, setShowSkillCreator] = useState(false);
   const [newSkill, setNewSkill] = useState({ name: "", description: "", icon: "Wrench", systemPrompt: "", category: "Custom" });
   const [loadingConv, setLoadingConv] = useState(false);
+  const [latestMeta, setLatestMeta] = useState<{ nodesUsed?: number; newNodesAdded?: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -153,11 +156,17 @@ export default function Chat() {
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(scrollToBottom, [messages, streamingContent]);
 
-  // Load conversations and skills on mount
   useEffect(() => {
     fetchConversations();
     fetchSkills();
   }, []);
+
+  // Reset native conversation when switching away from native
+  useEffect(() => {
+    if (mode !== "native") setNativeConvId(null);
+    setMessages([]);
+    setActiveConvId(null);
+  }, [mode]);
 
   const fetchConversations = async () => {
     try {
@@ -212,12 +221,77 @@ export default function Chat() {
     }
   };
 
-  const sendMessage = useCallback(async () => {
-    if (!input.trim() || streaming) return;
-    const content = input.trim();
-    setInput("");
+  // ── Native mode send ──────────────────────────────────────────────────────
+  const sendNativeMessage = useCallback(async (content: string) => {
+    const tempUserMsg: Message = {
+      id: Date.now(),
+      role: "user",
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, tempUserMsg]);
+    setStreaming(true);
+    setStreamingContent("");
+    setLatestMeta(null);
 
-    // Optimistically add user message
+    try {
+      const res = await fetch(`${BASE}/api/omni/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, conversationId: nativeConvId }),
+      });
+
+      if (!res.ok || !res.body) throw new Error("Stream failed");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = "";
+      let meta: { nodesUsed?: number; newNodesAdded?: number } | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n").filter(l => l.startsWith("data: "));
+        for (const line of lines) {
+          try {
+            const json = JSON.parse(line.slice(6));
+            if (json.conversationId && !nativeConvId) setNativeConvId(json.conversationId);
+            if (json.content) {
+              full += json.content;
+              setStreamingContent(full);
+            }
+            if (json.meta) meta = json.meta;
+            if (json.done) {
+              const assistantMsg: Message = {
+                id: Date.now() + 1,
+                role: "assistant",
+                content: full,
+                createdAt: new Date().toISOString(),
+                meta: meta ?? undefined,
+              };
+              setMessages(prev => [...prev, assistantMsg]);
+              setStreamingContent("");
+              if (meta) setLatestMeta(meta);
+            }
+          } catch { /* parse error */ }
+        }
+      }
+    } catch {
+      setMessages(prev => [...prev, {
+        id: Date.now() + 2,
+        role: "assistant",
+        content: "Connection error. Make sure the API server is running.",
+        createdAt: new Date().toISOString(),
+      }]);
+      setStreamingContent("");
+    } finally {
+      setStreaming(false);
+    }
+  }, [nativeConvId]);
+
+  // ── Claude mode send ──────────────────────────────────────────────────────
+  const sendClaudeMessage = useCallback(async (content: string) => {
     const tempUserMsg: Message = {
       id: Date.now(),
       role: "user",
@@ -257,19 +331,18 @@ export default function Chat() {
               setStreamingContent(full);
             }
             if (json.done) {
-              const assistantMsg: Message = {
+              setMessages(prev => [...prev, {
                 id: Date.now() + 1,
                 role: "assistant",
                 content: full,
                 createdAt: new Date().toISOString(),
-              };
-              setMessages(prev => [...prev, assistantMsg]);
+              }]);
               setStreamingContent("");
             }
           } catch { /* parse error */ }
         }
       }
-    } catch (err) {
+    } catch {
       setMessages(prev => [...prev, {
         id: Date.now() + 2,
         role: "assistant",
@@ -280,7 +353,19 @@ export default function Chat() {
     } finally {
       setStreaming(false);
     }
-  }, [input, streaming, activeConvId, mode, installedSkillIds]);
+  }, [activeConvId, mode, installedSkillIds]);
+
+  const sendMessage = useCallback(async () => {
+    if (!input.trim() || streaming) return;
+    const content = input.trim();
+    setInput("");
+
+    if (mode === "native") {
+      await sendNativeMessage(content);
+    } else {
+      await sendClaudeMessage(content);
+    }
+  }, [input, streaming, mode, sendNativeMessage, sendClaudeMessage]);
 
   const installSkill = async (catalog: typeof SKILL_CATALOG[0]) => {
     const res = await fetch(`${BASE}/api/skills`, {
@@ -314,73 +399,115 @@ export default function Chat() {
     }
   };
 
-  const uninstalledCatalog = SKILL_CATALOG.filter(
-    c => !skills.some(s => s.name === c.name)
-  );
+  const uninstalledCatalog = SKILL_CATALOG.filter(c => !skills.some(s => s.name === c.name));
+
+  const MODE_CONFIG = {
+    local:  { label: "Local",   icon: Server,  color: "text-primary",    activeBg: "bg-primary/10 border-primary/30",    badge: "bg-primary/10 border-primary/20 text-primary" },
+    ghost:  { label: "Ghost",   icon: Ghost,   color: "text-violet-400", activeBg: "bg-violet-500/10 border-violet-500/30", badge: "bg-violet-500/10 border-violet-500/20 text-violet-400" },
+    native: { label: "Native",  icon: Brain,   color: "text-emerald-400", activeBg: "bg-emerald-500/10 border-emerald-500/30", badge: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" },
+  };
+
+  const activeCfg = MODE_CONFIG[mode];
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* ── Conversation sidebar ── */}
       <div className="hidden md:flex w-56 border-r border-border/40 bg-card/30 flex-col shrink-0">
         <div className="px-4 py-4 border-b border-border/40">
-          <div className="flex gap-2 mb-3">
-            <button
-              onClick={() => setMode("local")}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-mono text-xs border transition-all",
-                mode === "local"
-                  ? "bg-primary/10 border-primary/30 text-primary"
-                  : "border-border/40 text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Server className="w-3 h-3" /> Local
-            </button>
-            <button
-              onClick={() => setMode("ghost")}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-mono text-xs border transition-all",
-                mode === "ghost"
-                  ? "bg-violet-500/10 border-violet-500/30 text-violet-400"
-                  : "border-border/40 text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Ghost className="w-3 h-3" /> Ghost
-            </button>
-          </div>
-          <button
-            onClick={() => { setActiveConvId(null); setMessages([]); }}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-md border border-primary/30 text-primary hover:bg-primary/10 font-mono text-xs transition-all"
-          >
-            <Plus className="w-3.5 h-3.5" /> New chat
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {conversations.length === 0 ? (
-            <p className="text-muted-foreground/40 font-mono text-xs px-2 py-4 text-center">No conversations yet</p>
-          ) : (
-            conversations.map(conv => (
-              <button
-                key={conv.id}
-                onClick={() => loadConversation(conv.id)}
-                className={cn(
-                  "w-full flex items-center gap-2 px-2 py-2 rounded-md text-left group transition-all",
-                  activeConvId === conv.id
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
-                )}
-              >
-                <MessageSquare className="w-3 h-3 shrink-0" />
-                <span className="font-mono text-xs truncate flex-1">{conv.title}</span>
+          {/* Mode buttons */}
+          <div className="grid grid-cols-3 gap-1 mb-3">
+            {(["local", "ghost", "native"] as Mode[]).map(m => {
+              const cfg = MODE_CONFIG[m];
+              const Icon = cfg.icon;
+              return (
                 <button
-                  onClick={(e) => deleteConversation(conv.id, e)}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all shrink-0"
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 py-1.5 rounded-md font-mono text-[10px] border transition-all",
+                    mode === m ? cfg.activeBg : "border-border/40 text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Icon className={cn("w-3.5 h-3.5", mode === m ? cfg.color : "")} />
+                  {cfg.label}
                 </button>
-              </button>
-            ))
+              );
+            })}
+          </div>
+          {mode !== "native" && (
+            <button
+              onClick={() => { setActiveConvId(null); setMessages([]); }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-md border border-primary/30 text-primary hover:bg-primary/10 font-mono text-xs transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" /> New chat
+            </button>
+          )}
+          {mode === "native" && (
+            <button
+              onClick={() => { setNativeConvId(null); setMessages([]); }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-mono text-xs transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" /> New session
+            </button>
           )}
         </div>
+
+        {mode !== "native" && (
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {conversations.length === 0 ? (
+              <p className="text-muted-foreground/40 font-mono text-xs px-2 py-4 text-center">No conversations yet</p>
+            ) : (
+              conversations.map(conv => (
+                <div
+                  key={conv.id}
+                  onClick={() => loadConversation(conv.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={e => e.key === "Enter" && loadConversation(conv.id)}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-2 py-2 rounded-md text-left group transition-all cursor-pointer",
+                    activeConvId === conv.id
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                  )}
+                >
+                  <MessageSquare className="w-3 h-3 shrink-0" />
+                  <span className="font-mono text-xs truncate flex-1">{conv.title}</span>
+                  <button
+                    onClick={(e) => deleteConversation(conv.id, e)}
+                    className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all shrink-0"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {mode === "native" && (
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">Native Mode</p>
+            <p className="font-mono text-xs text-muted-foreground leading-relaxed">
+              Running OmniLearn's built-in intelligence engine. No external AI API. Learns from every message.
+            </p>
+            {latestMeta && (
+              <div className="p-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 space-y-1.5">
+                <p className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider">Last Response</p>
+                <div className="font-mono text-[10px] text-muted-foreground space-y-0.5">
+                  <p>Nodes used: {latestMeta.nodesUsed ?? 0}</p>
+                  <p>New learned: {latestMeta.newNodesAdded ?? 0}</p>
+                </div>
+              </div>
+            )}
+            <a
+              href={`${BASE}/intelligence`}
+              className="flex items-center gap-1.5 font-mono text-xs text-primary/60 hover:text-primary transition-colors"
+            >
+              <Brain className="w-3 h-3" /> View knowledge base
+            </a>
+          </div>
+        )}
       </div>
 
       {/* ── Main chat area ── */}
@@ -389,17 +516,17 @@ export default function Chat() {
         <div className="px-6 py-3 border-b border-border/40 flex items-center justify-between bg-card/20 backdrop-blur shrink-0">
           <div className="flex items-center gap-3">
             <Bot className="w-5 h-5 text-primary" />
-            <span className="font-mono text-sm font-bold text-foreground">OmniLearn Agent</span>
+            <span className="font-mono text-sm font-bold text-foreground">
+              {mode === "native" ? "OmniLearn Native" : "OmniLearn Agent"}
+            </span>
             <div className={cn(
               "flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-mono",
-              mode === "local"
-                ? "bg-primary/10 border-primary/20 text-primary"
-                : "bg-violet-500/10 border-violet-500/20 text-violet-400"
+              activeCfg.badge
             )}>
-              {mode === "local" ? <Server className="w-3 h-3" /> : <Ghost className="w-3 h-3" />}
-              {mode === "local" ? "Local" : "Ghost"}
+              <activeCfg.icon className="w-3 h-3" />
+              {activeCfg.label}
             </div>
-            {installedSkillIds.length > 0 && (
+            {mode !== "native" && installedSkillIds.length > 0 && (
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-xs font-mono">
                 <Zap className="w-3 h-3" />
                 {installedSkillIds.length} skill{installedSkillIds.length > 1 ? "s" : ""}
@@ -416,23 +543,36 @@ export default function Chat() {
               animate={{ opacity: 1, y: 0 }}
               className="max-w-2xl mx-auto text-center py-16"
             >
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-6">
-                <Bot className="w-8 h-8 text-primary" />
+              <div className={cn(
+                "w-16 h-16 rounded-2xl border flex items-center justify-center mx-auto mb-6",
+                mode === "native"
+                  ? "bg-emerald-500/10 border-emerald-500/20"
+                  : "bg-primary/10 border-primary/20"
+              )}>
+                {mode === "native"
+                  ? <Brain className="w-8 h-8 text-emerald-400" />
+                  : <Bot className="w-8 h-8 text-primary" />}
               </div>
-              <h2 className="text-2xl font-bold mb-2">OmniLearn is ready</h2>
+              <h2 className="text-2xl font-bold mb-2">
+                {mode === "native" ? "OmniLearn Native Intelligence" : "OmniLearn is ready"}
+              </h2>
               <p className="text-muted-foreground font-mono text-sm mb-8">
-                Running in {mode === "local" ? "local mode — on your hardware" : "ghost mode — distributed execution"}.
-                {installedSkillIds.length > 0
-                  ? ` ${installedSkillIds.length} skill${installedSkillIds.length > 1 ? "s" : ""} active.`
-                  : " Install skills to expand capabilities."}
+                {mode === "native"
+                  ? "Powered by OmniLearn's own knowledge graph, TF-IDF retrieval, and character engine. No external AI. Learns from every message."
+                  : `Running in ${mode === "local" ? "local mode — on your hardware" : "ghost mode — distributed execution"}.${installedSkillIds.length > 0 ? ` ${installedSkillIds.length} skill${installedSkillIds.length > 1 ? "s" : ""} active.` : " Install skills to expand capabilities."}`}
               </p>
               <div className="grid grid-cols-2 gap-3 text-left max-w-lg mx-auto">
-                {[
+                {(mode === "native" ? [
+                  "What do you know about OmniLearn?",
+                  "How does your memory system work?",
+                  "What is TF-IDF and how do you use it?",
+                  "Tell me about your character traits.",
+                ] : [
                   "What have you learned about distributed AI systems?",
                   "Explain how memory tiering works in this agent.",
                   "Summarise the federated volunteer computing model.",
                   "What makes an OmniLearn instance irreplaceable?",
-                ].map(suggestion => (
+                ]).map(suggestion => (
                   <button
                     key={suggestion}
                     onClick={() => setInput(suggestion)}
@@ -458,21 +598,41 @@ export default function Chat() {
                   "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
                   msg.role === "user"
                     ? "bg-secondary border border-border/40"
-                    : "bg-primary/10 border border-primary/20"
+                    : mode === "native"
+                      ? "bg-emerald-500/10 border border-emerald-500/20"
+                      : "bg-primary/10 border border-primary/20"
                 )}>
                   {msg.role === "user"
                     ? <User className="w-3.5 h-3.5 text-muted-foreground" />
-                    : <Bot className="w-3.5 h-3.5 text-primary" />}
+                    : mode === "native"
+                      ? <Brain className="w-3.5 h-3.5 text-emerald-400" />
+                      : <Bot className="w-3.5 h-3.5 text-primary" />}
                 </div>
                 <div className={cn(
                   "max-w-2xl px-4 py-3 rounded-xl border",
                   msg.role === "user"
                     ? "bg-secondary/40 border-border/40 text-foreground"
-                    : "bg-card/60 border-border/30"
+                    : mode === "native"
+                      ? "bg-card/60 border-emerald-500/10"
+                      : "bg-card/60 border-border/30"
                 )}>
                   {msg.role === "assistant"
                     ? <MarkdownContent text={msg.content} />
                     : <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                  {msg.role === "assistant" && msg.meta && (
+                    <div className="flex gap-3 mt-2 pt-2 border-t border-border/20">
+                      {msg.meta.nodesUsed !== undefined && (
+                        <span className="font-mono text-[10px] text-muted-foreground/40">
+                          {msg.meta.nodesUsed} nodes used
+                        </span>
+                      )}
+                      {msg.meta.newNodesAdded !== undefined && msg.meta.newNodesAdded > 0 && (
+                        <span className="font-mono text-[10px] text-emerald-400/60">
+                          +{msg.meta.newNodesAdded} learned
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -481,12 +641,23 @@ export default function Chat() {
           {/* Streaming message */}
           {streaming && streamingContent && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 max-w-4xl">
-              <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
-                <Bot className="w-3.5 h-3.5 text-primary" />
+              <div className={cn(
+                "w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 mt-0.5",
+                mode === "native" ? "bg-emerald-500/10 border-emerald-500/20" : "bg-primary/10 border-primary/20"
+              )}>
+                {mode === "native"
+                  ? <Brain className="w-3.5 h-3.5 text-emerald-400" />
+                  : <Bot className="w-3.5 h-3.5 text-primary" />}
               </div>
-              <div className="max-w-2xl px-4 py-3 rounded-xl border bg-card/60 border-primary/20">
+              <div className={cn(
+                "max-w-2xl px-4 py-3 rounded-xl border bg-card/60",
+                mode === "native" ? "border-emerald-500/20" : "border-primary/20"
+              )}>
                 <MarkdownContent text={streamingContent} />
-                <span className="inline-block w-1.5 h-4 bg-primary/70 animate-pulse ml-0.5 align-middle" />
+                <span className={cn(
+                  "inline-block w-1.5 h-4 animate-pulse ml-0.5 align-middle",
+                  mode === "native" ? "bg-emerald-400/70" : "bg-primary/70"
+                )} />
               </div>
             </motion.div>
           )}
@@ -494,14 +665,23 @@ export default function Chat() {
           {/* Thinking indicator */}
           {streaming && !streamingContent && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
-              <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+              <div className={cn(
+                "w-7 h-7 rounded-lg border flex items-center justify-center shrink-0",
+                mode === "native" ? "bg-emerald-500/10 border-emerald-500/20" : "bg-primary/10 border-primary/20"
+              )}>
+                <Loader2 className={cn("w-3.5 h-3.5 animate-spin", mode === "native" ? "text-emerald-400" : "text-primary")} />
               </div>
               <div className="px-4 py-3 rounded-xl border bg-card/60 border-border/30">
                 <div className="flex gap-1 items-center">
                   {[0, 0.2, 0.4].map(d => (
-                    <div key={d} className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: `${d}s` }} />
+                    <div key={d} className={cn(
+                      "w-1.5 h-1.5 rounded-full animate-bounce",
+                      mode === "native" ? "bg-emerald-400/60" : "bg-primary/60"
+                    )} style={{ animationDelay: `${d}s` }} />
                   ))}
+                  {mode === "native" && (
+                    <span className="ml-2 font-mono text-[10px] text-muted-foreground/50">searching knowledge…</span>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -523,7 +703,9 @@ export default function Chat() {
                   sendMessage();
                 }
               }}
-              placeholder="Message OmniLearn… (Enter to send, Shift+Enter for newline)"
+              placeholder={mode === "native"
+                ? "Message OmniLearn Native… everything you say becomes knowledge"
+                : "Message OmniLearn… (Enter to send, Shift+Enter for newline)"}
               rows={1}
               disabled={streaming}
               className="flex-1 bg-background border border-border/50 rounded-xl px-4 py-3 text-sm font-mono resize-none focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/40 disabled:opacity-50 transition-all max-h-48 overflow-y-auto"
@@ -532,7 +714,12 @@ export default function Chat() {
             <button
               onClick={sendMessage}
               disabled={streaming || !input.trim()}
-              className="px-4 py-3 bg-primary text-background rounded-xl hover:bg-primary/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 font-mono text-sm shrink-0"
+              className={cn(
+                "px-4 py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 font-mono text-sm shrink-0",
+                mode === "native"
+                  ? "bg-emerald-500 text-background hover:bg-emerald-400"
+                  : "bg-primary text-background hover:bg-primary/80"
+              )}
             >
               {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
@@ -540,160 +727,187 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* ── Skills panel ── */}
-      <div className="hidden lg:flex w-64 border-l border-border/40 bg-card/30 flex-col shrink-0">
-        <div className="px-4 py-4 border-b border-border/40 flex items-center justify-between">
-          <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Skills</span>
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => { setShowSkillCreator(true); setShowCatalog(false); }}
-              className="p-1 rounded hover:bg-secondary/40 text-muted-foreground hover:text-primary transition-colors"
-              title="Create skill"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => { setShowCatalog(c => !c); setShowSkillCreator(false); }}
-              className={cn(
-                "p-1 rounded hover:bg-secondary/40 transition-colors",
-                showCatalog ? "text-primary" : "text-muted-foreground hover:text-primary"
-              )}
-              title="Browse catalog"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-            </button>
+      {/* ── Skills panel (only in non-native modes) ── */}
+      {mode !== "native" && (
+        <div className="hidden lg:flex w-64 border-l border-border/40 bg-card/30 flex-col shrink-0">
+          <div className="px-4 py-4 border-b border-border/40 flex items-center justify-between">
+            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Skills</span>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => { setShowSkillCreator(true); setShowCatalog(false); }}
+                className="p-1 rounded hover:bg-secondary/40 text-muted-foreground hover:text-primary transition-colors"
+                title="Create skill"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => { setShowCatalog(c => !c); setShowSkillCreator(false); }}
+                className={cn(
+                  "p-1 rounded hover:bg-secondary/40 transition-colors",
+                  showCatalog ? "text-primary" : "text-muted-foreground hover:text-primary"
+                )}
+                title="Browse catalog"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {/* Installed skills */}
-          {!showCatalog && !showSkillCreator && (
-            <div className="p-3 space-y-2">
-              {skills.length === 0 ? (
-                <div className="text-center py-8 space-y-2">
-                  <Wrench className="w-8 h-8 text-muted-foreground/20 mx-auto" />
-                  <p className="text-muted-foreground/50 font-mono text-xs">No skills installed</p>
-                  <button
-                    onClick={() => setShowCatalog(true)}
-                    className="text-primary font-mono text-xs hover:underline"
-                  >
-                    Browse catalog
-                  </button>
-                </div>
-              ) : (
-                skills.map(skill => (
-                  <div
-                    key={skill.id}
-                    className="flex items-start gap-2.5 p-2.5 rounded-lg border border-primary/10 bg-primary/5 group"
-                  >
-                    <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                      <SkillIcon icon={skill.icon} className="w-3.5 h-3.5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-mono text-xs font-bold text-foreground truncate">{skill.name}</p>
-                      <p className="font-mono text-[10px] text-muted-foreground/60 mt-0.5 line-clamp-2">{skill.description}</p>
-                    </div>
-                    <button
-                      onClick={() => removeSkill(skill.id)}
-                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-all shrink-0 mt-0.5"
-                    >
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {/* Skill Creator */}
+            <AnimatePresence>
+              {showSkillCreator && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="rounded-lg border border-primary/20 bg-card/60 p-3 space-y-2 overflow-hidden"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs text-primary">New skill</span>
+                    <button onClick={() => setShowSkillCreator(false)} className="text-muted-foreground hover:text-foreground">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
-                ))
+                  <input
+                    value={newSkill.name}
+                    onChange={e => setNewSkill(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Skill name"
+                    className="w-full bg-background border border-border/50 rounded-md px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-primary/50"
+                  />
+                  <input
+                    value={newSkill.description}
+                    onChange={e => setNewSkill(p => ({ ...p, description: e.target.value }))}
+                    placeholder="Description"
+                    className="w-full bg-background border border-border/50 rounded-md px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-primary/50"
+                  />
+                  <textarea
+                    value={newSkill.systemPrompt}
+                    onChange={e => setNewSkill(p => ({ ...p, systemPrompt: e.target.value }))}
+                    placeholder="System prompt…"
+                    rows={3}
+                    className="w-full bg-background border border-border/50 rounded-md px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-primary/50 resize-none"
+                  />
+                  <button
+                    onClick={createCustomSkill}
+                    disabled={!newSkill.name || !newSkill.systemPrompt}
+                    className="w-full py-1.5 bg-primary/10 border border-primary/30 text-primary rounded-md font-mono text-xs hover:bg-primary/20 disabled:opacity-40 transition-all"
+                  >
+                    Create skill
+                  </button>
+                </motion.div>
               )}
-              {skills.length > 0 && (
+            </AnimatePresence>
+
+            {/* Catalog */}
+            <AnimatePresence>
+              {showCatalog && uninstalledCatalog.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-1"
+                >
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60 px-1">Catalog</p>
+                  {uninstalledCatalog.map(skill => (
+                    <button
+                      key={skill.name}
+                      onClick={() => installSkill(skill)}
+                      className="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-secondary/30 text-left group transition-all"
+                    >
+                      <div className="w-5 h-5 rounded border border-border/40 bg-card/40 flex items-center justify-center shrink-0">
+                        <SkillIcon icon={skill.icon} className="w-2.5 h-2.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <span className="font-mono text-xs text-muted-foreground group-hover:text-foreground truncate">{skill.name}</span>
+                      <Plus className="w-2.5 h-2.5 text-primary opacity-0 group-hover:opacity-100 ml-auto shrink-0 transition-opacity" />
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Installed skills */}
+            {skills.filter(s => s.isInstalled).length === 0 && !showCatalog ? (
+              <div className="py-8 text-center space-y-2">
+                <Sparkles className="w-5 h-5 text-muted-foreground/30 mx-auto" />
+                <p className="font-mono text-xs text-muted-foreground/40">No skills installed</p>
                 <button
                   onClick={() => setShowCatalog(true)}
-                  className="w-full mt-2 py-2 rounded-lg border border-dashed border-border/40 text-muted-foreground/50 hover:text-muted-foreground hover:border-border font-mono text-xs transition-colors flex items-center justify-center gap-1.5"
+                  className="font-mono text-xs text-primary/60 hover:text-primary transition-colors"
                 >
-                  <Plus className="w-3 h-3" /> Add more
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Catalog */}
-          {showCatalog && (
-            <div className="p-3 space-y-2">
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">Catalog</span>
-                <button onClick={() => setShowCatalog(false)} className="text-muted-foreground hover:text-foreground">
-                  <X className="w-3.5 h-3.5" />
+                  Browse catalog
                 </button>
               </div>
-              {uninstalledCatalog.length === 0 ? (
-                <p className="text-muted-foreground/50 font-mono text-xs text-center py-4">All skills installed</p>
-              ) : (
-                uninstalledCatalog.map(item => (
-                  <div
-                    key={item.name}
-                    className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/30 bg-card/40 group hover:border-primary/20 transition-colors cursor-pointer"
-                    onClick={() => installSkill(item)}
-                  >
-                    <div className="w-7 h-7 rounded-md bg-secondary flex items-center justify-center shrink-0">
-                      <SkillIcon icon={item.icon} className="w-3.5 h-3.5 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1">
-                        <p className="font-mono text-xs font-bold text-foreground truncate">{item.name}</p>
-                        <Plus className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                      </div>
-                      <p className="font-mono text-[10px] text-muted-foreground/60 mt-0.5 line-clamp-2">{item.description}</p>
-                      <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-secondary/60 text-muted-foreground/60">{item.category}</span>
-                    </div>
+            ) : (
+              skills.filter(s => s.isInstalled).map(skill => (
+                <div
+                  key={skill.id}
+                  className="flex items-center gap-2 px-2 py-2 rounded-md bg-primary/5 border border-primary/10 group"
+                >
+                  <div className="w-5 h-5 rounded border border-primary/20 bg-primary/10 flex items-center justify-center shrink-0">
+                    <SkillIcon icon={skill.icon} className="w-2.5 h-2.5 text-primary" />
                   </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {/* Custom skill creator */}
-          {showSkillCreator && (
-            <div className="p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">Create Skill</span>
-                <button onClick={() => setShowSkillCreator(false)} className="text-muted-foreground hover:text-foreground">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <input
-                value={newSkill.name}
-                onChange={e => setNewSkill(s => ({ ...s, name: e.target.value }))}
-                placeholder="Skill name"
-                className="w-full bg-background border border-border/40 rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-primary/40 placeholder:text-muted-foreground/30"
-              />
-              <input
-                value={newSkill.description}
-                onChange={e => setNewSkill(s => ({ ...s, description: e.target.value }))}
-                placeholder="Short description"
-                className="w-full bg-background border border-border/40 rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-primary/40 placeholder:text-muted-foreground/30"
-              />
-              <select
-                value={newSkill.icon}
-                onChange={e => setNewSkill(s => ({ ...s, icon: e.target.value }))}
-                className="w-full bg-background border border-border/40 rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-primary/40 text-muted-foreground"
-              >
-                {Object.keys(ICON_MAP).map(k => <option key={k} value={k}>{k}</option>)}
-              </select>
-              <textarea
-                value={newSkill.systemPrompt}
-                onChange={e => setNewSkill(s => ({ ...s, systemPrompt: e.target.value }))}
-                placeholder="System prompt — what does this skill tell the agent to do?"
-                rows={4}
-                className="w-full bg-background border border-border/40 rounded-md px-3 py-2 text-xs font-mono resize-none focus:outline-none focus:border-primary/40 placeholder:text-muted-foreground/30"
-              />
-              <button
-                onClick={createCustomSkill}
-                disabled={!newSkill.name || !newSkill.systemPrompt}
-                className="w-full py-2 rounded-md bg-primary/10 border border-primary/20 text-primary font-mono text-xs hover:bg-primary/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
-                Install skill
-              </button>
-            </div>
-          )}
+                  <span className="font-mono text-xs text-foreground truncate flex-1">{skill.name}</span>
+                  <button
+                    onClick={() => removeSkill(skill.id)}
+                    className="opacity-0 group-hover:opacity-100 hover:text-red-400 text-muted-foreground/40 transition-all"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Native mode right panel ── */}
+      {mode === "native" && (
+        <div className="hidden lg:flex w-64 border-l border-border/40 bg-card/30 flex-col shrink-0">
+          <div className="px-4 py-4 border-b border-border/40">
+            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Intelligence</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-5">
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">Engine</p>
+              <div className="space-y-1.5 font-mono text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  TF-IDF retrieval
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Fact extraction
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Character synthesis
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Persistent learning
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">How to teach it</p>
+              <ul className="space-y-2 font-mono text-xs text-muted-foreground">
+                <li className="flex gap-2"><span className="text-primary shrink-0">1.</span>Say facts: "X is Y"</li>
+                <li className="flex gap-2"><span className="text-primary shrink-0">2.</span>Use Training at /intelligence</li>
+                <li className="flex gap-2"><span className="text-primary shrink-0">3.</span>Ask questions — it will honestly say what it doesn't know</li>
+              </ul>
+            </div>
+
+            <a
+              href={`${BASE}/intelligence`}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 font-mono text-xs transition-all"
+            >
+              <Brain className="w-3.5 h-3.5" /> Open Intelligence
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

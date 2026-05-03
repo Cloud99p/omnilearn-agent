@@ -25,6 +25,7 @@ import MemoryPage from "@/pages/memory";
 import Chat from "@/pages/chat";
 import AccountPage from "@/pages/account";
 import RepositoriesPage from "@/pages/repositories";
+import IntelligencePage from "@/pages/intelligence";
 
 const queryClient = new QueryClient();
 
@@ -169,6 +170,7 @@ function Router() {
         <Route path="/chat" component={Chat} />
         <Route path="/account" component={AccountPage} />
         <Route path="/repositories" component={RepositoriesPage} />
+        <Route path="/intelligence" component={IntelligencePage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

@@ -3,3 +3,7 @@ export * from "./messages";
 export * from "./skills";
 export * from "./users";
 export * from "./repositories";
+export * from "./knowledge-nodes";
+export * from "./knowledge-edges";
+export * from "./character-state";
+export * from "./learning-log";
