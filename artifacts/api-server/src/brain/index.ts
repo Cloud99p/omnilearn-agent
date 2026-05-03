@@ -35,10 +35,26 @@ export async function getOrCreateCharacter(clerkId: string | null): Promise<Char
 }
 
 async function updateCharacter(id: number, updates: Partial<CharacterState>): Promise<void> {
-  await db
-    .update(characterState)
-    .set({ ...updates, updatedAt: new Date() })
-    .where(eq(characterState.id, id));
+  const [current] = await db.select().from(characterState).where(eq(characterState.id, id)).limit(1);
+  if (current) {
+    const merged = { ...current, ...updates };
+    const snapshot = {
+      at: new Date().toISOString(),
+      curiosity:  merged.curiosity,
+      caution:    merged.caution,
+      confidence: merged.confidence,
+      verbosity:  merged.verbosity,
+      technical:  merged.technical,
+      empathy:    merged.empathy,
+      creativity: merged.creativity,
+      n:          merged.totalInteractions,
+    };
+    const existing = Array.isArray(current.evolutionLog) ? (current.evolutionLog as unknown[]) : [];
+    const newLog = [...existing, snapshot].slice(-200);
+    await db.update(characterState).set({ ...updates, evolutionLog: newLog, updatedAt: new Date() }).where(eq(characterState.id, id));
+  } else {
+    await db.update(characterState).set({ ...updates, updatedAt: new Date() }).where(eq(characterState.id, id));
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
