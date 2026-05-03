@@ -662,7 +662,7 @@ export default function GhostNetworkPage() {
               <div className="px-5 pb-5 space-y-5 border-t border-border/30">
                 <div className="mt-4 space-y-1">
                   <p className="font-mono text-xs text-muted-foreground leading-relaxed">
-                    Ghost Mode routes your chat messages to registered ghost nodes instead of running locally. Each ghost node is an OmniLearn-compatible server running anywhere — your home lab, a cloud VM, another Replit deployment, or a friend's machine.
+                    Ghost Mode turns every device you own into one connected web of compute. Each ghost node can run anywhere — laptop, desktop, home server, phone, cloud VM, or another Replit deployment — and your tasks can move between them without breaking continuity.
                   </p>
                 </div>
 
@@ -771,9 +771,9 @@ export default function GhostNetworkPage() {
               className="overflow-hidden"
             >
               <div className="px-5 pb-5 border-t border-border/30 space-y-5">
-                <p className="font-mono text-xs text-muted-foreground leading-relaxed mt-4">
-                  Share an invite link with anyone. When they open it, their browser joins the ghost network and processes AI tasks using their own Anthropic API key — no server required. Their compute contributes directly to OmniLearn's capacity.
-                </p>
+                  <p className="font-mono text-xs text-muted-foreground leading-relaxed mt-4">
+                    Share an invite link with any device. When it opens, the browser joins the ghost network and processes AI tasks using its own Anthropic API key — no server required. That device becomes part of the same connected web.
+                  </p>
 
                 <div className="grid md:grid-cols-3 gap-3">
                   {[
