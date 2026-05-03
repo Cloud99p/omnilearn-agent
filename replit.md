@@ -50,9 +50,19 @@ lib/
 - `messages` — Chat messages (conversationId, role, content)
 - `skills` — Agent skills / system prompt extensions (clerkId, name, systemPrompt)
 - `repositories` — Saved GitHub repositories (clerkId, repoFullName)
+- `knowledge_nodes` — Local AI knowledge graph nodes (TF-IDF based, per instance)
+- `knowledge_edges` — Typed edges between knowledge nodes (causes/enables/is-a)
+- `character_state` — AI personality trait state (curiosity, caution, confidence, etc.)
+- `learning_log` — Local learning events log
+- `ghost_nodes` — Registered remote ghost node machines
+- `network_neurons` — Shared distributed neural network knowledge (Hebbian weights, multi-agent)
+- `network_synapses` — Weighted connections between network neurons (Hebbian learning)
+- `network_agents` — Contributing agents (ghost nodes + self) with trust scores
+- `network_pulses` — Live activity log (contribute / reinforce / decay / query / sync / emerge)
 
 ## API Routes
 
+### Core
 | Route | Auth | Description |
 |-------|------|-------------|
 | GET /api/healthz | — | Health check |
