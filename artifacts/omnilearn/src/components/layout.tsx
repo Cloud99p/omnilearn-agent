@@ -155,14 +155,8 @@ function UserSection({ onNavClick }: { onNavClick?: () => void }) {
 }
 
 function Sidebar({ location, onNavClick }: { location: string; onNavClick?: () => void }) {
-  const onboarded = typeof window !== "undefined" && localStorage.getItem("omni_onboarded") === "true";
-  const topLinks = onboarded ? TOP_LINKS : TOP_LINKS.filter(item => item.href === "/chat");
-  const groups = onboarded
-    ? GROUPS
-    : GROUPS.map(group => ({
-        ...group,
-        items: group.items.filter(item => item.href === "/onboarding"),
-      })).filter(group => group.items.length > 0);
+  const topLinks = TOP_LINKS;
+  const groups = GROUPS;
 
   return (
     <div className="flex flex-col h-full">
@@ -220,7 +214,6 @@ function Sidebar({ location, onNavClick }: { location: string; onNavClick?: () =
 export default function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const onboarded = typeof window !== "undefined" && localStorage.getItem("omni_onboarded") === "true";
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">

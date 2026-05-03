@@ -58,7 +58,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
 };
 
 function isOnboarded() {
-  return localStorage.getItem("omni_onboarded") === "true";
+  return true;
 }
 
 const SKILL_CATALOG: Omit<Skill, "id" | "createdAt" | "isInstalled">[] = [
@@ -158,7 +158,7 @@ export default function Chat() {
   const initialMode = ((): Mode => {
     const p = new URLSearchParams(search).get("mode");
     if (p === "native") return "native";
-    if ((p === "ghost" || p === "local") && isOnboarded()) return p as Mode;
+    if (p === "ghost" || p === "local") return p as Mode;
     return "native";
   })();
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -226,13 +226,8 @@ export default function Chat() {
     else if (initialMode === "local" && savedLocal) loadConversationById(parseInt(savedLocal, 10));
   }, []);
 
-  useEffect(() => {
-    if (!onboarded && mode !== "native") setMode("native");
-  }, [onboarded, mode]);
-
   // Idle CPU contribution — when onboarded and not actively chatting, donate cycles to the ghost network
   useEffect(() => {
-    if (!onboarded) return;
     let timer: ReturnType<typeof setTimeout>;
     const contribute = async () => {
       if (streamingSession !== null) return;
@@ -354,15 +349,11 @@ export default function Chat() {
     return conv.id;
   };
 
-  const gatedModeOptions = onboarded
-    ? ([
-        { value: "native" as const, label: "Native", icon: "native" },
-        { value: "ghost" as const, label: "Ghost", icon: "ghost" },
-        { value: "local" as const, label: "Local", icon: "local" },
-      ])
-    : ([
-        { value: "native" as const, label: "Native", icon: "native" },
-      ]);
+  const gatedModeOptions = [
+    { value: "native" as const, label: "Native", icon: "native" },
+    { value: "ghost" as const, label: "Ghost", icon: "ghost" },
+    { value: "local" as const, label: "Local", icon: "local" },
+  ];
 
   const deleteConversation = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -609,7 +600,7 @@ export default function Chat() {
                     {(["native", "local", "ghost"] as Mode[]).filter(m => m !== mode).map(m => {
                       const cfg = MODE_CONFIG[m];
                       const Icon = cfg.icon;
-                      const locked = !onboarded && m !== "native";
+                      const locked = false;
                       return (
                         <button key={m}
                           onClick={() => {
@@ -627,18 +618,13 @@ export default function Chat() {
                           <div className="flex-1 text-left">
                             <p className="font-mono text-xs font-medium leading-none">{cfg.label}</p>
                             <p className={cn("font-mono text-[10px] mt-0.5", locked ? "text-muted-foreground/30" : "text-muted-foreground/60")}>
-                              {locked ? "Complete setup to unlock" : cfg.desc}
+                              {cfg.desc}
                             </p>
                           </div>
                           {locked && <Lock className="w-3 h-3 shrink-0 text-muted-foreground/25" />}
                         </button>
                       );
                     })}
-                    {!onboarded && (
-                      <Link href="/onboarding" className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-primary/60 hover:text-primary transition-colors">
-                        <BookOpen className="w-3 h-3" /> Complete setup to unlock all modes
-                      </Link>
-                    )}
                   </div>
                 </motion.div>
               )}
@@ -838,38 +824,36 @@ export default function Chat() {
         )}
 
         {/* Network contribution footer */}
-        {onboarded && (
-          <div className="px-3 py-3 border-t border-border/30 shrink-0">
-            <div className={cn(
-              "flex items-center gap-2 px-2.5 py-2 rounded-lg border transition-all duration-500",
-              contributing
-                ? "bg-cyan-500/10 border-cyan-500/20"
-                : "bg-secondary/10 border-border/20"
-            )}>
-              {contributing ? (
-                <>
-                  <Activity className="w-3 h-3 text-cyan-400 animate-pulse shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-mono text-[10px] text-cyan-400 leading-none">Processing network task</p>
-                    <p className="font-mono text-[9px] text-cyan-400/50 mt-0.5">contributing idle cycles</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <Zap className="w-3 h-3 text-muted-foreground/30 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-mono text-[10px] text-muted-foreground/40 leading-none">
-                      {tasksContributed > 0
-                        ? `${tasksContributed} task${tasksContributed !== 1 ? "s" : ""} contributed`
-                        : "Network contributor"}
-                    </p>
-                    <p className="font-mono text-[9px] text-muted-foreground/25 mt-0.5">idle cycles → ghost network</p>
-                  </div>
-                </>
-              )}
-            </div>
+        <div className="px-3 py-3 border-t border-border/30 shrink-0">
+          <div className={cn(
+            "flex items-center gap-2 px-2.5 py-2 rounded-lg border transition-all duration-500",
+            contributing
+              ? "bg-cyan-500/10 border-cyan-500/20"
+              : "bg-secondary/10 border-border/20"
+          )}>
+            {contributing ? (
+              <>
+                <Activity className="w-3 h-3 text-cyan-400 animate-pulse shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-mono text-[10px] text-cyan-400 leading-none">Processing network task</p>
+                  <p className="font-mono text-[9px] text-cyan-400/50 mt-0.5">contributing idle cycles</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <Zap className="w-3 h-3 text-muted-foreground/30 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-mono text-[10px] text-muted-foreground/40 leading-none">
+                    {tasksContributed > 0
+                      ? `${tasksContributed} task${tasksContributed !== 1 ? "s" : ""} contributed`
+                      : "Network contributor"}
+                  </p>
+                  <p className="font-mono text-[9px] text-muted-foreground/25 mt-0.5">idle cycles → ghost network</p>
+                </div>
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* ── Main chat area ── */}
