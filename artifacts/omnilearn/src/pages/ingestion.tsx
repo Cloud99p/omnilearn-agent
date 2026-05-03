@@ -50,7 +50,7 @@ const TIERS: ContentTier[] = [
     notStored: ["Full text", "Paragraphs or excerpts beyond fair-use bounds", "Paraphrased reconstructions of proprietary content"],
     condition: "Content is under All Rights Reserved, commercial license, paywalled, or unclassified (defaulting to restricted).",
     examples: ["nytimes.com articles", "nature.com full papers", "springer.com, elsevier.com", "Most news organisations"],
-    rationale: "The internet is the data centre. Copyrighted text stays where it lives — on the origin server. The agent stores enough to know it exists, enough to describe it, and enough to retrieve it on demand when a query requires it. Storing full text would be copyright infringement. Not knowing it exists would be a knowledge gap.",
+    rationale: "The agent stores enough to know a document exists, enough to describe it, and enough to retrieve it on demand when a query requires it. Full text is not retained for restricted content — metadata and a summary are sufficient for recall.",
   },
   {
     id: "pii",
@@ -162,8 +162,7 @@ export default function Ingestion() {
         </div>
         <h1 className="text-4xl font-bold mb-3">Metadata-First Ingestion</h1>
         <p className="text-muted-foreground max-w-2xl leading-relaxed">
-          The agent knows about everything. Copyrighted content stays on the internet — the agent knows where it is, what it says in summary,
-          and how to retrieve it on demand. PII never enters the pipeline at all.
+          The agent knows about everything. It stores only what it has legitimate access to — permissive content in full, restricted content as metadata, and PII not at all.
         </p>
       </motion.div>
 
