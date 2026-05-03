@@ -48,7 +48,7 @@ router.post("/chat", async (req, res) => {
       const title = content.slice(0, 60);
       const [conv] = await db.insert(conversations).values({
         title,
-        mode: "ghost", // native mode stored as ghost internally
+        mode: "native",
       }).returning();
       convId = conv.id;
       sendEvent({ conversationId: convId });
