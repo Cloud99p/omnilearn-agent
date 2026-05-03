@@ -8,9 +8,107 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
+});
+
+/**
+ * @summary List conversations
+ */
+export const ListConversationsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  mode: zod.string(),
+  createdAt: zod.string(),
+});
+export const ListConversationsResponse = zod.array(
+  ListConversationsResponseItem,
+);
+
+/**
+ * @summary Create a new conversation
+ */
+export const CreateConversationBody = zod.object({
+  title: zod.string(),
+  mode: zod.string(),
+});
+
+/**
+ * @summary Get a conversation with its messages
+ */
+export const GetConversationParams = zod.object({
+  conversationId: zod.coerce.number(),
+});
+
+export const GetConversationResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  mode: zod.string(),
+  createdAt: zod.string(),
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      conversationId: zod.number(),
+      role: zod.string(),
+      content: zod.string(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Delete a conversation
+ */
+export const DeleteConversationParams = zod.object({
+  conversationId: zod.coerce.number(),
+});
+
+/**
+ * @summary Send a message and stream the response
+ */
+export const SendAnthropicMessageParams = zod.object({
+  conversationId: zod.coerce.number(),
+});
+
+export const SendAnthropicMessageBody = zod.object({
+  content: zod.string(),
+  installedSkillIds: zod.array(zod.number()).optional(),
+});
+
+/**
+ * @summary List all skills
+ */
+export const ListSkillsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string(),
+  icon: zod.string(),
+  systemPrompt: zod.string(),
+  category: zod.string(),
+  isBuiltIn: zod.boolean(),
+  isInstalled: zod.boolean(),
+  createdAt: zod.string(),
+});
+export const ListSkillsResponse = zod.array(ListSkillsResponseItem);
+
+/**
+ * @summary Create or install a skill
+ */
+export const CreateSkillBody = zod.object({
+  name: zod.string(),
+  description: zod.string(),
+  icon: zod.string().optional(),
+  systemPrompt: zod.string(),
+  category: zod.string(),
+  isBuiltIn: zod.boolean().optional(),
+  isInstalled: zod.boolean().optional(),
+});
+
+/**
+ * @summary Uninstall a skill
+ */
+export const DeleteSkillParams = zod.object({
+  skillId: zod.coerce.number(),
 });

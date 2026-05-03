@@ -8,3 +8,58 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface Conversation {
+  id: number;
+  title: string;
+  mode: string;
+  createdAt: string;
+}
+
+export interface CreateConversationBody {
+  title: string;
+  mode: string;
+}
+
+export interface Message {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface ConversationWithMessages {
+  id: number;
+  title: string;
+  mode: string;
+  createdAt: string;
+  messages: Message[];
+}
+
+export interface SendAnthropicMessageBody {
+  content: string;
+  installedSkillIds?: number[];
+}
+
+export interface Skill {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  systemPrompt: string;
+  category: string;
+  isBuiltIn: boolean;
+  isInstalled: boolean;
+  createdAt: string;
+}
+
+export interface CreateSkillBody {
+  name: string;
+  description: string;
+  icon?: string;
+  systemPrompt: string;
+  category: string;
+  isBuiltIn?: boolean;
+  isInstalled?: boolean;
+}
