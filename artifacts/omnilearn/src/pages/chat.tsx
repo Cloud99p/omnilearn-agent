@@ -57,6 +57,10 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Search, Code, Brain, Globe, Shield, Wrench, Zap, FileText, Database, Sparkles,
 };
 
+function isOnboarded() {
+  return localStorage.getItem("omni_onboarded") === "true";
+}
+
 const SKILL_CATALOG: Omit<Skill, "id" | "createdAt" | "isInstalled">[] = [
   {
     name: "Web Search",
@@ -152,10 +156,9 @@ export default function Chat() {
   const search = useSearch();
   const [, navigate] = useLocation();
   const initialMode = ((): Mode => {
-    const isOnboarded = localStorage.getItem("omni_onboarded") === "true";
     const p = new URLSearchParams(search).get("mode");
     if (p === "native") return "native";
-    if ((p === "ghost" || p === "local") && isOnboarded) return p as Mode;
+    if ((p === "ghost" || p === "local") && isOnboarded()) return p as Mode;
     return "native";
   })();
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -179,7 +182,7 @@ export default function Chat() {
   const [newSkill, setNewSkill] = useState({ name: "", description: "", icon: "Wrench", systemPrompt: "", category: "Custom" });
   const [loadingConv, setLoadingConv] = useState(false);
   const [latestMeta, setLatestMeta] = useState<Message["meta"] | null>(null);
-  const [onboarded, setOnboarded] = useState(() => localStorage.getItem("omni_onboarded") === "true");
+  const [onboarded, setOnboarded] = useState(() => isOnboarded());
   const [modeOpen, setModeOpen] = useState(false);
   const [contributing, setContributing] = useState(false);
   const [tasksContributed, setTasksContributed] = useState(() =>
@@ -222,6 +225,10 @@ export default function Chat() {
     else if (initialMode === "ghost" && savedGhost) loadConversationById(parseInt(savedGhost, 10));
     else if (initialMode === "local" && savedLocal) loadConversationById(parseInt(savedLocal, 10));
   }, []);
+
+  useEffect(() => {
+    if (!onboarded && mode !== "native") setMode("native");
+  }, [onboarded, mode]);
 
   // Idle CPU contribution — when onboarded and not actively chatting, donate cycles to the ghost network
   useEffect(() => {
@@ -346,6 +353,16 @@ export default function Chat() {
     if (mode === "local") setActiveConvId(conv.id);
     return conv.id;
   };
+
+  const gatedModeOptions = onboarded
+    ? ([
+        { value: "native" as const, label: "Native", icon: "native" },
+        { value: "ghost" as const, label: "Ghost", icon: "ghost" },
+        { value: "local" as const, label: "Local", icon: "local" },
+      ])
+    : ([
+        { value: "native" as const, label: "Native", icon: "native" },
+      ]);
 
   const deleteConversation = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();

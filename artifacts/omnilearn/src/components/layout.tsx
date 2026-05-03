@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useUser, useClerk, Show } from "@clerk/react";
@@ -155,6 +155,15 @@ function UserSection({ onNavClick }: { onNavClick?: () => void }) {
 }
 
 function Sidebar({ location, onNavClick }: { location: string; onNavClick?: () => void }) {
+  const onboarded = typeof window !== "undefined" && localStorage.getItem("omni_onboarded") === "true";
+  const topLinks = onboarded ? TOP_LINKS : TOP_LINKS.filter(item => item.href === "/chat");
+  const groups = onboarded
+    ? GROUPS
+    : GROUPS.map(group => ({
+        ...group,
+        items: group.items.filter(item => item.href === "/onboarding"),
+      })).filter(group => group.items.length > 0);
+
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
@@ -178,7 +187,7 @@ function Sidebar({ location, onNavClick }: { location: string; onNavClick?: () =
       {/* Nav */}
       <nav className="flex-1 px-3 py-5 overflow-y-auto flex flex-col gap-6">
         <div className="space-y-0.5">
-          {TOP_LINKS.map(item => (
+          {topLinks.map(item => (
             <NavLink
               key={item.href}
               href={item.href}
@@ -191,7 +200,7 @@ function Sidebar({ location, onNavClick }: { location: string; onNavClick?: () =
         </div>
         <div className="border-t border-border/30" />
         <div className="space-y-4">
-          {GROUPS.map(group => (
+          {groups.map(group => (
             <CollapsibleGroup
               key={group.id}
               group={group}
@@ -211,6 +220,7 @@ function Sidebar({ location, onNavClick }: { location: string; onNavClick?: () =
 export default function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const onboarded = typeof window !== "undefined" && localStorage.getItem("omni_onboarded") === "true";
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
