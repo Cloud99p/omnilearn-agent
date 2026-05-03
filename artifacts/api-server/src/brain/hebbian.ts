@@ -29,16 +29,16 @@ function voteFromSignal(signal: string, proposalId: number, salt: string): boole
 }
 
 export async function collectHebbianVotes(proposalId: number): Promise<{ yes: number; no: number; quorum: number; passed: boolean }> {
-  const votes = [
+  const eligibleVotes = [
     voteFromSignal("validator:proof", proposalId, "proof"),
     voteFromSignal("validator:semantic", proposalId, "semantic"),
     voteFromSignal("validator:freshness", proposalId, "freshness"),
     voteFromSignal("validator:graph", proposalId, "graph"),
     voteFromSignal("validator:consistency", proposalId, "consistency"),
   ];
-  const yes = votes.filter(Boolean).length;
-  const no = votes.length - yes;
-  const quorum = 3;
+  const yes = eligibleVotes.filter(Boolean).length;
+  const no = eligibleVotes.length - yes;
+  const quorum = Math.ceil(eligibleVotes.length * 0.6);
   return { yes, no, quorum, passed: yes >= quorum };
 }
 

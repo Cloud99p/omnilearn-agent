@@ -1361,7 +1361,7 @@ export default function IntelligencePage() {
               <FlaskConical className="w-8 h-8 text-muted-foreground/20 mx-auto" />
               <p className="font-mono text-sm text-muted-foreground/60">No proposals yet.</p>
               <p className="font-mono text-xs text-muted-foreground/40">
-                Proposals are generated automatically when you train the model or add knowledge nodes. Each new co-occurrence or semantic similarity becomes a Hebbian proposal.
+                Proposals are generated automatically when you train the model or add knowledge nodes. Each new co-occurrence or semantic similarity becomes a Hebbian proposal, and validation now passes by majority quorum over eligible votes.
               </p>
             </div>
           ) : (
