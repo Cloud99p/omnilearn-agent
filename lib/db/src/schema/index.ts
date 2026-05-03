@@ -11,3 +11,4 @@ export * from "./ghost-nodes";
 export * from "./ghost-workers";
 export * from "./network";
 export * from "./hebbian-proposals";
+export * from "./ontology";
