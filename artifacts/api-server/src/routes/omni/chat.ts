@@ -63,21 +63,24 @@ router.post("/chat", async (req, res) => {
 
     const clerkId = null; // Future: extract from auth
 
-    // Process through brain
-    const result = await processMessage(content.trim(), clerkId, history);
+    // Activity callback — streams search/fetch events to the client in real time
+    const onActivity = (event: { type: string; query?: string; url?: string; resultCount?: number; title?: string }) => {
+      if (event.type === "searching")   sendEvent({ searching: event.query });
+      if (event.type === "fetching")    sendEvent({ fetching: event.url });
+      if (event.type === "search_done") sendEvent({ searchDone: true, resultCount: event.resultCount });
+      if (event.type === "fetch_done")  sendEvent({ fetchDone: true, pageTitle: event.title });
+    };
 
-    // Stream the response word-by-word with delays to simulate thinking
+    // Process through brain (now uses Claude with tool_use + web access)
+    const result = await processMessage(content.trim(), clerkId, history, onActivity);
+
+    // Stream the response token-by-token
     const words = result.text.split(/(\s+)/);
-    let accumulated = "";
-
     for (const word of words) {
-      accumulated += word;
       sendEvent({ content: word });
-
-      // Vary delay: longer pauses at punctuation, shorter between words
-      const delay = word.match(/[.!?]$/) ? 120 :
-                    word.match(/[,;:]$/) ? 60 :
-                    word.trim().length === 0 ? 20 : 35;
+      const delay = word.match(/[.!?]$/) ? 80 :
+                    word.match(/[,;:]$/) ? 40 :
+                    word.trim().length === 0 ? 15 : 25;
       await new Promise(r => setTimeout(r, delay));
     }
 

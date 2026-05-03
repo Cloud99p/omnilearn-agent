@@ -167,6 +167,7 @@ export default function Chat() {
   const [ghostStatus, setGhostStatus] = useState<GhostStatus | null>(null);
   const [ghostRouting, setGhostRouting] = useState<{ nodeName: string; region: string } | null>(null);
   const [ghostFallback, setGhostFallback] = useState(false);
+  const [webActivity, setWebActivity] = useState<{ type: "searching" | "fetching"; payload: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -256,6 +257,7 @@ export default function Chat() {
     setStreaming(true);
     setStreamingContent("");
     setLatestMeta(null);
+    setWebActivity(null);
 
     try {
       const res = await fetch(`${BASE}/api/omni/chat`, {
@@ -279,11 +281,15 @@ export default function Chat() {
           try {
             const json = JSON.parse(line.slice(6));
             if (json.conversationId && !nativeConvId) setNativeConvId(json.conversationId);
-            if (json.content) { full += json.content; setStreamingContent(full); }
+            if (json.searching) setWebActivity({ type: "searching", payload: json.searching });
+            if (json.fetching)  setWebActivity({ type: "fetching",  payload: json.fetching });
+            if (json.searchDone || json.fetchDone) setWebActivity(null);
+            if (json.content) { full += json.content; setStreamingContent(full); setWebActivity(null); }
             if (json.meta) meta = json.meta;
             if (json.done) {
               setMessages(prev => [...prev, { id: Date.now() + 1, role: "assistant", content: full, createdAt: new Date().toISOString(), meta: meta ?? undefined }]);
               setStreamingContent("");
+              setWebActivity(null);
               if (meta) setLatestMeta(meta);
             }
           } catch { /* parse error */ }
@@ -602,7 +608,7 @@ export default function Chat() {
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">Native Mode</p>
             <p className="font-mono text-xs text-muted-foreground leading-relaxed">
-              Running OmniLearn's built-in intelligence engine. No external AI API. Learns from every message.
+              Powered by Claude with real-time web search and URL reading. Learns permanently — every fact it finds goes into the knowledge graph.
             </p>
             {latestMeta && (
               <div className="p-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 space-y-1.5">
@@ -670,7 +676,7 @@ export default function Chat() {
               </h2>
               <p className="text-muted-foreground font-mono text-sm mb-8">
                 {mode === "native"
-                  ? "Powered by OmniLearn's own knowledge graph, TF-IDF retrieval, and character engine. No external AI. Learns from every message."
+                  ? "Powered by Claude with live internet access — searches the web in real time, reads pages, and stores what it learns permanently in the knowledge graph."
                   : mode === "ghost"
                   ? ghostStatus && ghostStatus.total === 0
                     ? "No ghost nodes registered yet. Messages will run locally via Claude until you add nodes."
@@ -688,10 +694,10 @@ export default function Chat() {
 
               <div className="grid grid-cols-2 gap-3 text-left max-w-lg mx-auto">
                 {(mode === "native" ? [
-                  "What do you know about OmniLearn?",
-                  "How does your memory system work?",
-                  "What is TF-IDF and how do you use it?",
-                  "Tell me about your character traits.",
+                  "What's happening in AI research today?",
+                  "Search the web for the latest news on open-source LLMs.",
+                  "How does your knowledge graph work?",
+                  "Fetch https://en.wikipedia.org/wiki/Artificial_intelligence and summarise it.",
                 ] : mode === "ghost" ? [
                   "Explain distributed AI computation.",
                   "What are the benefits of ghost mode?",
@@ -786,8 +792,37 @@ export default function Chat() {
             </motion.div>
           )}
 
+          {/* Web activity indicator (searching / fetching) */}
+          <AnimatePresence>
+            {streaming && webActivity && (
+              <motion.div
+                key="web-activity"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="flex gap-3 max-w-3xl"
+              >
+                <div className="w-7 h-7 rounded-lg border bg-cyan-500/10 border-cyan-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                  {webActivity.type === "searching"
+                    ? <Search className="w-3.5 h-3.5 text-cyan-400" />
+                    : <Globe className="w-3.5 h-3.5 text-cyan-400" />}
+                </div>
+                <div className="rounded-2xl px-4 py-3 bg-cyan-500/5 border border-cyan-500/20">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+                    <span className="font-mono text-xs text-cyan-300">
+                      {webActivity.type === "searching"
+                        ? <>searching — <span className="text-cyan-100 font-medium">{webActivity.payload}</span></>
+                        : <>reading — <span className="text-cyan-100 font-medium truncate max-w-[340px] inline-block align-bottom">{webActivity.payload}</span></>}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Routing / thinking indicator */}
-          {streaming && !streamingContent && (
+          {streaming && !streamingContent && !webActivity && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
               <div className={cn("w-7 h-7 rounded-lg border flex items-center justify-center shrink-0",
                 mode === "ghost" ? "bg-violet-500/10 border-violet-500/20" :
@@ -808,7 +843,7 @@ export default function Chat() {
                       ? ghostRouting
                         ? `Processing on ${ghostRouting.nodeName}${ghostRouting.region !== "unknown" ? ` (${ghostRouting.region})` : ""}…`
                         : "Selecting ghost node…"
-                      : mode === "native" ? "Querying knowledge graph…"
+                      : mode === "native" ? "Thinking…"
                       : "Thinking…"}
                   </span>
                 </div>
