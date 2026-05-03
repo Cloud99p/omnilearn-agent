@@ -59,6 +59,9 @@ lib/
 - `network_synapses` — Weighted connections between network neurons (Hebbian learning)
 - `network_agents` — Contributing agents (ghost nodes + self) with trust scores
 - `network_pulses` — Live activity log (contribute / reinforce / decay / query / sync / emerge)
+- `hebbian_proposals` — Cryptographically-proven Hebbian reinforcement proposals (pending → validated → applied)
+- `ontology_nodes` — OntologyNode meta-nodes: edge vocabulary, structural rules, constraints
+- `ontology_proposals` — Meta-operation proposals (new-edge-type / split-node / merge-nodes / demote-rule)
 
 ## API Routes
 

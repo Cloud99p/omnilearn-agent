@@ -6,6 +6,7 @@ import {
   CheckCircle, AlertCircle, Shield,
   Lightbulb, BarChart3, Clock, Network, Users, Wifi,
   TrendingUp, Cpu, Radio, Lock, CheckCircle2, XCircle, ArrowRight, FlaskConical,
+  Layers, SplitSquareHorizontal, Merge, ArrowDown, BookMarked, Play, RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -81,12 +82,65 @@ interface ValidationResult {
   proposal?: HebbianProposal;
 }
 
-type Tab = "overview" | "network" | "knowledge" | "train" | "character" | "proposals";
+interface OntologyNode {
+  id: number;
+  name: string;
+  description: string;
+  nodeType: string;
+  payload: Record<string, unknown>;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+interface OntologyProposal {
+  id: number;
+  opType: string;
+  targetNodeId: number | null;
+  targetNodeBId: number | null;
+  proposedEdgeType: string | null;
+  proposedContent: string | null;
+  rationale: string;
+  rationaleHash: string;
+  proposalProof: string;
+  status: string;
+  executedAt: string | null;
+  createdAt: string;
+  nodeA: { id: number; content: string; type: string } | null;
+  nodeB: { id: number; content: string; type: string } | null;
+}
+interface ReflectionResult {
+  proposed: number;
+  checks: string[];
+}
+
+type Tab = "overview" | "network" | "knowledge" | "train" | "character" | "proposals" | "ontology";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   fact: BookOpen, concept: Lightbulb, opinion: Activity, rule: Shield,
+};
+
+const ONTOLOGY_OP_CONFIG: Record<string, {
+  label: string; icon: React.ElementType; color: string; description: string;
+}> = {
+  "new-edge-type":  { label: "New Edge Type",  icon: ArrowRight,           color: "text-primary",    description: "Register an ad-hoc edge relationship as a first-class vocabulary entry" },
+  "split-node":     { label: "Split Node",      icon: SplitSquareHorizontal, color: "text-yellow-400", description: "Break an over-broad concept into two more specific nodes" },
+  "merge-nodes":    { label: "Merge Nodes",     icon: Merge,                color: "text-violet-400", description: "Collapse near-duplicate nodes into a single canonical node" },
+  "demote-rule":    { label: "Demote Rule→Fact", icon: ArrowDown,           color: "text-orange-400", description: "Lower a rule node to a fact when confidence has eroded" },
+};
+
+const ONTOLOGY_STATUS_STYLE: Record<string, string> = {
+  pending:  "text-yellow-400 border-yellow-400/20 bg-yellow-400/5",
+  approved: "text-emerald-400 border-emerald-500/20 bg-emerald-500/5",
+  executed: "text-primary border-primary/20 bg-primary/5",
+  rejected: "text-red-400 border-red-500/20 bg-red-500/5",
+};
+
+const VOCAB_TYPE_STYLE: Record<string, string> = {
+  "edge-vocab":       "text-primary border-primary/20 bg-primary/5",
+  "structural-rule":  "text-emerald-400 border-emerald-400/20 bg-emerald-400/5",
+  "constraint":       "text-orange-400 border-orange-400/20 bg-orange-400/5",
 };
 const TYPE_COLORS: Record<string, string> = {
   fact: "text-primary border-primary/20 bg-primary/5",
@@ -367,6 +421,17 @@ export default function IntelligencePage() {
   const [addType, setAddType] = useState("fact");
   const [adding, setAdding] = useState(false);
 
+  // Ontology state
+  const [ontologyVocab, setOntologyVocab] = useState<OntologyNode[]>([]);
+  const [ontologyProposals, setOntologyProposals] = useState<OntologyProposal[]>([]);
+  const [ontologyFilter, setOntologyFilter] = useState("all");
+  const [ontologyLoading, setOntologyLoading] = useState(false);
+  const [reflecting, setReflecting] = useState(false);
+  const [lastReflection, setLastReflection] = useState<ReflectionResult | null>(null);
+  const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [executingId, setExecutingId] = useState<number | null>(null);
+  const [executionResults, setExecutionResults] = useState<Record<number, string>>({});
+
   // Proposals state
   const [proposals, setProposals] = useState<HebbianProposal[]>([]);
   const [proposalsLoading, setProposalsLoading] = useState(false);
@@ -416,6 +481,63 @@ export default function IntelligencePage() {
       if (res.ok) setNodes(await res.json());
     } catch { /* ignore */ } finally { setSearching(false); }
   }, []);
+
+  const fetchOntology = useCallback(async (filter?: string) => {
+    setOntologyLoading(true);
+    try {
+      const f = filter && filter !== "all" ? `?status=${filter}` : "";
+      const [vocabRes, propsRes] = await Promise.all([
+        fetch(`${BASE}/api/brain/ontology/nodes`),
+        fetch(`${BASE}/api/brain/ontology/proposals${f}`),
+      ]);
+      if (vocabRes.ok) setOntologyVocab(await vocabRes.json());
+      if (propsRes.ok) setOntologyProposals(await propsRes.json());
+    } catch { /* ignore */ } finally { setOntologyLoading(false); }
+  }, []);
+
+  const handleReflect = async () => {
+    setReflecting(true);
+    try {
+      const res = await fetch(`${BASE}/api/brain/ontology/reflect`, { method: "POST" });
+      if (res.ok) {
+        const result = await res.json();
+        setLastReflection(result);
+        await fetchOntology(ontologyFilter);
+      }
+    } finally { setReflecting(false); }
+  };
+
+  const handleApproveOntology = async (id: number) => {
+    setApprovingId(id);
+    try {
+      const res = await fetch(`${BASE}/api/brain/ontology/proposals/${id}/approve`, { method: "POST" });
+      if (res.ok) await fetchOntology(ontologyFilter);
+      else {
+        const body = await res.json();
+        setExecutionResults(prev => ({ ...prev, [id]: `Approval failed: ${body.error}` }));
+      }
+    } finally { setApprovingId(null); }
+  };
+
+  const handleExecuteOntology = async (id: number) => {
+    setExecutingId(id);
+    try {
+      const res = await fetch(`${BASE}/api/brain/ontology/proposals/${id}/execute`, { method: "POST" });
+      const body = await res.json();
+      if (res.ok) {
+        setExecutionResults(prev => ({ ...prev, [id]: body.summary }));
+        await fetchOntology(ontologyFilter);
+        fetchStats();
+      } else {
+        setExecutionResults(prev => ({ ...prev, [id]: `Error: ${body.error}` }));
+      }
+    } finally { setExecutingId(null); }
+  };
+
+  const handleRejectOntology = async (id: number) => {
+    await fetch(`${BASE}/api/brain/ontology/proposals/${id}/reject`, { method: "POST" });
+    await fetchOntology(ontologyFilter);
+  };
 
   const fetchProposals = useCallback(async (filter?: string) => {
     setProposalsLoading(true);
@@ -478,6 +600,7 @@ export default function IntelligencePage() {
   useEffect(() => {
     if (tab === "network") fetchNetwork();
     if (tab === "proposals") fetchProposals(proposalFilter);
+    if (tab === "ontology") fetchOntology(ontologyFilter);
   }, [tab, fetchNetwork]);
 
   // Auto-refresh network every 15s when on that tab
@@ -586,6 +709,7 @@ export default function IntelligencePage() {
     { id: "train", label: "Training", icon: Zap },
     { id: "character", label: "Character", icon: Activity },
     { id: "proposals", label: "Hebbian Proposals", icon: FlaskConical },
+    { id: "ontology", label: "Ontology", icon: Layers },
   ];
 
   return (
@@ -1401,6 +1525,311 @@ export default function IntelligencePage() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── ONTOLOGY TAB ───────────────────────────────────────────────────────── */}
+      {tab === "ontology" && (
+        <div className="space-y-8">
+
+          {/* Header + controls */}
+          <div className="flex items-start gap-4 flex-wrap">
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-primary" />
+                  <h3 className="font-mono text-sm font-bold text-foreground">OntologyNode — Graph Self-Awareness</h3>
+                </div>
+                <p className="font-mono text-xs text-muted-foreground leading-relaxed">
+                  A slow background process that reads the graph's own structure and proposes meta-operations: registering new edge-type vocabulary, splitting over-broad concepts, merging near-duplicate nodes, and demoting stale rules to facts. Each proposal is cryptographically sealed (rationale hash + proposal proof) and must be approved before execution.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1">
+                  {Object.entries(ONTOLOGY_OP_CONFIG).map(([key, cfg]) => {
+                    const Icon = cfg.icon;
+                    return (
+                      <div key={key} className="flex items-start gap-1.5 p-2 rounded-lg bg-secondary/10 border border-border/20">
+                        <Icon className={cn("w-3 h-3 mt-0.5 shrink-0", cfg.color)} />
+                        <div>
+                          <p className={cn("font-mono text-[10px] font-bold", cfg.color)}>{cfg.label}</p>
+                          <p className="font-mono text-[9px] text-muted-foreground/50 leading-tight mt-0.5">{cfg.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Reflect button + last result */}
+            <div className="flex flex-col gap-2 items-end shrink-0">
+              <button
+                onClick={handleReflect}
+                disabled={reflecting}
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary/10 border border-primary/30 text-primary rounded-md font-mono text-sm hover:bg-primary/20 disabled:opacity-50 transition-all"
+              >
+                {reflecting
+                  ? <><Loader2 className="w-4 h-4 animate-spin" />Reflecting…</>
+                  : <><RotateCcw className="w-4 h-4" />Run Reflection</>}
+              </button>
+              {lastReflection && (
+                <div className="p-3 rounded-lg border border-border/30 bg-card/40 space-y-1.5 w-64">
+                  <p className="font-mono text-[10px] text-muted-foreground/50 uppercase tracking-wider">Last reflection</p>
+                  <p className="font-mono text-xs text-primary">{lastReflection.proposed} new proposals</p>
+                  <div className="space-y-0.5">
+                    {lastReflection.checks.map((c, i) => (
+                      <p key={i} className="font-mono text-[9px] text-muted-foreground/50">{c}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Edge vocabulary registry */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-mono text-sm font-bold text-foreground flex items-center gap-2">
+                <BookMarked className="w-4 h-4 text-primary" />
+                Edge Vocabulary Registry
+              </h4>
+              <button
+                onClick={() => fetchOntology(ontologyFilter)}
+                className="p-1.5 rounded border border-border/40 text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
+              >
+                <RefreshCw className="w-3 h-3" />
+              </button>
+            </div>
+
+            {ontologyLoading && ontologyVocab.length === 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-4 h-4 animate-spin text-primary/60" />
+              </div>
+            ) : ontologyVocab.length === 0 ? (
+              <div className="text-center py-8 space-y-1">
+                <Layers className="w-6 h-6 text-muted-foreground/20 mx-auto" />
+                <p className="font-mono text-sm text-muted-foreground/60">No ontology vocabulary yet. Run Reflection to seed it.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {ontologyVocab.filter(n => n.nodeType === "edge-vocab").map(node => (
+                  <div key={node.id} className="p-3 rounded-lg border border-border/40 bg-card/40 flex items-start gap-2">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-[10px] font-mono border shrink-0 mt-0.5",
+                      VOCAB_TYPE_STYLE[node.nodeType] ?? "text-muted-foreground border-border/40"
+                    )}>
+                      {node.nodeType === "edge-vocab" ? "edge" : node.nodeType}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-mono text-xs font-bold text-primary truncate">{node.name}</p>
+                      <p className="font-mono text-[10px] text-muted-foreground/60 leading-relaxed mt-0.5">{node.description}</p>
+                      <p className="font-mono text-[9px] text-muted-foreground/30 mt-1">
+                        {(node.payload as Record<string, unknown>)?.source === "core-seed" ? "core vocab" : "discovered"} · #{node.id}
+                      </p>
+                    </div>
+                    <div className={cn("w-2 h-2 rounded-full mt-1 shrink-0", node.active ? "bg-emerald-400" : "bg-muted-foreground/20")} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Meta proposals */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h4 className="font-mono text-sm font-bold text-foreground flex items-center gap-2">
+                <Play className="w-4 h-4 text-primary" />
+                Meta-Operation Proposals
+              </h4>
+              <div className="flex items-center gap-1 ml-auto flex-wrap">
+                {["all", "pending", "approved", "executed", "rejected"].map(f => (
+                  <button key={f}
+                    onClick={() => { setOntologyFilter(f); fetchOntology(f); }}
+                    className={cn(
+                      "px-3 py-1 rounded-md font-mono text-[10px] border transition-all",
+                      ontologyFilter === f
+                        ? "bg-primary/10 border-primary/30 text-primary"
+                        : "border-border/40 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {ontologyLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="w-4 h-4 animate-spin text-primary/60" />
+              </div>
+            ) : ontologyProposals.length === 0 ? (
+              <div className="text-center py-10 space-y-2">
+                <Layers className="w-8 h-8 text-muted-foreground/20 mx-auto" />
+                <p className="font-mono text-sm text-muted-foreground/60">No ontology proposals yet.</p>
+                <p className="font-mono text-xs text-muted-foreground/40">
+                  Click "Run Reflection" to analyse the knowledge graph and generate meta-operation proposals.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {ontologyProposals.map(p => {
+                  const opCfg = ONTOLOGY_OP_CONFIG[p.opType] ?? {
+                    label: p.opType, icon: Layers, color: "text-muted-foreground", description: "",
+                  };
+                  const OpIcon = opCfg.icon;
+                  const execResult = executionResults[p.id];
+
+                  return (
+                    <motion.div
+                      key={p.id}
+                      initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                      className="p-4 rounded-xl border border-border/40 bg-card/40 space-y-3"
+                    >
+                      {/* Header row */}
+                      <div className="flex items-start gap-3">
+                        <div className={cn("w-8 h-8 rounded-lg border flex items-center justify-center shrink-0",
+                          ONTOLOGY_STATUS_STYLE[p.status] ?? "border-border/40 bg-secondary/20"
+                        )}>
+                          <OpIcon className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className={cn("font-mono text-xs font-bold", opCfg.color)}>{opCfg.label}</p>
+                            <span className={cn("px-2 py-0.5 rounded text-[9px] font-mono border",
+                              ONTOLOGY_STATUS_STYLE[p.status] ?? "text-muted-foreground border-border/40"
+                            )}>
+                              {p.status}
+                            </span>
+                            <span className="font-mono text-[9px] text-muted-foreground/40 ml-auto">
+                              #{p.id} · {new Date(p.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+
+                          {/* Subject node(s) */}
+                          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap font-mono text-[10px]">
+                            {p.nodeA && (
+                              <span className="px-2 py-0.5 rounded bg-secondary/30 text-foreground/60">
+                                node#{p.nodeA.id} <span className="text-primary/70">"{p.nodeA.content.slice(0, 40)}{p.nodeA.content.length > 40 ? "…" : ""}"</span>
+                                <span className="ml-1 text-muted-foreground/40">({p.nodeA.type})</span>
+                              </span>
+                            )}
+                            {p.nodeB && (
+                              <>
+                                <Merge className="w-3 h-3 text-muted-foreground/40" />
+                                <span className="px-2 py-0.5 rounded bg-secondary/30 text-foreground/60">
+                                  node#{p.nodeB.id} <span className="text-primary/70">"{p.nodeB.content.slice(0, 40)}{p.nodeB.content.length > 40 ? "…" : ""}"</span>
+                                  <span className="ml-1 text-muted-foreground/40">({p.nodeB.type})</span>
+                                </span>
+                              </>
+                            )}
+                            {p.proposedEdgeType && (
+                              <span className="px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">
+                                new type: "{p.proposedEdgeType}"
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {p.status === "pending" && (
+                            <>
+                              <button
+                                onClick={() => handleApproveOntology(p.id)}
+                                disabled={approvingId === p.id}
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-mono text-[10px] transition-all disabled:opacity-50"
+                              >
+                                {approvingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleRejectOntology(p.id)}
+                                className="p-1.5 rounded-md border border-red-500/20 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                              >
+                                <XCircle className="w-3 h-3" />
+                              </button>
+                            </>
+                          )}
+                          {p.status === "approved" && (
+                            <button
+                              onClick={() => handleExecuteOntology(p.id)}
+                              disabled={executingId === p.id}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-primary/30 text-primary hover:bg-primary/10 font-mono text-[10px] transition-all disabled:opacity-50"
+                            >
+                              {executingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+                              Execute
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Rationale */}
+                      <div className="p-2.5 rounded-lg bg-secondary/20 border border-border/20 space-y-1">
+                        <p className="font-mono text-[10px] text-muted-foreground/60 uppercase tracking-wider">Rationale</p>
+                        <p className="font-mono text-xs text-foreground/70 leading-relaxed">{p.rationale}</p>
+                      </div>
+
+                      {/* Proposed split content */}
+                      {p.proposedContent && (() => {
+                        let parts: string[] = [];
+                        try { parts = JSON.parse(p.proposedContent); } catch { parts = [p.proposedContent]; }
+                        return (
+                          <div className="space-y-1">
+                            <p className="font-mono text-[10px] text-muted-foreground/60 uppercase tracking-wider">Proposed Split Parts</p>
+                            <div className="flex flex-col gap-1">
+                              {parts.map((part, i) => (
+                                <div key={i} className="flex items-start gap-1.5 font-mono text-xs text-foreground/60">
+                                  <span className="text-primary/50 shrink-0">{i + 1}.</span>
+                                  <span>{part}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Proof hashes */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="p-2 rounded-lg bg-secondary/10 border border-border/20 space-y-0.5">
+                          <p className="font-mono text-[9px] text-muted-foreground/50 uppercase tracking-wider">Rationale Hash (SHA-256)</p>
+                          <p className="font-mono text-[9px] text-foreground/30 break-all">{p.rationaleHash}</p>
+                        </div>
+                        <div className="p-2 rounded-lg bg-secondary/10 border border-border/20 space-y-0.5">
+                          <p className="font-mono text-[9px] text-muted-foreground/50 uppercase tracking-wider">Proposal Proof (SHA-256)</p>
+                          <p className="font-mono text-[9px] text-foreground/30 break-all">{p.proposalProof}</p>
+                        </div>
+                      </div>
+
+                      {/* Execution result */}
+                      {execResult && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                          className={cn(
+                            "flex items-center gap-2 p-3 rounded-lg border font-mono text-xs",
+                            execResult.startsWith("Error") || execResult.startsWith("Approval failed")
+                              ? "border-red-500/20 bg-red-500/5 text-red-400"
+                              : "border-primary/20 bg-primary/5 text-primary"
+                          )}
+                        >
+                          {execResult.startsWith("Error") || execResult.startsWith("Approval failed")
+                            ? <XCircle className="w-3.5 h-3.5 shrink-0" />
+                            : <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                          {execResult}
+                        </motion.div>
+                      )}
+
+                      {/* Executed stamp */}
+                      {p.status === "executed" && p.executedAt && (
+                        <div className="flex items-center gap-1.5 font-mono text-[10px] text-primary/60">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Executed at {new Date(p.executedAt).toLocaleString()}
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

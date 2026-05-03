@@ -8,8 +8,33 @@ import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
 } from "./middlewares/clerkProxyMiddleware";
+import { runOntologyReflection } from "./brain/ontology.js";
 
 const app: Express = express();
+
+// ── Background ontology reflection — runs every 10 minutes ──────────────────
+const ONTOLOGY_INTERVAL_MS = 10 * 60 * 1000;
+function scheduleOntologyReflection() {
+  setTimeout(async () => {
+    try {
+      const result = await runOntologyReflection();
+      logger.info({ result }, "Scheduled ontology reflection complete");
+    } catch (err) {
+      logger.warn({ err }, "Scheduled ontology reflection failed");
+    }
+    scheduleOntologyReflection(); // reschedule after each run
+  }, ONTOLOGY_INTERVAL_MS);
+}
+// Kick off first cycle shortly after startup (30 s delay to let DB settle)
+setTimeout(async () => {
+  try {
+    const result = await runOntologyReflection();
+    logger.info({ result }, "Initial ontology reflection complete");
+  } catch (err) {
+    logger.warn({ err }, "Initial ontology reflection failed");
+  }
+  scheduleOntologyReflection();
+}, 30_000);
 
 app.use(
   pinoHttp({
