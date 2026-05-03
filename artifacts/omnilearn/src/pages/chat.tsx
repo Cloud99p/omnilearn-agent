@@ -7,7 +7,7 @@ import {
   CheckCircle2, XCircle, ArrowRight, Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -149,7 +149,12 @@ function MarkdownContent({ text }: { text: string }) {
 }
 
 export default function Chat() {
-  const [mode, setMode] = useState<Mode>("local");
+  const search = useSearch();
+  const initialMode = ((): Mode => {
+    const p = new URLSearchParams(search).get("mode");
+    return p === "native" || p === "ghost" ? p : "local";
+  })();
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<number | null>(null);
   const [nativeConvId, setNativeConvId] = useState<number | null>(null);
