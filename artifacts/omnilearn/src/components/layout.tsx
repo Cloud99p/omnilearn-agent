@@ -36,7 +36,6 @@ const GROUPS = [
     label: "Advanced",
     items: [
       { href: "/benchmark", label: "Benchmark", icon: FlaskConical },
-      { href: "/smarter", label: "Smarter Proof", icon: TrendingUp },
       { href: "/ingestion", label: "Ingestion", icon: Database },
       { href: "/storage", label: "Storage", icon: HardDrive },
       { href: "/memory", label: "Memory", icon: Brain },
