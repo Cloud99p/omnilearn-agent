@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { ghostNodes, conversations, messages } from "@workspace/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { ghostNodes, ghostWorkerSessions, ghostWorkerTasks, conversations, messages } from "@workspace/db/schema";
+import { eq, sql, and } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -15,7 +16,7 @@ function sendEvent(res: import("express").Response, data: object) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
-// POST /api/ghost/chat — SSE: route message through ghost network or fall back to Claude locally
+// POST /api/ghost/chat — SSE: route through server nodes, then browser workers, then local
 router.post("/chat", async (req, res) => {
   const { content, conversationId } = req.body as {
     content: string;
@@ -33,10 +34,10 @@ router.post("/chat", async (req, res) => {
   res.flushHeaders();
 
   try {
-    // Find best available ghost node (online + seen in last 45s, lowest task count)
-    const nodes = await db.select().from(ghostNodes);
+    // Find best available server ghost node (online + seen in last 45s, lowest task count)
+    const serverNodes = await db.select().from(ghostNodes);
     const now = Date.now();
-    const available = nodes
+    const availableServerNodes = serverNodes
       .filter(n =>
         n.status === "online" &&
         n.lastSeen &&
@@ -44,7 +45,12 @@ router.post("/chat", async (req, res) => {
       )
       .sort((a, b) => a.tasksProcessed - b.tasksProcessed);
 
-    const bestNode = available[0] ?? null;
+    // Find active browser workers (seen in last 90s, idle)
+    const allWorkers = await db.select().from(ghostWorkerSessions);
+    const availableBrowserWorkers = allWorkers.filter(w =>
+      w.lastSeen && now - new Date(w.lastSeen).getTime() < 90_000
+    );
+    const hasBrowserWorkers = availableBrowserWorkers.length > 0;
 
     // Load or create conversation
     let convId = conversationId;
@@ -68,13 +74,19 @@ router.post("/chat", async (req, res) => {
 
     let fullResponse = "";
 
-    if (bestNode) {
-      sendEvent(res, { routing: { nodeId: bestNode.id, nodeName: bestNode.name, region: bestNode.region } });
+    if (availableServerNodes.length > 0) {
+      // ── Route to server ghost nodes ──────────────────────────────────────────
+      sendEvent(res, { routing: {
+        nodeId:   availableServerNodes[0].id,
+        nodeName: availableServerNodes[0].name,
+        region:   availableServerNodes[0].region,
+        type:     "server",
+      }});
 
       let succeeded = false;
       let processingMs = 0;
 
-      for (const node of [bestNode, ...available.slice(1)]) {
+      for (const node of availableServerNodes) {
         try {
           const start = Date.now();
           const r = await fetch(`${node.endpoint}/api/ghost/execute`, {
@@ -99,14 +111,13 @@ router.post("/chat", async (req, res) => {
             fullResponse = result.response;
 
             await db.update(ghostNodes).set({
-              status: "online",
-              lastSeen: new Date(),
+              status:         "online",
+              lastSeen:       new Date(),
               tasksProcessed: sql`tasks_processed + 1`,
-              avgResponseMs: processingMs,
-              updatedAt: new Date(),
+              avgResponseMs:  processingMs,
+              updatedAt:      new Date(),
             }).where(eq(ghostNodes.id, node.id));
 
-            // Stream response word by word
             const words = fullResponse.split(/(\s+)/);
             for (const word of words) {
               sendEvent(res, { content: word });
@@ -117,48 +128,46 @@ router.post("/chat", async (req, res) => {
             sendEvent(res, {
               done: true,
               conversationId: convId,
-              meta: {
-                nodeId: node.id,
-                nodeName: node.name,
-                processingMs,
-                routed: true,
-              },
+              meta: { nodeId: node.id, nodeName: node.name, processingMs, routed: true, type: "server" },
             });
 
             succeeded = true;
             break;
           } else {
             await db.update(ghostNodes).set({
-              status: "offline",
+              status:      "offline",
               tasksFailed: sql`tasks_failed + 1`,
-              updatedAt: new Date(),
+              updatedAt:   new Date(),
             }).where(eq(ghostNodes.id, node.id));
           }
         } catch {
           await db.update(ghostNodes).set({
-            status: "offline",
+            status:      "offline",
             tasksFailed: sql`tasks_failed + 1`,
-            updatedAt: new Date(),
+            updatedAt:   new Date(),
           }).where(eq(ghostNodes.id, node.id));
         }
       }
 
       if (!succeeded) {
-        sendEvent(res, { fallback: true, reason: "All ghost nodes unreachable — running locally." });
-        fullResponse = await runLocalClaude(history, content.trim());
-        const words = fullResponse.split(/(\s+)/);
-        for (const word of words) {
-          sendEvent(res, { content: word });
-          await new Promise(r => setTimeout(r, 25));
+        if (hasBrowserWorkers) {
+          fullResponse = await routeToBrowserWorker(req, res, content.trim(), history, convId);
+        } else {
+          sendEvent(res, { fallback: true, reason: "All server nodes unreachable — running locally." });
+          fullResponse = await runLocalClaude(history, content.trim(), res);
+          sendEvent(res, { done: true, conversationId: convId, meta: { routed: false, local: true } });
         }
-        sendEvent(res, { done: true, conversationId: convId, meta: { routed: false, local: true } });
       }
+
+    } else if (hasBrowserWorkers) {
+      // ── Route to browser worker pool ─────────────────────────────────────────
+      fullResponse = await routeToBrowserWorker(req, res, content.trim(), history, convId);
+
     } else {
-      // No nodes online — run locally with explanation banner
+      // ── No nodes at all — run locally ────────────────────────────────────────
       sendEvent(res, { noNodes: true });
 
       const fullMessages = [...history, { role: "user" as const, content: content.trim() }];
-
       const stream = anthropic.messages.stream({
         model: "claude-sonnet-4-6",
         max_tokens: 8192,
@@ -185,18 +194,86 @@ router.post("/chat", async (req, res) => {
   }
 });
 
+// ── Route a task through the browser worker queue ────────────────────────────
+async function routeToBrowserWorker(
+  req: import("express").Request,
+  res: import("express").Response,
+  content: string,
+  history: Array<{ role: "user" | "assistant"; content: string }>,
+  convId: number,
+): Promise<string> {
+  const taskId = crypto.randomUUID();
+  const timeoutAt = new Date(Date.now() + 60_000);
+
+  await db.insert(ghostWorkerTasks).values({
+    taskId,
+    status:  "pending",
+    payload: JSON.stringify({ message: content, history, systemPrompt: SYSTEM_PROMPT }),
+    timeoutAt,
+  });
+
+  sendEvent(res, { routing: { type: "browser", taskId } });
+
+  // Poll for completion for up to 55s
+  const deadline = Date.now() + 55_000;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 700));
+
+    const [task] = await db.select().from(ghostWorkerTasks)
+      .where(eq(ghostWorkerTasks.taskId, taskId));
+
+    if (!task) break;
+
+    if (task.status === "complete" && task.result) {
+      const words = task.result.split(/(\s+)/);
+      for (const word of words) {
+        sendEvent(res, { content: word });
+        const delay = /[.!?]$/.test(word) ? 80 : word.trim().length === 0 ? 10 : 25;
+        await new Promise(r => setTimeout(r, delay));
+      }
+      const processingMs = task.completedAt && task.assignedAt
+        ? new Date(task.completedAt).getTime() - new Date(task.assignedAt).getTime()
+        : null;
+      sendEvent(res, {
+        done: true,
+        conversationId: convId,
+        meta: { routed: true, type: "browser", workerId: task.workerId, processingMs },
+      });
+      return task.result;
+    }
+
+    if (task.status === "failed" || task.status === "timeout") {
+      break;
+    }
+  }
+
+  // Fallback to local
+  sendEvent(res, { fallback: true, reason: "Browser worker timed out — running locally." });
+  const result = await runLocalClaude(history, content, res);
+  sendEvent(res, { done: true, conversationId: convId, meta: { routed: false, local: true } });
+  return result;
+}
+
 async function runLocalClaude(
   history: Array<{ role: "user" | "assistant"; content: string }>,
   content: string,
+  res: import("express").Response,
 ): Promise<string> {
   const msgs = [...history, { role: "user" as const, content }];
-  const response = await anthropic.messages.create({
+  const stream = anthropic.messages.stream({
     model: "claude-sonnet-4-6",
     max_tokens: 8192,
     system: SYSTEM_PROMPT,
     messages: msgs,
   });
-  return response.content.find(c => c.type === "text")?.text ?? "";
+  let full = "";
+  for await (const event of stream) {
+    if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+      full += event.delta.text;
+      sendEvent(res, { content: event.delta.text });
+    }
+  }
+  return full;
 }
 
 export default router;
