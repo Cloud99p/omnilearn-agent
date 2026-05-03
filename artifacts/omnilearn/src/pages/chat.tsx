@@ -160,9 +160,15 @@ export default function Chat() {
   })();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConvId, setActiveConvId] = useState<number | null>(null);
-  const [nativeConvId, setNativeConvId] = useState<number | null>(null);
-  const [ghostConvId, setGhostConvId] = useState<number | null>(null);
+  const [activeConvId, setActiveConvId] = useState<number | null>(() => {
+    const s = localStorage.getItem("omni_conv_local"); return s ? parseInt(s, 10) : null;
+  });
+  const [nativeConvId, setNativeConvId] = useState<number | null>(() => {
+    const s = localStorage.getItem("omni_conv_native"); return s ? parseInt(s, 10) : null;
+  });
+  const [ghostConvId, setGhostConvId] = useState<number | null>(() => {
+    const s = localStorage.getItem("omni_conv_ghost"); return s ? parseInt(s, 10) : null;
+  });
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -185,6 +191,7 @@ export default function Chat() {
   const [webActivity, setWebActivity] = useState<{ type: "searching" | "fetching"; payload: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const modeInitialized = useRef(false);
 
   const installedSkillIds = skills.filter(s => s.isInstalled).map(s => s.id);
 
@@ -192,9 +199,28 @@ export default function Chat() {
   useEffect(scrollToBottom, [messages, streamingContent]);
 
   useEffect(() => {
+    if (nativeConvId != null) localStorage.setItem("omni_conv_native", String(nativeConvId));
+    else localStorage.removeItem("omni_conv_native");
+  }, [nativeConvId]);
+  useEffect(() => {
+    if (ghostConvId != null) localStorage.setItem("omni_conv_ghost", String(ghostConvId));
+    else localStorage.removeItem("omni_conv_ghost");
+  }, [ghostConvId]);
+  useEffect(() => {
+    if (activeConvId != null) localStorage.setItem("omni_conv_local", String(activeConvId));
+    else localStorage.removeItem("omni_conv_local");
+  }, [activeConvId]);
+
+  useEffect(() => {
     fetchConversations();
     fetchSkills();
     fetchGhostStatus();
+    const savedNative = localStorage.getItem("omni_conv_native");
+    const savedGhost  = localStorage.getItem("omni_conv_ghost");
+    const savedLocal  = localStorage.getItem("omni_conv_local");
+    if (initialMode === "native" && savedNative) loadConversationById(parseInt(savedNative, 10));
+    else if (initialMode === "ghost" && savedGhost) loadConversationById(parseInt(savedGhost, 10));
+    else if (initialMode === "local" && savedLocal) loadConversationById(parseInt(savedLocal, 10));
   }, []);
 
   // Idle CPU contribution — when onboarded and not actively chatting, donate cycles to the ghost network
@@ -226,11 +252,18 @@ export default function Chat() {
   }, [onboarded, streaming]);
 
   useEffect(() => {
-    if (mode !== "native") setNativeConvId(null);
-    if (mode !== "ghost") { setGhostConvId(null); setGhostRouting(null); setGhostFallback(false); }
+    if (!modeInitialized.current) { modeInitialized.current = true; return; }
     setMessages([]);
-    setActiveConvId(null);
     setLatestMeta(null);
+    setGhostRouting(null);
+    setGhostFallback(false);
+    setWebActivity(null);
+    const savedNative = localStorage.getItem("omni_conv_native");
+    const savedGhost  = localStorage.getItem("omni_conv_ghost");
+    const savedLocal  = localStorage.getItem("omni_conv_local");
+    if (mode === "native" && savedNative) loadConversationById(parseInt(savedNative, 10));
+    else if (mode === "ghost" && savedGhost) loadConversationById(parseInt(savedGhost, 10));
+    else if (mode === "local" && savedLocal) loadConversationById(parseInt(savedLocal, 10));
   }, [mode]);
 
   const fetchConversations = async () => {
@@ -257,15 +290,35 @@ export default function Chat() {
     } catch { /* offline */ }
   };
 
+  const loadConversationById = async (id: number) => {
+    setLoadingConv(true);
+    try {
+      const res = await fetch(`${BASE}/api/anthropic/conversations/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data.messages || []);
+        const m = data.mode as Mode;
+        if (m === "native") setNativeConvId(id);
+        else if (m === "ghost") setGhostConvId(id);
+        else setActiveConvId(id);
+      }
+    } catch { /* offline */ } finally {
+      setLoadingConv(false);
+    }
+  };
+
   const loadConversation = async (id: number) => {
     setLoadingConv(true);
     try {
       const res = await fetch(`${BASE}/api/anthropic/conversations/${id}`);
       if (res.ok) {
         const data = await res.json();
-        setMessages(data.messages);
-        setActiveConvId(id);
-        setMode(data.mode);
+        setMessages(data.messages || []);
+        const m = data.mode as Mode;
+        setMode(m);
+        if (m === "native") setNativeConvId(id);
+        else if (m === "ghost") setGhostConvId(id);
+        else setActiveConvId(id);
       }
     } finally {
       setLoadingConv(false);
@@ -291,6 +344,8 @@ export default function Chat() {
     await fetch(`${BASE}/api/anthropic/conversations/${id}`, { method: "DELETE" });
     setConversations(prev => prev.filter(c => c.id !== id));
     if (activeConvId === id) { setActiveConvId(null); setMessages([]); }
+    if (nativeConvId === id) { setNativeConvId(null); setMessages([]); }
+    if (ghostConvId === id) { setGhostConvId(null); setMessages([]); }
   };
 
   // ── Native mode send ──────────────────────────────────────────────────────
@@ -589,9 +644,9 @@ export default function Chat() {
         {/* Sidebar content per mode */}
         {mode === "local" && (
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {conversations.length === 0
+            {conversations.filter(c => c.mode === "local").length === 0
               ? <p className="text-muted-foreground/40 font-mono text-xs px-2 py-4 text-center">No conversations yet</p>
-              : conversations.map(conv => (
+              : conversations.filter(c => c.mode === "local").map(conv => (
                 <div key={conv.id} onClick={() => loadConversation(conv.id)} role="button" tabIndex={0}
                   onKeyDown={e => e.key === "Enter" && loadConversation(conv.id)}
                   className={cn("w-full flex items-center gap-2 px-2 py-2 rounded-md text-left group transition-all cursor-pointer",
@@ -611,6 +666,25 @@ export default function Chat() {
 
         {mode === "ghost" && (
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">History</p>
+            {conversations.filter(c => c.mode === "ghost").length > 0 && (
+              <div className="space-y-1">
+                {conversations.filter(c => c.mode === "ghost").map(conv => (
+                  <div key={conv.id} onClick={() => loadConversation(conv.id)} role="button" tabIndex={0}
+                    onKeyDown={e => e.key === "Enter" && loadConversation(conv.id)}
+                    className={cn("w-full flex items-center gap-2 px-2 py-2 rounded-md text-left group transition-all cursor-pointer",
+                      ghostConvId === conv.id ? "bg-violet-500/10 text-violet-400" : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                    )}
+                  >
+                    <MessageSquare className="w-3 h-3 shrink-0" />
+                    <span className="font-mono text-xs truncate flex-1">{conv.title}</span>
+                    <button onClick={(e) => deleteConversation(conv.id, e)} className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all shrink-0">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">Ghost Mode</p>
 
             {/* Network status */}
@@ -695,25 +769,44 @@ export default function Chat() {
         )}
 
         {mode === "native" && (
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">Native Mode</p>
-            <p className="font-mono text-xs text-muted-foreground leading-relaxed">
-              Powered by Omni with real-time web search and URL reading. Learns permanently — every fact it finds goes into the knowledge graph.
-            </p>
-            {latestMeta && (
-              <div className="p-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 space-y-1.5">
-                <p className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider">Last Response</p>
-                <div className="font-mono text-[10px] text-muted-foreground space-y-0.5">
-                  <p>Nodes used: {latestMeta.nodesUsed ?? 0}</p>
-                  <p>New learned: {latestMeta.newNodesAdded ?? 0}</p>
+          <div className="flex-1 overflow-y-auto p-3 space-y-3 flex flex-col">
+            {/* Conversation history */}
+            <div className="space-y-1">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60 px-1">History</p>
+              {conversations.filter(c => c.mode === "native").length === 0
+                ? <p className="text-muted-foreground/40 font-mono text-xs px-1 py-2 text-center">No sessions yet</p>
+                : conversations.filter(c => c.mode === "native").map(conv => (
+                  <div key={conv.id} onClick={() => loadConversation(conv.id)} role="button" tabIndex={0}
+                    onKeyDown={e => e.key === "Enter" && loadConversation(conv.id)}
+                    className={cn("w-full flex items-center gap-2 px-2 py-2 rounded-md text-left group transition-all cursor-pointer",
+                      nativeConvId === conv.id ? "bg-emerald-500/10 text-emerald-400" : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                    )}
+                  >
+                    <MessageSquare className="w-3 h-3 shrink-0" />
+                    <span className="font-mono text-xs truncate flex-1">{conv.title}</span>
+                    <button onClick={(e) => deleteConversation(conv.id, e)} className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all shrink-0">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))
+              }
+            </div>
+            <div className="border-t border-border/20 pt-3 space-y-2">
+              {latestMeta && (
+                <div className="p-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 space-y-1.5">
+                  <p className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider">Last Response</p>
+                  <div className="font-mono text-[10px] text-muted-foreground space-y-0.5">
+                    <p>Nodes used: {latestMeta.nodesUsed ?? 0}</p>
+                    <p>New learned: {latestMeta.newNodesAdded ?? 0}</p>
+                  </div>
                 </div>
-              </div>
-            )}
-            <Link href="/intelligence"
-              className="flex items-center gap-1.5 font-mono text-xs text-primary/60 hover:text-primary transition-colors"
-            >
-              <Brain className="w-3 h-3" /> View knowledge base
-            </Link>
+              )}
+              <Link href="/intelligence"
+                className="flex items-center gap-1.5 font-mono text-xs text-primary/60 hover:text-primary transition-colors"
+              >
+                <Brain className="w-3 h-3" /> View knowledge base
+              </Link>
+            </div>
           </div>
         )}
 
