@@ -601,7 +601,7 @@ export default function IntelligencePage() {
     if (tab === "network") fetchNetwork();
     if (tab === "proposals") fetchProposals(proposalFilter);
     if (tab === "ontology") fetchOntology(ontologyFilter);
-  }, [tab, fetchNetwork]);
+  }, [tab, fetchNetwork, fetchProposals, fetchOntology, proposalFilter, ontologyFilter]);
 
   // Auto-refresh network every 15s when on that tab
   useEffect(() => {
