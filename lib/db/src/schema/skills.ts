@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 
 export const skills = pgTable("skills", {
   id: serial("id").primaryKey(),
+  clerkId: text("clerk_id"),
   name: text("name").notNull(),
   description: text("description").notNull(),
   icon: text("icon").notNull().default("Wrench"),

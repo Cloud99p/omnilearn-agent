@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
+import { useUser, useClerk, Show } from "@clerk/react";
 import {
   Cpu, Terminal, BookOpen, Activity,
   Network, Globe, Dna, GitBranch,
   Database, HardDrive, Brain, Shield, Settings, Blocks, Gavel,
-  ChevronDown, Menu, X, MessageSquare,
+  ChevronDown, Menu, X, MessageSquare, Github, LogIn, User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Top-level links — always visible, no group header
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 const TOP_LINKS = [
   { href: "/", label: "Home", icon: Terminal },
   { href: "/onboarding", label: "Get Started", icon: BookOpen },
@@ -17,7 +19,6 @@ const TOP_LINKS = [
   { href: "/personality", label: "Personality", icon: Activity },
 ];
 
-// Collapsible groups — hidden until the user wants more
 const GROUPS = [
   {
     id: "explore",
@@ -107,6 +108,50 @@ function CollapsibleGroup({ group, location, onNavClick }: {
   );
 }
 
+function UserSection({ onNavClick }: { onNavClick?: () => void }) {
+  const { user, isLoaded } = useUser();
+  const { signOut } = useClerk();
+
+  if (!isLoaded) return null;
+
+  return (
+    <div className="px-3 py-4 border-t border-border/30 space-y-1">
+      <Show when="signed-in">
+        <Link
+          href="/repositories"
+          onClick={onNavClick}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg font-mono text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/30 border border-transparent transition-all duration-150"
+        >
+          <Github className="w-4 h-4 shrink-0" />
+          Repositories
+        </Link>
+        <Link
+          href="/account"
+          onClick={onNavClick}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg font-mono text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/30 border border-transparent transition-all duration-150 group"
+        >
+          {user?.imageUrl ? (
+            <img src={user.imageUrl} alt="avatar" className="w-4 h-4 rounded-full shrink-0" />
+          ) : (
+            <User className="w-4 h-4 shrink-0" />
+          )}
+          <span className="truncate">{user?.firstName ?? user?.username ?? "Account"}</span>
+        </Link>
+      </Show>
+      <Show when="signed-out">
+        <Link
+          href="/sign-in"
+          onClick={onNavClick}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg font-mono text-sm text-muted-foreground hover:text-primary hover:bg-primary/5 border border-transparent hover:border-primary/20 transition-all duration-150"
+        >
+          <LogIn className="w-4 h-4 shrink-0" />
+          Sign In
+        </Link>
+      </Show>
+    </div>
+  );
+}
+
 function Sidebar({ location, onNavClick }: { location: string; onNavClick?: () => void }) {
   return (
     <div className="flex flex-col h-full">
@@ -130,7 +175,6 @@ function Sidebar({ location, onNavClick }: { location: string; onNavClick?: () =
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-5 overflow-y-auto flex flex-col gap-6">
-        {/* Top-level always-visible links */}
         <div className="space-y-0.5">
           {TOP_LINKS.map(item => (
             <NavLink
@@ -143,11 +187,7 @@ function Sidebar({ location, onNavClick }: { location: string; onNavClick?: () =
             />
           ))}
         </div>
-
-        {/* Divider */}
         <div className="border-t border-border/30" />
-
-        {/* Collapsible groups */}
         <div className="space-y-4">
           {GROUPS.map(group => (
             <CollapsibleGroup
@@ -159,6 +199,9 @@ function Sidebar({ location, onNavClick }: { location: string; onNavClick?: () =
           ))}
         </div>
       </nav>
+
+      {/* User section at the bottom */}
+      <UserSection onNavClick={onNavClick} />
     </div>
   );
 }
@@ -180,12 +223,19 @@ export default function Layout({ children }: { children: ReactNode }) {
           <Cpu className="w-4 h-4" />
           OmniLearn
         </Link>
-        <button
-          onClick={() => setMobileOpen(o => !o)}
-          className="text-muted-foreground hover:text-foreground p-1"
-        >
-          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <Show when="signed-out">
+            <Link href="/sign-in" className="font-mono text-xs text-muted-foreground hover:text-primary transition-colors">
+              Sign In
+            </Link>
+          </Show>
+          <button
+            onClick={() => setMobileOpen(o => !o)}
+            className="text-muted-foreground hover:text-foreground p-1"
+          >
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer */}
