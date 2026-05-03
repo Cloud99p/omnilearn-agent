@@ -11,8 +11,8 @@ import {
   detectTechnicalContent, detectEmotionalContent,
 } from "./character.js";
 import {
-  synthesizeResponse, synthesizeLearningAck, synthesizeStatusResponse,
-  type RetrievedNode,
+  synthesizeWithTools, synthesizeLearningAck, synthesizeStatusResponse,
+  type RetrievedNode, type ActivityCallback,
 } from "./synthesizer.js";
 import { SEED_KNOWLEDGE } from "./seed.js";
 import { logger } from "../lib/logger.js";
@@ -153,6 +153,7 @@ export async function processMessage(
   userMessage: string,
   clerkId: string | null,
   history: Array<{ role: string; content: string }>,
+  onActivity?: ActivityCallback,
 ): Promise<BrainResponse> {
   const character = await getOrCreateCharacter(clerkId);
 
@@ -197,13 +198,10 @@ export async function processMessage(
     const mainTopic = keyTerms[0] ?? extractKeyTerms(userMessage)[0] ?? "this topic";
     text = synthesizeLearningAck(newNodesAdded, mainTopic, character);
   } else {
-    text = synthesizeResponse({
-      query: userMessage,
-      queryType,
-      nodes: retrieved,
-      character,
-      history,
-    });
+    text = await synthesizeWithTools(
+      { query: userMessage, queryType, nodes: retrieved, character, history },
+      onActivity,
+    );
   }
 
   // 4. Update character traits based on the interaction

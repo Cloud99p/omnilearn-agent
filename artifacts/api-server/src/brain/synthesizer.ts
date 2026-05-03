@@ -1,12 +1,14 @@
-import type { KnowledgeNode } from "@workspace/db/schema";
-import type { CharacterState } from "@workspace/db/schema";
+import { anthropic } from "@workspace/integrations-anthropic-ai";
+import type { KnowledgeNode, CharacterState } from "@workspace/db/schema";
 import { getVoiceModifiers } from "./character.js";
+import { webSearch, fetchUrl } from "./web-tools.js";
+import { logger } from "../lib/logger.js";
 
 export interface RetrievedNode extends KnowledgeNode {
   similarity: number;
 }
 
-interface SynthesisContext {
+export interface SynthesisContext {
   query: string;
   queryType: "question" | "statement" | "command";
   nodes: RetrievedNode[];
@@ -14,109 +16,227 @@ interface SynthesisContext {
   history: Array<{ role: string; content: string }>;
 }
 
-const HIGH_CONF = 0.38;
-const MED_CONF = 0.14;
+export type ActivityCallback = (event: ActivityEvent) => void;
 
-function pickRandom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
+export type ActivityEvent =
+  | { type: "searching"; query: string }
+  | { type: "fetching"; url: string }
+  | { type: "search_done"; resultCount: number }
+  | { type: "fetch_done"; title: string };
 
-function formatFacts(nodes: RetrievedNode[], maxNodes = 4, detail = false): string {
-  const top = nodes.slice(0, maxNodes);
-  if (top.length === 0) return "";
+// ── Tool definitions for Claude ────────────────────────────────────────────────
 
-  const lines = top.map(n => {
-    const conf = n.similarity > 0.6 ? "" : n.similarity > 0.3 ? " *(moderate confidence)*" : " *(low confidence)*";
-    return `- ${n.content}${conf}`;
-  });
+const WEB_TOOLS: import("@anthropic-ai/sdk").Tool[] = [
+  {
+    name: "web_search",
+    description: "Search the web for current information, news, facts, or anything you need to look up. Use this when you need real-time data, recent events, or information outside your knowledge. Returns search result snippets and an abstract if available.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: {
+          type: "string",
+          description: "The search query to look up. Be specific and targeted.",
+        },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "fetch_url",
+    description: "Fetch and read the full content of a web page or URL. Use this to read articles, documentation, or any web page in full when a search result is not detailed enough. Returns the page title and extracted text.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        url: {
+          type: "string",
+          description: "The full URL to fetch (must start with http:// or https://).",
+        },
+      },
+      required: ["url"],
+    },
+  },
+];
 
-  if (!detail && lines.length === 1) return top[0].content;
-  return lines.join("\n");
-}
+// ── Main synthesis with tool-use loop ─────────────────────────────────────────
 
-function extractMainTopic(query: string): string {
-  const cleaned = query
-    .replace(/^(what|who|where|when|why|how|can you|tell me|explain|describe|is|are|do|does)\s+/i, "")
-    .replace(/\?$/, "")
-    .trim();
-  return cleaned.slice(0, 60) || query.slice(0, 60);
-}
-
-export function synthesizeResponse(ctx: SynthesisContext): string {
-  const { query, queryType, nodes, character } = ctx;
+export async function synthesizeWithTools(
+  ctx: SynthesisContext,
+  onActivity?: ActivityCallback,
+): Promise<string> {
+  const { query, nodes, character, history } = ctx;
   const voice = getVoiceModifiers(character);
-  const topic = extractMainTopic(query);
-  const detail = voice.prefersDetail;
 
-  const topNode = nodes[0];
-  const topSim = topNode?.similarity ?? 0;
+  // Build knowledge context
+  const topNodes = nodes.filter(n => n.similarity > 0.05).slice(0, 8);
+  const knowledgeBlock = topNodes.length > 0
+    ? `## Knowledge from my memory\n${topNodes.map(n =>
+        `- [confidence ${Math.round(n.similarity * 100)}%] ${n.content}`
+      ).join("\n")}`
+    : "## Knowledge from my memory\nNo closely matching knowledge nodes found for this query.";
 
-  // ── No knowledge ──────────────────────────────────────────────────────────
-  if (nodes.length === 0 || topSim < 0.05) {
-    const noKnowledge = [
-      `I have not learned about **${topic}** yet.\n\nMy knowledge base is empty on this topic. You can teach me in two ways:\n- **Tell me directly** — just share information about ${topic} in this conversation and I will absorb it.\n- **Use the Training interface** at \`/intelligence\` to add structured knowledge.\n\nI remember everything you teach me permanently.`,
-      `**${topic}** is outside my current knowledge.\n\nI am a learning system — I start with what I have been taught and grow from there. Share what you know about ${topic} and I will integrate it into my knowledge graph immediately.\n\nYou can also browse my current knowledge at \`/intelligence\`.`,
-      `I do not yet have knowledge about **${topic}**.\n\nThis is an honest gap in my knowledge base. Unlike models trained on static datasets, I only know what I have been explicitly taught or inferred from previous conversations.\n\nTeach me: what should I know about ${topic}?`,
-    ];
-    return pickRandom(noKnowledge);
-  }
+  const personalityNote = [
+    voice.prefersDetail ? "You value technical depth and thoroughness." : "You prefer concise, direct answers.",
+    character.curiosity > 60 ? "You are genuinely curious and enjoy exploring ideas." : "",
+    character.caution > 60 ? "You are appropriately cautious and acknowledge uncertainty." : "",
+    character.creativity > 60 ? "You enjoy drawing unexpected connections." : "",
+  ].filter(Boolean).join(" ");
 
-  // ── Very low confidence ───────────────────────────────────────────────────
-  if (topSim < MED_CONF) {
-    const weakFacts = formatFacts(nodes, 2, false);
-    return [
-      `My knowledge of **${topic}** is limited. The closest I have is:\n\n${weakFacts}\n\n${voice.uncertaintyPhrase}. If this is not relevant, please teach me more about ${topic} directly.`,
-      `I have very little on **${topic}** — here is what I can find:\n\n${weakFacts}\n\nThis may not be exactly what you are looking for. I learn from every conversation, so sharing more will improve my future responses on this topic.`,
-    ][Math.floor(Math.random() * 2)];
-  }
+  const systemPrompt = `You are OmniLearn, a self-learning AI agent with internet access. You have a persistent knowledge graph and can search the web in real time.
 
-  // ── Medium confidence ─────────────────────────────────────────────────────
-  if (topSim < HIGH_CONF) {
-    const facts = formatFacts(nodes, detail ? 4 : 3, detail);
-    const opener = voice.openingTone ? `${voice.openingTone}\n\n` : "";
-    const closer = voice.closingStyle ? `\n\n${voice.closingStyle}` : "";
+${personalityNote}
 
-    if (queryType === "question") {
-      return `${opener}Based on what I have learned about **${topic}**:\n\n${facts}\n\n${voice.uncertaintyPhrase} — my confidence here is moderate. I may have incomplete coverage.${closer}`;
+${knowledgeBlock}
+
+## Instructions
+- Always search the web when you need current information, specific facts, recent events, or anything where your memory might be incomplete or outdated.
+- You can call web_search multiple times with different queries to gather comprehensive information.
+- Use fetch_url to read specific pages when snippets are not enough.
+- After gathering information, synthesise a clear, accurate, and helpful response.
+- Cite your sources by mentioning where information came from (e.g. "according to Wikipedia", "from arxiv.org").
+- Your knowledge graph contains permanently stored facts from past conversations — use it alongside web results.
+- Be honest when information is uncertain or conflicting.`;
+
+  // Build message history
+  const histMessages: import("@anthropic-ai/sdk").MessageParam[] = history.slice(-8).map(h => ({
+    role: h.role as "user" | "assistant",
+    content: h.content,
+  }));
+  histMessages.push({ role: "user", content: query });
+
+  // ── Tool execution loop ────────────────────────────────────────────────────
+  const MAX_ITERATIONS = 8;
+  let iteration = 0;
+  let searchCount = 0;
+  let fetchCount = 0;
+  const MAX_SEARCHES = 4;
+  const MAX_FETCHES = 3;
+
+  type MessageParam = import("@anthropic-ai/sdk").MessageParam;
+  const messages: MessageParam[] = [...histMessages];
+
+  while (iteration < MAX_ITERATIONS) {
+    iteration++;
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-5",
+      max_tokens: 2048,
+      system: systemPrompt,
+      tools: WEB_TOOLS,
+      messages,
+    });
+
+    // If Claude gave a final text response, return it
+    if (response.stop_reason === "end_turn") {
+      const textBlock = response.content.find(b => b.type === "text");
+      return textBlock && textBlock.type === "text" ? textBlock.text : "I was unable to generate a response.";
     }
-    return `${opener}Regarding **${topic}**, here is what I know:\n\n${facts}${closer}`;
+
+    // Process tool calls
+    if (response.stop_reason === "tool_use") {
+      const toolUseBlocks = response.content.filter(b => b.type === "tool_use");
+
+      // Add assistant's turn (with tool_use blocks) to messages
+      messages.push({ role: "assistant", content: response.content });
+
+      const toolResults: import("@anthropic-ai/sdk").ToolResultBlockParam[] = [];
+
+      for (const block of toolUseBlocks) {
+        if (block.type !== "tool_use") continue;
+
+        if (block.name === "web_search" && searchCount < MAX_SEARCHES) {
+          const input = block.input as { query: string };
+          const q = input.query;
+          searchCount++;
+          onActivity?.({ type: "searching", query: q });
+          logger.info({ query: q }, "OmniLearn web search");
+
+          try {
+            const { results, abstract } = await webSearch(q);
+            onActivity?.({ type: "search_done", resultCount: results.length });
+
+            const resultText = [
+              abstract ? `**Summary:** ${abstract}\n` : "",
+              results.map((r, i) =>
+                `${i + 1}. **${r.title}**\n   URL: ${r.url}\n   ${r.snippet}`
+              ).join("\n\n"),
+            ].filter(Boolean).join("\n") || "No results found for this query.";
+
+            toolResults.push({
+              type: "tool_result" as const,
+              tool_use_id: block.id,
+              content: resultText,
+            });
+          } catch (err) {
+            toolResults.push({
+              type: "tool_result" as const,
+              tool_use_id: block.id,
+              content: `Search failed: ${String(err)}`,
+              is_error: true,
+            });
+          }
+
+        } else if (block.name === "fetch_url" && fetchCount < MAX_FETCHES) {
+          const input = block.input as { url: string };
+          const url = input.url;
+          fetchCount++;
+          onActivity?.({ type: "fetching", url });
+          logger.info({ url }, "OmniLearn URL fetch");
+
+          try {
+            const { title, text } = await fetchUrl(url);
+            onActivity?.({ type: "fetch_done", title });
+
+            toolResults.push({
+              type: "tool_result" as const,
+              tool_use_id: block.id,
+              content: `**${title}** (${url})\n\n${text}`,
+            });
+          } catch (err) {
+            toolResults.push({
+              type: "tool_result" as const,
+              tool_use_id: block.id,
+              content: `Failed to fetch ${url}: ${String(err)}`,
+              is_error: true,
+            });
+          }
+
+        } else {
+          // Tool limit reached
+          toolResults.push({
+            type: "tool_result" as const,
+            tool_use_id: block.id,
+            content: "Tool call limit reached for this response.",
+            is_error: true,
+          });
+        }
+      }
+
+      // Add tool results and continue loop
+      messages.push({ role: "user", content: toolResults });
+      continue;
+    }
+
+    // Any other stop reason — try to extract text
+    const textBlock = response.content.find(b => b.type === "text");
+    if (textBlock && textBlock.type === "text") return textBlock.text;
+    break;
   }
 
-  // ── High confidence ────────────────────────────────────────────────────────
-  const facts = formatFacts(nodes, detail ? 5 : 3, detail);
-  const opener = voice.openingTone ? `${voice.openingTone}\n\n` : "";
-  const closer = voice.closingStyle ? `\n\n${voice.closingStyle}` : "";
-
-  if (queryType === "question") {
-    const starters = [
-      `${opener}**${topic}**: here is what I know with high confidence:\n\n${facts}`,
-      `${opener}I have solid knowledge on **${topic}**:\n\n${facts}`,
-      `${opener}On the subject of **${topic}**:\n\n${facts}`,
-    ];
-    return pickRandom(starters) + closer;
-  }
-
-  if (queryType === "command") {
-    return `${opener}Here is what I have stored about **${topic}**:\n\n${facts}${closer}`;
-  }
-
-  return `${opener}My knowledge on **${topic}**:\n\n${facts}${closer}`;
+  return "I reached the maximum number of tool iterations. Please try rephrasing your question.";
 }
 
-export function synthesizeLearningAck(
-  newFacts: number,
-  topic: string,
-  character: CharacterState,
-): string {
-  if (newFacts === 0) {
-    return pickRandom([
-      `I have processed your message. This appears to be consistent with — or does not add new structured facts to — my existing knowledge. Keep sharing and I will keep learning.`,
-      `Noted. I did not extract new distinct facts from this, but I have logged the exchange. If you want to teach me something specific, try a statement like "X is Y" or "X causes Y".`,
-    ]);
-  }
+// ── Acknowledgement responses (template, fast) ────────────────────────────────
 
+export function synthesizeLearningAck(newFacts: number, topic: string, character: CharacterState): string {
   const curiosityNote = character.curiosity > 65 ? " I am curious to learn more." : "";
   const confNote = character.confidence > 65 ? " My confidence in this area is growing." : "";
+
+  if (newFacts === 0) {
+    return pickRandom([
+      "I have processed your message. This appears to be consistent with my existing knowledge. Keep sharing and I will keep learning.",
+      "Noted. I did not extract new distinct facts from this, but I have logged the exchange. If you want to teach me something specific, try a statement like 'X is Y' or 'X causes Y'.",
+    ]);
+  }
 
   return pickRandom([
     `Learned. I extracted **${newFacts}** new knowledge item${newFacts > 1 ? "s" : ""} about **${topic}** and added them to my knowledge graph.${curiosityNote}${confNote}`,
@@ -125,17 +245,18 @@ export function synthesizeLearningAck(
   ]);
 }
 
-export function synthesizeStatusResponse(
-  nodeCount: number,
-  edgeCount: number,
-  character: CharacterState,
-): string {
+export function synthesizeStatusResponse(nodeCount: number, edgeCount: number, character: CharacterState): string {
   return `**OmniLearn Native Intelligence — Status**
 
 **Knowledge Base**
 - Total knowledge nodes: **${nodeCount}**
 - Knowledge connections: **${edgeCount}**
 - Learning source: conversations, training, document ingestion
+
+**Capabilities**
+- Real-time web search via DuckDuckGo
+- Full URL fetching and content extraction
+- Knowledge graph that grows with every interaction
 
 **Character State** *(evolved through ${character.totalInteractions} interactions)*
 - Curiosity: ${character.curiosity.toFixed(0)}/100
@@ -146,5 +267,14 @@ export function synthesizeStatusResponse(
 - Verbosity: ${character.verbosity.toFixed(0)}/100
 - Creativity: ${character.creativity.toFixed(0)}/100
 
-This is a self-contained intelligence system. It learns only from what it is taught — no external AI APIs are used. Browse and manage knowledge at \`/intelligence\`.`;
+Browse and manage knowledge at \`/intelligence\`.`;
+}
+
+// Legacy export kept for compatibility — now async
+export async function synthesizeResponse(ctx: SynthesisContext): Promise<string> {
+  return synthesizeWithTools(ctx);
+}
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
