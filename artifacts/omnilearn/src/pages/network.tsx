@@ -114,12 +114,16 @@ export default function Network() {
   const [tick, setTick] = useState(0);
   const svgRef = useRef<SVGSVGElement>(null);
   const [ghostStatus, setGhostStatus] = useState<GhostStatus | null>(null);
+  const [browserWorkers, setBrowserWorkers] = useState(0);
 
   useEffect(() => {
     fetch(`${BASE}/api/ghost/status`)
       .then(r => r.ok ? r.json() : null)
       .catch(() => null)
       .then(data => setGhostStatus(data));
+    fetch(`${BASE}/api/ghost/workers`)
+      .then(r => r.ok ? r.json() : []).catch(() => [])
+      .then((d: unknown[]) => setBrowserWorkers(Array.isArray(d) ? d.filter((w: unknown) => (w as { online: boolean }).online).length : 0));
   }, []);
 
   useEffect(() => {
@@ -318,7 +322,11 @@ export default function Network() {
         </div>
       </motion.div>
 
-      <CollectiveEvolution />
+      <CollectiveEvolution
+        serverNodes={ghostStatus?.total ?? 0}
+        tasksProcessed={ghostStatus?.totalTasksProcessed ?? 0}
+        browserWorkers={browserWorkers}
+      />
       <ProofOfExistence />
     </div>
   );
@@ -749,11 +757,20 @@ function makeContrib(): ContribEvent {
 
 const INIT_CONTRIBS: ContribEvent[] = Array.from({ length: 6 }, makeContrib).reverse();
 
-function CollectiveEvolution() {
+interface CollectiveProps { serverNodes: number; tasksProcessed: number; browserWorkers: number; }
+
+function CollectiveEvolution({ serverNodes, tasksProcessed, browserWorkers }: CollectiveProps) {
   const [contribs, setContribs] = useState<ContribEvent[]>(INIT_CONTRIBS);
   const [activeTab, setActiveTab] = useState<"growth" | "feed" | "protocol">("growth");
-  const [nodeCount] = useState(5400);
-  const [epoch] = useState(24);
+  const [netStats, setNetStats] = useState<{ neurons: number; coreNeurons: number; agents: number } | null>(null);
+  const [character, setCharacter] = useState<{ totalInteractions: number } | null>(null);
+  const [pulses, setPulses] = useState<Array<{ id: number; eventType: string; neuronsAffected: number; details: string | null; createdAt: string }>>([]);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/network/stats`).then(r => r.ok ? r.json() : null).catch(() => null).then(d => setNetStats(d));
+    fetch(`${BASE}/api/omni/character`).then(r => r.ok ? r.json() : null).catch(() => null).then(d => setCharacter(d));
+    fetch(`${BASE}/api/network/pulses?limit=8`).then(r => r.ok ? r.json() : null).catch(() => null).then(d => setPulses(Array.isArray(d) ? d : []));
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -761,6 +778,23 @@ function CollectiveEvolution() {
     }, 2200);
     return () => clearInterval(t);
   }, []);
+
+  // Derive live stats
+  const activeNodes = serverNodes + browserWorkers + 1; // +1 = self
+  const epoch = character ? Math.max(1, Math.floor((character.totalInteractions ?? 0) / 50) + 1) : 1;
+  const improvementsRatified = netStats ? (netStats.coreNeurons + netStats.agents) : 0;
+  const contributionsThisEpoch = (character?.totalInteractions ?? 0) + tasksProcessed;
+
+  // Milestones: real pulses if available, else static fallback
+  const liveMilestones = pulses.length >= 3
+    ? pulses.slice(0, 5).map((p, i) => ({
+        epoch: Math.max(1, epoch - (pulses.length - 1 - i)),
+        label: p.details ?? p.eventType,
+        votes: (p.neuronsAffected || 1) * 3,
+        threshold: Math.max(5, (p.neuronsAffected || 1)),
+        status: "ratified" as const,
+      }))
+    : IMPROVEMENT_MILESTONES;
 
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
@@ -779,10 +813,10 @@ function CollectiveEvolution() {
       {/* Live health stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
         {[
-          { label: "Active nodes", value: nodeCount.toLocaleString(), color: "#22d3ee", icon: Cpu },
+          { label: "Active nodes", value: activeNodes.toLocaleString(), color: "#22d3ee", icon: Cpu },
           { label: "Current epoch", value: `#${epoch}`, color: "#34d399", icon: TrendingUp },
-          { label: "Improvements ratified", value: "220", color: "#a78bfa", icon: CheckCircle },
-          { label: "Contributions this epoch", value: "1,847", color: "#fb923c", icon: Upload },
+          { label: "Improvements ratified", value: improvementsRatified.toLocaleString(), color: "#a78bfa", icon: CheckCircle },
+          { label: "Contributions this epoch", value: contributionsThisEpoch.toLocaleString(), color: "#fb923c", icon: Upload },
         ].map(s => (
           <div key={s.label} className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -842,8 +876,8 @@ function CollectiveEvolution() {
             </div>
             <div className="space-y-3">
               <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-3">Improvement milestones</p>
-              {IMPROVEMENT_MILESTONES.map(m => (
-                <div key={m.epoch} className="flex items-center gap-4 bg-card border border-border rounded-lg px-4 py-3">
+              {liveMilestones.map((m, i) => (
+                <div key={`${m.epoch}-${i}`} className="flex items-center gap-4 bg-card border border-border rounded-lg px-4 py-3">
                   <span className="font-mono text-[10px] text-muted-foreground w-12 shrink-0">epoch {m.epoch}</span>
                   <div className="flex-1 font-mono text-sm text-foreground">{m.label}</div>
                   <div className="flex items-center gap-2">

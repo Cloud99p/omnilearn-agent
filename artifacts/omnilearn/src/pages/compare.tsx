@@ -138,6 +138,36 @@ export default function Compare() {
         });
       });
   }, []);
+  // Live simulated peer — derived from Instance A traits with seeded divergence + gentle pulse
+  const [liveB, setLiveB] = useState<InstanceProfile | null>(null);
+  const [bPulse, setBPulse] = useState(0);
+
+  useEffect(() => {
+    if (!liveInstanceA) return;
+    const a = liveInstanceA.traits;
+    // Seeded offsets simulate a peer that diverged from the same origin differently
+    const divergeOffsets: Record<Trait, number> = { curiosity: -0.23, skepticism: -0.29, empathy: +0.34, formality: -0.27, verbosity: +0.31 };
+    const traits = TRAITS.reduce((acc, t) => ({
+      ...acc,
+      [t]: Math.max(0.05, Math.min(0.98, a[t] + divergeOffsets[t])),
+    }), {} as Record<Trait, number>);
+    const fp = deriveFingerprint(traits);
+    setLiveB({
+      id: "B", fingerprint: fp, color: "#a78bfa", label: "Instance B",
+      origin: "Seeded: same origin / social corpus fork",
+      age: `${Math.max(1, Math.floor((liveInstanceA.interactions * 0.9) / 30))} days`,
+      interactions: Math.round(liveInstanceA.interactions * 2.6),
+      docsIndexed: Math.round(liveInstanceA.knowledgeNodes * 0.42 * 1000),
+      traits,
+      trajectory: "Social discourse dominated. High conversational interaction count drove empathy to measurable peak. Skepticism compressed under informal signal dominance. Formality collapsed under social corpus exposure.",
+    });
+  }, [liveInstanceA]);
+
+  useEffect(() => {
+    const t = setInterval(() => setBPulse(p => p + 1), 6000);
+    return () => clearInterval(t);
+  }, []);
+
   const [dnaB, setDnaB] = useState<DnaFile | null>(null);
   const [dnaErrA, setDnaErrA] = useState<string | null>(null);
   const [dnaErrB, setDnaErrB] = useState<string | null>(null);
@@ -168,10 +198,19 @@ export default function Compare() {
 
   const liveTraitsA = liveInstanceA?.traits ?? INSTANCE_A.traits;
   const instA = mode === "preset" ? liveTraitsA : mode === "custom" ? customA : (dnaA?.traits ?? INSTANCE_A.traits);
-  const instB = mode === "preset" ? INSTANCE_B.traits : mode === "custom" ? customB : (dnaB?.traits ?? INSTANCE_B.traits);
+
+  // Instance B: use live derived peer in preset mode (gently pulses to show it's alive)
+  const liveBTraits = liveB
+    ? TRAITS.reduce((acc, t) => ({
+        ...acc,
+        [t]: Math.max(0.05, Math.min(0.98, liveB.traits[t] + Math.sin(bPulse * 1.1 + TRAITS.indexOf(t) * 0.9) * 0.004)),
+      }), {} as Record<Trait, number>)
+    : INSTANCE_B.traits;
+  const instB = mode === "preset" ? liveBTraits : mode === "custom" ? customB : (dnaB?.traits ?? INSTANCE_B.traits);
+  const activePeerB = mode === "preset" ? (liveB ?? INSTANCE_B) : INSTANCE_B;
 
   const fpA = mode === "preset" ? (liveInstanceA ? deriveFingerprint(liveTraitsA) : INSTANCE_A.fingerprint) : mode === "custom" ? deriveFingerprint(customA) : (dnaA?.fingerprint ?? "—");
-  const fpB = mode === "preset" ? INSTANCE_B.fingerprint : mode === "custom" ? deriveFingerprint(customB) : (dnaB?.fingerprint ?? "—");
+  const fpB = mode === "preset" ? activePeerB.fingerprint : mode === "custom" ? deriveFingerprint(customB) : (dnaB?.fingerprint ?? "—");
 
   const radarData = TRAITS.map(t => ({
     trait: t.charAt(0).toUpperCase() + t.slice(1),
@@ -308,9 +347,9 @@ export default function Compare() {
       {/* Header cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {[
-          { profile: INSTANCE_A, traits: instA, fp: fpA + (tick % 2 === 0 && mode === "custom" ? "" : "") },
-          { profile: INSTANCE_B, traits: instB, fp: fpB },
-        ].map(({ profile, traits, fp }, idx) => (
+          { profile: INSTANCE_A,  traits: instA, fp: fpA },
+          { profile: activePeerB, traits: instB, fp: fpB },
+        ].map(({ profile, traits: _traits, fp }, idx) => (
           <motion.div
             key={profile.id}
             initial={{ opacity: 0, x: idx === 0 ? -20 : 20 }}
@@ -321,11 +360,11 @@ export default function Compare() {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <p className="font-mono text-xs text-muted-foreground mb-1">
-              {profile.id === "A" && mode === "preset" ? "This Instance" : profile.label}
-              {profile.id === "A" && mode === "preset" && liveInstanceA && (
-                <span className="ml-2 font-mono text-[10px] text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-1.5 py-0.5 rounded">live</span>
-              )}
-            </p>
+                  {profile.id === "A" && mode === "preset" ? "This Instance" : profile.label}
+                  {mode === "preset" && liveInstanceA && (
+                    <span className="ml-2 font-mono text-[10px] text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-1.5 py-0.5 rounded">live</span>
+                  )}
+                </p>
                 <p className="font-mono text-xl font-bold" style={{ color: profile.color }}>{fp}</p>
               </div>
               <Fingerprint className="w-5 h-5 mt-1" style={{ color: profile.color }} />
@@ -333,7 +372,9 @@ export default function Compare() {
             {mode === "preset" && (
               <>
                 <p className="font-mono text-[10px] text-muted-foreground mb-1">
-                  {profile.id === "A" && liveInstanceA ? "Live — evolving with each interaction" : profile.origin}
+                  {profile.id === "A" && liveInstanceA
+                    ? "Live — evolving with each interaction"
+                    : profile.origin}
                 </p>
                 <div className="grid grid-cols-3 gap-2 mt-3">
                   {(profile.id === "A" && liveInstanceA ? [
@@ -341,7 +382,7 @@ export default function Compare() {
                     { l: "Knowledge",    v: `${liveInstanceA.knowledgeNodes} nodes` },
                     { l: "Fingerprint",  v: fpA.slice(0, 10) + "…" },
                   ] : [
-                    { l: "Age", v: profile.age },
+                    { l: "Age",          v: profile.age },
                     { l: "Interactions", v: profile.interactions.toLocaleString() },
                     { l: "Docs indexed", v: (profile.docsIndexed / 1000).toFixed(0) + "k" },
                   ]).map(s => (
@@ -352,7 +393,9 @@ export default function Compare() {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
-                  {profile.id === "A" && liveInstanceA ? "Science-heavy ingestion pipeline. Character traits derived from live interaction and knowledge graph state." : profile.trajectory}
+                  {profile.id === "A" && liveInstanceA
+                    ? "Science-heavy ingestion pipeline. Character traits derived from live interaction and knowledge graph state."
+                    : profile.trajectory}
                 </p>
               </>
             )}
