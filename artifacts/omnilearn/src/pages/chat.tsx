@@ -325,7 +325,7 @@ export default function Chat() {
     }
   };
 
-  const createConversation = async (firstMessage: string) => {
+  const createConversation = async (firstMessage = "") => {
     const title = firstMessage.slice(0, 60) || "New conversation";
     const res = await fetch(`${BASE}/api/anthropic/conversations`, {
       method: "POST",
@@ -335,10 +335,15 @@ export default function Chat() {
     if (!res.ok) throw new Error("Failed to create conversation");
     const conv: Conversation = await res.json();
     setConversations(prev => [conv, ...prev]);
+    setMessages([]);
+    setStreamingContent("");
+    setLatestMeta(null);
+    setWebActivity(null);
+    setGhostRouting(null);
+    setGhostFallback(false);
     if (mode === "native") setNativeConvId(conv.id);
     if (mode === "ghost") setGhostConvId(conv.id);
     if (mode === "local") setActiveConvId(conv.id);
-    setMessages([{ id: Date.now(), role: "user", content: firstMessage, createdAt: new Date().toISOString() }]);
     return conv.id;
   };
 
@@ -362,7 +367,7 @@ export default function Chat() {
 
     try {
       let convId = nativeConvId;
-      if (!convId) convId = await createConversation(content);
+      if (!convId) convId = await createConversation();
       const res = await fetch(`${BASE}/api/omni/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -469,7 +474,7 @@ export default function Chat() {
 
     try {
       let convId = activeConvId;
-      if (!convId) convId = await createConversation(content);
+      if (!convId) convId = await createConversation();
 
       const res = await fetch(`${BASE}/api/anthropic/conversations/${convId}/messages/stream`, {
         method: "POST",
