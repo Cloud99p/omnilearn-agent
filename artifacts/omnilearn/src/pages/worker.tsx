@@ -1,17 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ghost, CheckCircle2, XCircle, Loader2, Zap, Wifi, WifiOff, AlertCircle, Eye, EyeOff, Activity, Clock, Brain } from "lucide-react";
+import { Ghost, CheckCircle2, XCircle, Loader2, Zap, Wifi, WifiOff, AlertCircle, Activity, Clock, Brain } from "lucide-react";
 import { useSearch } from "wouter";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
-
-interface TaskPayload {
-  message: string;
-  history: Array<{ role: "user" | "assistant"; content: string }>;
-  systemPrompt: string;
-}
 
 interface WorkerCreds {
   workerId: string;
@@ -28,36 +20,6 @@ interface LiveStats {
   lastCompletedAt: number | null;
 }
 
-async function callAnthropic(
-  apiKey: string,
-  history: Array<{ role: "user" | "assistant"; content: string }>,
-  message: string,
-  systemPrompt: string,
-): Promise<string> {
-  const messages = [...history, { role: "user", content: message }];
-  const res = await fetch(ANTHROPIC_API, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 8192,
-      system: systemPrompt,
-      messages,
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
-    throw new Error(err?.error?.message ?? `Anthropic error ${res.status}`);
-  }
-  const data = await res.json() as { content: Array<{ type: string; text?: string }> };
-  return data.content.find(c => c.type === "text")?.text ?? "";
-}
-
 export default function WorkerPage() {
   const search = useSearch();
   const params = new URLSearchParams(search);
@@ -67,8 +29,6 @@ export default function WorkerPage() {
   const [tokenLabel, setTokenLabel] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [name, setName] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [showKey, setShowKey] = useState(false);
   const [creds, setCreds] = useState<WorkerCreds | null>(null);
   const [stats, setStats] = useState<LiveStats>({
     tasksCompleted: 0,
@@ -81,7 +41,6 @@ export default function WorkerPage() {
 
   const runningRef = useRef(false);
   const credsRef   = useRef<WorkerCreds | null>(null);
-  const apiKeyRef  = useRef("");
   const statsRef   = useRef(stats);
   statsRef.current = stats;
 
@@ -113,11 +72,10 @@ export default function WorkerPage() {
     setLog(prev => [{ ts: Date.now(), text, ok }, ...prev].slice(0, 40));
   }, []);
 
-  // Main worker polling loop
-  const startWorking = useCallback(async (w: WorkerCreds, key: string) => {
+  // Main worker polling loop — no API key needed, server handles AI calls
+  const startWorking = useCallback(async (w: WorkerCreds) => {
     runningRef.current = true;
     credsRef.current   = w;
-    apiKeyRef.current  = key;
 
     while (runningRef.current) {
       try {
@@ -129,47 +87,38 @@ export default function WorkerPage() {
           continue;
         }
 
-        const pollData = await pollRes.json() as { task?: { taskId: string; payload: TaskPayload } };
+        const pollData = await pollRes.json() as { task?: { taskId: string; payload: { message: string } } };
 
         if (!pollData.task) {
-          continue; // no task available — immediately poll again (server already held for 25s)
+          continue; // server held for 25s, poll again immediately
         }
 
         const { taskId, payload } = pollData.task;
-
         setStats(s => ({ ...s, currentTask: payload.message.slice(0, 80) }));
         addLog(`Task received: "${payload.message.slice(0, 60)}…"`, true);
 
         const start = Date.now();
-        let taskResult = "";
         let failed = false;
+        let processingMs = 0;
 
         try {
-          taskResult = await callAnthropic(
-            apiKeyRef.current,
-            payload.history,
-            payload.message,
-            payload.systemPrompt,
-          );
+          // Ask the server to run the AI call — no API key needed from contributor
+          const execRes = await fetch(`${BASE}/api/ghost/worker/execute/${encodeURIComponent(taskId)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ workerId: w.workerId, workerSecret: w.workerSecret }),
+          });
+          processingMs = Date.now() - start;
+          if (!execRes.ok) {
+            failed = true;
+            const err = await execRes.json().catch(() => ({})) as { error?: string };
+            addLog(`Task failed: ${err?.error ?? `server error ${execRes.status}`}`, false);
+          }
         } catch (err) {
+          processingMs = Date.now() - start;
           failed = true;
-          addLog(`Anthropic error: ${err instanceof Error ? err.message : "unknown"}`, false);
+          addLog(`Network error: ${err instanceof Error ? err.message : "unknown"}`, false);
         }
-
-        const processingMs = Date.now() - start;
-
-        // Submit result
-        await fetch(`${BASE}/api/ghost/worker/result/${encodeURIComponent(taskId)}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            workerId:     w.workerId,
-            workerSecret: w.workerSecret,
-            result:       failed ? undefined : taskResult,
-            failed,
-            processingMs,
-          }),
-        });
 
         const prev = statsRef.current;
         const newCompleted = failed ? prev.tasksCompleted : prev.tasksCompleted + 1;
@@ -197,7 +146,7 @@ export default function WorkerPage() {
   }, [addLog]);
 
   const handleJoin = async () => {
-    if (!name.trim() || !apiKey.trim()) return;
+    if (!name.trim()) return;
     setPhase("connecting");
 
     try {
@@ -218,7 +167,7 @@ export default function WorkerPage() {
       setCreds(w);
       setPhase("active");
       addLog("Joined network — waiting for tasks", true);
-      startWorking(w, apiKey);
+      startWorking(w);
     } catch {
       setPhase("join");
       setErrorMsg("Could not connect to OmniLearn server.");
@@ -273,8 +222,7 @@ export default function WorkerPage() {
               <p className="font-mono text-sm text-muted-foreground leading-relaxed">
                 You were invited to contribute compute to{" "}
                 <span className="text-primary">{tokenLabel}</span>.
-                Your browser will process AI tasks using your own Anthropic API key.
-                Nothing is stored on this server except your worker name and task counts.
+                Your browser acts as a worker node — no API keys or accounts required.
               </p>
             </div>
 
@@ -285,47 +233,22 @@ export default function WorkerPage() {
               </div>
             )}
 
-            <div className="space-y-4">
-              <div>
-                <label className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
-                  Worker name
-                </label>
-                <input
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="e.g. Alice's MacBook"
-                  className="w-full bg-card border border-border rounded-lg px-3 py-2.5 font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
-                  Anthropic API key
-                </label>
-                <div className="relative">
-                  <input
-                    value={apiKey}
-                    onChange={e => setApiKey(e.target.value)}
-                    type={showKey ? "text" : "password"}
-                    placeholder="sk-ant-…"
-                    className="w-full bg-card border border-border rounded-lg px-3 py-2.5 font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors pr-10"
-                  />
-                  <button
-                    onClick={() => setShowKey(s => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <p className="font-mono text-[10px] text-muted-foreground/60 mt-1.5 leading-relaxed">
-                  Your key is used only in this browser session to call Anthropic directly. It is never sent to the OmniLearn server.
-                </p>
-              </div>
+            <div>
+              <label className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
+                Worker name
+              </label>
+              <input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleJoin()}
+                placeholder="e.g. Alice's MacBook"
+                className="w-full bg-card border border-border rounded-lg px-3 py-2.5 font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors"
+              />
             </div>
 
             <button
               onClick={handleJoin}
-              disabled={!name.trim() || !apiKey.trim() || phase === "connecting"}
+              disabled={!name.trim() || phase === "connecting"}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-violet-500/20 border border-violet-500/30 text-violet-300 hover:bg-violet-500/30 disabled:opacity-40 disabled:cursor-not-allowed font-mono text-sm font-bold transition-all"
             >
               {phase === "connecting"
@@ -336,7 +259,7 @@ export default function WorkerPage() {
 
             <div className="grid grid-cols-3 gap-3">
               {[
-                { icon: Brain, text: "Your Anthropic key processes tasks locally in your browser" },
+                { icon: Brain, text: "The server handles all AI calls — no API key needed from you" },
                 { icon: Activity, text: "Your worker is assigned tasks by the network load balancer" },
                 { icon: Ghost, text: "Disconnect any time by closing the tab" },
               ].map(({ icon: Icon, text }) => (

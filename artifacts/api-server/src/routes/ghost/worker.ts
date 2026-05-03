@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { db } from "@workspace/db";
 import { ghostInviteTokens, ghostWorkerSessions, ghostWorkerTasks } from "@workspace/db/schema";
 import { eq, and, lt, sql } from "drizzle-orm";
@@ -260,6 +261,91 @@ router.post("/worker/heartbeat", async (req, res) => {
   } catch (err) {
     req.log.error(err, "Heartbeat error");
     res.status(500).json({ error: "Heartbeat failed" });
+  }
+});
+
+// POST /api/ghost/worker/execute/:taskId — worker claims & server processes task via Anthropic
+router.post("/worker/execute/:taskId", async (req, res) => {
+  try {
+    const { workerId, workerSecret } = req.body as { workerId?: string; workerSecret?: string };
+    if (!workerId || !workerSecret) {
+      res.status(400).json({ error: "Missing credentials" }); return;
+    }
+
+    const [session] = await db.select().from(ghostWorkerSessions)
+      .where(eq(ghostWorkerSessions.workerId, workerId));
+    if (!session || session.workerSecret !== workerSecret) {
+      res.status(401).json({ error: "Invalid worker credentials" }); return;
+    }
+
+    const taskId = req.params.taskId;
+    const [task] = await db.select().from(ghostWorkerTasks)
+      .where(and(eq(ghostWorkerTasks.taskId, taskId), eq(ghostWorkerTasks.workerId, workerId)));
+    if (!task) {
+      res.status(404).json({ error: "Task not found or not assigned to this worker" }); return;
+    }
+    if (task.status !== "assigned") {
+      res.status(409).json({ error: "Task is not in assigned state" }); return;
+    }
+
+    const payload = JSON.parse(task.payload) as {
+      message: string;
+      history?: Array<{ role: "user" | "assistant"; content: string }>;
+      systemPrompt?: string;
+    };
+
+    const startTime = Date.now();
+    let resultText = "";
+    let failed = false;
+
+    try {
+      const msgs = [
+        ...(payload.history ?? []),
+        { role: "user" as const, content: payload.message },
+      ];
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 8192,
+        system: payload.systemPrompt ?? "You are OmniLearn, a distributed AI assistant.",
+        messages: msgs,
+      });
+      resultText = response.content.find(c => c.type === "text")?.text ?? "";
+    } catch (err) {
+      req.log.error(err, "Browser worker execute: Anthropic error");
+      failed = true;
+    }
+
+    const processingMs = Date.now() - startTime;
+
+    await db.update(ghostWorkerTasks).set({
+      status:      failed ? "failed" : "complete",
+      result:      failed ? null : resultText,
+      completedAt: new Date(),
+    }).where(eq(ghostWorkerTasks.taskId, taskId));
+
+    const prevCount = session.tasksProcessed ?? 0;
+    const newAvg = !failed && processingMs
+      ? prevCount > 0
+        ? ((session.avgResponseMs ?? processingMs) * prevCount + processingMs) / (prevCount + 1)
+        : processingMs
+      : session.avgResponseMs;
+
+    await db.update(ghostWorkerSessions).set({
+      status:         "idle",
+      lastSeen:       new Date(),
+      tasksProcessed: failed ? session.tasksProcessed : sql`tasks_processed + 1`,
+      tasksFailed:    failed ? sql`tasks_failed + 1`   : session.tasksFailed,
+      avgResponseMs:  newAvg ?? null,
+    }).where(eq(ghostWorkerSessions.workerId, workerId));
+
+    if (failed) {
+      res.status(500).json({ error: "AI processing failed" });
+    } else {
+      res.json({ ok: true, result: resultText, processingMs });
+    }
+  } catch (err) {
+    req.log.error(err, "Worker execute error");
+    res.status(500).json({ error: "Execution failed" });
   }
 });
 
