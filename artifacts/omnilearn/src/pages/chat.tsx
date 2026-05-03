@@ -338,6 +338,7 @@ export default function Chat() {
     if (mode === "native") setNativeConvId(conv.id);
     if (mode === "ghost") setGhostConvId(conv.id);
     if (mode === "local") setActiveConvId(conv.id);
+    setMessages([{ id: Date.now(), role: "user", content: firstMessage, createdAt: new Date().toISOString() }]);
     return conv.id;
   };
 

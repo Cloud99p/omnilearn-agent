@@ -17,10 +17,10 @@ const router = Router();
 router.get("/conversations", async (req, res) => {
   try {
     const list = await db.select().from(conversations).orderBy(conversations.createdAt);
-    res.json(list);
+    return res.json(list);
   } catch (err) {
     req.log.error({ err }, "Failed to list conversations");
-    res.status(500).json({ error: "Failed to list conversations" });
+    return res.status(500).json({ error: "Failed to list conversations" });
   }
 });
 
@@ -35,10 +35,10 @@ router.post("/conversations", async (req, res) => {
       .insert(conversations)
       .values({ title: parsed.data.title, mode: parsed.data.mode })
       .returning();
-    res.status(201).json(conv);
+    return res.status(201).json(conv);
   } catch (err) {
     req.log.error({ err }, "Failed to create conversation");
-    res.status(500).json({ error: "Failed to create conversation" });
+    return res.status(500).json({ error: "Failed to create conversation" });
   }
 });
 
@@ -60,10 +60,10 @@ router.get("/conversations/:conversationId", async (req, res) => {
       .where(eq(messages.conversationId, params.data.conversationId))
       .orderBy(messages.createdAt);
 
-    res.json({ ...conv, messages: msgs });
+    return res.json({ ...conv, messages: msgs });
   } catch (err) {
     req.log.error({ err }, "Failed to get conversation");
-    res.status(500).json({ error: "Failed to get conversation" });
+    return res.status(500).json({ error: "Failed to get conversation" });
   }
 });
 
@@ -74,10 +74,10 @@ router.delete("/conversations/:conversationId", async (req, res) => {
 
   try {
     await db.delete(conversations).where(eq(conversations.id, params.data.conversationId));
-    res.status(204).end();
+    return res.status(204).end();
   } catch (err) {
     req.log.error({ err }, "Failed to delete conversation");
-    res.status(500).json({ error: "Failed to delete conversation" });
+    return res.status(500).json({ error: "Failed to delete conversation" });
   }
 });
 
@@ -163,14 +163,14 @@ router.post("/conversations/:conversationId/messages/stream", async (req, res) =
     });
 
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-    res.end();
+    return res.end();
   } catch (err) {
     req.log.error({ err }, "Streaming failed");
     if (!res.headersSent) {
-      res.status(500).json({ error: "Streaming failed" });
+      return res.status(500).json({ error: "Streaming failed" });
     } else {
       res.write(`data: ${JSON.stringify({ error: "Streaming failed" })}\n\n`);
-      res.end();
+      return res.end();
     }
   }
 });
