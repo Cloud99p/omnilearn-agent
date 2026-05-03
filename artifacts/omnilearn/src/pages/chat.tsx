@@ -4,8 +4,10 @@ import {
   Send, Server, Ghost, Plus, Trash2, Bot, User, Loader2,
   Wrench, Search, Code, Brain, Globe, Shield, ChevronRight,
   X, Sparkles, MessageSquare, Zap, FileText, Database,
+  CheckCircle2, XCircle, ArrowRight, Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Link } from "wouter";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -17,7 +19,15 @@ interface Message {
   role: Role;
   content: string;
   createdAt: string;
-  meta?: { nodesUsed?: number; newNodesAdded?: number };
+  meta?: {
+    nodesUsed?: number;
+    newNodesAdded?: number;
+    nodeId?: number;
+    nodeName?: string;
+    processingMs?: number;
+    routed?: boolean;
+    local?: boolean;
+  };
 }
 
 interface Conversation {
@@ -36,6 +46,11 @@ interface Skill {
   category: string;
   isBuiltIn: boolean;
   isInstalled: boolean;
+}
+
+interface GhostStatus {
+  total: number;
+  online: number;
 }
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -138,6 +153,7 @@ export default function Chat() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<number | null>(null);
   const [nativeConvId, setNativeConvId] = useState<number | null>(null);
+  const [ghostConvId, setGhostConvId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -147,7 +163,10 @@ export default function Chat() {
   const [showSkillCreator, setShowSkillCreator] = useState(false);
   const [newSkill, setNewSkill] = useState({ name: "", description: "", icon: "Wrench", systemPrompt: "", category: "Custom" });
   const [loadingConv, setLoadingConv] = useState(false);
-  const [latestMeta, setLatestMeta] = useState<{ nodesUsed?: number; newNodesAdded?: number } | null>(null);
+  const [latestMeta, setLatestMeta] = useState<Message["meta"] | null>(null);
+  const [ghostStatus, setGhostStatus] = useState<GhostStatus | null>(null);
+  const [ghostRouting, setGhostRouting] = useState<{ nodeName: string; region: string } | null>(null);
+  const [ghostFallback, setGhostFallback] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -159,27 +178,39 @@ export default function Chat() {
   useEffect(() => {
     fetchConversations();
     fetchSkills();
+    fetchGhostStatus();
   }, []);
 
-  // Reset native conversation when switching away from native
   useEffect(() => {
     if (mode !== "native") setNativeConvId(null);
+    if (mode !== "ghost") { setGhostConvId(null); setGhostRouting(null); setGhostFallback(false); }
     setMessages([]);
     setActiveConvId(null);
+    setLatestMeta(null);
   }, [mode]);
 
   const fetchConversations = async () => {
     try {
       const res = await fetch(`${BASE}/api/anthropic/conversations`);
       if (res.ok) setConversations(await res.json());
-    } catch { /* network not available */ }
+    } catch { /* offline */ }
   };
 
   const fetchSkills = async () => {
     try {
       const res = await fetch(`${BASE}/api/skills`);
       if (res.ok) setSkills(await res.json());
-    } catch { /* network not available */ }
+    } catch { /* offline */ }
+  };
+
+  const fetchGhostStatus = async () => {
+    try {
+      const res = await fetch(`${BASE}/api/ghost/status`);
+      if (res.ok) {
+        const data = await res.json();
+        setGhostStatus({ total: data.total, online: data.online });
+      }
+    } catch { /* offline */ }
   };
 
   const loadConversation = async (id: number) => {
@@ -215,20 +246,12 @@ export default function Chat() {
     e.stopPropagation();
     await fetch(`${BASE}/api/anthropic/conversations/${id}`, { method: "DELETE" });
     setConversations(prev => prev.filter(c => c.id !== id));
-    if (activeConvId === id) {
-      setActiveConvId(null);
-      setMessages([]);
-    }
+    if (activeConvId === id) { setActiveConvId(null); setMessages([]); }
   };
 
   // ── Native mode send ──────────────────────────────────────────────────────
   const sendNativeMessage = useCallback(async (content: string) => {
-    const tempUserMsg: Message = {
-      id: Date.now(),
-      role: "user",
-      content,
-      createdAt: new Date().toISOString(),
-    };
+    const tempUserMsg: Message = { id: Date.now(), role: "user", content, createdAt: new Date().toISOString() };
     setMessages(prev => [...prev, tempUserMsg]);
     setStreaming(true);
     setStreamingContent("");
@@ -240,13 +263,12 @@ export default function Chat() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content, conversationId: nativeConvId }),
       });
-
       if (!res.ok || !res.body) throw new Error("Stream failed");
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let full = "";
-      let meta: { nodesUsed?: number; newNodesAdded?: number } | null = null;
+      let meta: Message["meta"] | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -257,20 +279,10 @@ export default function Chat() {
           try {
             const json = JSON.parse(line.slice(6));
             if (json.conversationId && !nativeConvId) setNativeConvId(json.conversationId);
-            if (json.content) {
-              full += json.content;
-              setStreamingContent(full);
-            }
+            if (json.content) { full += json.content; setStreamingContent(full); }
             if (json.meta) meta = json.meta;
             if (json.done) {
-              const assistantMsg: Message = {
-                id: Date.now() + 1,
-                role: "assistant",
-                content: full,
-                createdAt: new Date().toISOString(),
-                meta: meta ?? undefined,
-              };
-              setMessages(prev => [...prev, assistantMsg]);
+              setMessages(prev => [...prev, { id: Date.now() + 1, role: "assistant", content: full, createdAt: new Date().toISOString(), meta: meta ?? undefined }]);
               setStreamingContent("");
               if (meta) setLatestMeta(meta);
             }
@@ -278,26 +290,70 @@ export default function Chat() {
         }
       }
     } catch {
-      setMessages(prev => [...prev, {
-        id: Date.now() + 2,
-        role: "assistant",
-        content: "Connection error. Make sure the API server is running.",
-        createdAt: new Date().toISOString(),
-      }]);
+      setMessages(prev => [...prev, { id: Date.now() + 2, role: "assistant", content: "Connection error. Make sure the API server is running.", createdAt: new Date().toISOString() }]);
       setStreamingContent("");
     } finally {
       setStreaming(false);
     }
   }, [nativeConvId]);
 
+  // ── Ghost mode send ───────────────────────────────────────────────────────
+  const sendGhostMessage = useCallback(async (content: string) => {
+    const tempUserMsg: Message = { id: Date.now(), role: "user", content, createdAt: new Date().toISOString() };
+    setMessages(prev => [...prev, tempUserMsg]);
+    setStreaming(true);
+    setStreamingContent("");
+    setLatestMeta(null);
+    setGhostRouting(null);
+    setGhostFallback(false);
+
+    try {
+      const res = await fetch(`${BASE}/api/ghost/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, conversationId: ghostConvId }),
+      });
+      if (!res.ok || !res.body) throw new Error("Stream failed");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = "";
+      let meta: Message["meta"] | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n").filter(l => l.startsWith("data: "));
+        for (const line of lines) {
+          try {
+            const json = JSON.parse(line.slice(6));
+            if (json.conversationId && !ghostConvId) setGhostConvId(json.conversationId);
+            if (json.routing) setGhostRouting({ nodeName: json.routing.nodeName, region: json.routing.region });
+            if (json.noNodes || json.fallback) { setGhostFallback(true); setGhostRouting(null); }
+            if (json.content) { full += json.content; setStreamingContent(full); }
+            if (json.meta) meta = json.meta;
+            if (json.done) {
+              const finalMeta = meta ?? undefined;
+              setMessages(prev => [...prev, { id: Date.now() + 1, role: "assistant", content: full, createdAt: new Date().toISOString(), meta: finalMeta }]);
+              setStreamingContent("");
+              if (finalMeta) setLatestMeta(finalMeta);
+              setGhostRouting(null);
+            }
+          } catch { /* parse error */ }
+        }
+      }
+    } catch {
+      setMessages(prev => [...prev, { id: Date.now() + 2, role: "assistant", content: "Connection error. Make sure the API server is running.", createdAt: new Date().toISOString() }]);
+      setStreamingContent("");
+    } finally {
+      setStreaming(false);
+    }
+  }, [ghostConvId]);
+
   // ── Claude mode send ──────────────────────────────────────────────────────
   const sendClaudeMessage = useCallback(async (content: string) => {
-    const tempUserMsg: Message = {
-      id: Date.now(),
-      role: "user",
-      content,
-      createdAt: new Date().toISOString(),
-    };
+    const tempUserMsg: Message = { id: Date.now(), role: "user", content, createdAt: new Date().toISOString() };
     setMessages(prev => [...prev, tempUserMsg]);
     setStreaming(true);
     setStreamingContent("");
@@ -311,7 +367,6 @@ export default function Chat() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content, installedSkillIds }),
       });
-
       if (!res.ok || !res.body) throw new Error("Stream failed");
 
       const reader = res.body.getReader();
@@ -326,29 +381,16 @@ export default function Chat() {
         for (const line of lines) {
           try {
             const json = JSON.parse(line.slice(6));
-            if (json.content) {
-              full += json.content;
-              setStreamingContent(full);
-            }
+            if (json.content) { full += json.content; setStreamingContent(full); }
             if (json.done) {
-              setMessages(prev => [...prev, {
-                id: Date.now() + 1,
-                role: "assistant",
-                content: full,
-                createdAt: new Date().toISOString(),
-              }]);
+              setMessages(prev => [...prev, { id: Date.now() + 1, role: "assistant", content: full, createdAt: new Date().toISOString() }]);
               setStreamingContent("");
             }
           } catch { /* parse error */ }
         }
       }
     } catch {
-      setMessages(prev => [...prev, {
-        id: Date.now() + 2,
-        role: "assistant",
-        content: "Connection error. Make sure the API server is running.",
-        createdAt: new Date().toISOString(),
-      }]);
+      setMessages(prev => [...prev, { id: Date.now() + 2, role: "assistant", content: "Connection error. Make sure the API server is running.", createdAt: new Date().toISOString() }]);
       setStreamingContent("");
     } finally {
       setStreaming(false);
@@ -359,13 +401,10 @@ export default function Chat() {
     if (!input.trim() || streaming) return;
     const content = input.trim();
     setInput("");
-
-    if (mode === "native") {
-      await sendNativeMessage(content);
-    } else {
-      await sendClaudeMessage(content);
-    }
-  }, [input, streaming, mode, sendNativeMessage, sendClaudeMessage]);
+    if (mode === "native") await sendNativeMessage(content);
+    else if (mode === "ghost") await sendGhostMessage(content);
+    else await sendClaudeMessage(content);
+  }, [input, streaming, mode, sendNativeMessage, sendGhostMessage, sendClaudeMessage]);
 
   const installSkill = async (catalog: typeof SKILL_CATALOG[0]) => {
     const res = await fetch(`${BASE}/api/skills`, {
@@ -373,10 +412,7 @@ export default function Chat() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...catalog, isInstalled: true }),
     });
-    if (res.ok) {
-      const skill: Skill = await res.json();
-      setSkills(prev => [...prev, skill]);
-    }
+    if (res.ok) { const skill: Skill = await res.json(); setSkills(prev => [...prev, skill]); }
   };
 
   const removeSkill = async (id: number) => {
@@ -414,17 +450,13 @@ export default function Chat() {
       {/* ── Conversation sidebar ── */}
       <div className="hidden md:flex w-56 border-r border-border/40 bg-card/30 flex-col shrink-0">
         <div className="px-4 py-4 border-b border-border/40">
-          {/* Mode buttons */}
           <div className="grid grid-cols-3 gap-1 mb-3">
             {(["local", "ghost", "native"] as Mode[]).map(m => {
               const cfg = MODE_CONFIG[m];
               const Icon = cfg.icon;
               return (
-                <button
-                  key={m}
-                  onClick={() => setMode(m)}
-                  className={cn(
-                    "flex flex-col items-center gap-0.5 py-1.5 rounded-md font-mono text-[10px] border transition-all",
+                <button key={m} onClick={() => setMode(m)}
+                  className={cn("flex flex-col items-center gap-0.5 py-1.5 rounded-md font-mono text-[10px] border transition-all",
                     mode === m ? cfg.activeBg : "border-border/40 text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -434,17 +466,23 @@ export default function Chat() {
               );
             })}
           </div>
-          {mode !== "native" && (
-            <button
-              onClick={() => { setActiveConvId(null); setMessages([]); }}
+
+          {mode === "ghost" && (
+            <button onClick={() => { setGhostConvId(null); setMessages([]); setGhostRouting(null); setGhostFallback(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-md border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 font-mono text-xs transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" /> New ghost session
+            </button>
+          )}
+          {mode !== "native" && mode !== "ghost" && (
+            <button onClick={() => { setActiveConvId(null); setMessages([]); }}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-md border border-primary/30 text-primary hover:bg-primary/10 font-mono text-xs transition-all"
             >
               <Plus className="w-3.5 h-3.5" /> New chat
             </button>
           )}
           {mode === "native" && (
-            <button
-              onClick={() => { setNativeConvId(null); setMessages([]); }}
+            <button onClick={() => { setNativeConvId(null); setMessages([]); }}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-md border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-mono text-xs transition-all"
             >
               <Plus className="w-3.5 h-3.5" /> New session
@@ -452,36 +490,111 @@ export default function Chat() {
           )}
         </div>
 
-        {mode !== "native" && (
+        {/* Sidebar content per mode */}
+        {mode === "local" && (
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {conversations.length === 0 ? (
-              <p className="text-muted-foreground/40 font-mono text-xs px-2 py-4 text-center">No conversations yet</p>
-            ) : (
-              conversations.map(conv => (
-                <div
-                  key={conv.id}
-                  onClick={() => loadConversation(conv.id)}
-                  role="button"
-                  tabIndex={0}
+            {conversations.length === 0
+              ? <p className="text-muted-foreground/40 font-mono text-xs px-2 py-4 text-center">No conversations yet</p>
+              : conversations.map(conv => (
+                <div key={conv.id} onClick={() => loadConversation(conv.id)} role="button" tabIndex={0}
                   onKeyDown={e => e.key === "Enter" && loadConversation(conv.id)}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-2 py-2 rounded-md text-left group transition-all cursor-pointer",
-                    activeConvId === conv.id
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                  className={cn("w-full flex items-center gap-2 px-2 py-2 rounded-md text-left group transition-all cursor-pointer",
+                    activeConvId === conv.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
                   )}
                 >
                   <MessageSquare className="w-3 h-3 shrink-0" />
                   <span className="font-mono text-xs truncate flex-1">{conv.title}</span>
-                  <button
-                    onClick={(e) => deleteConversation(conv.id, e)}
-                    className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all shrink-0"
-                  >
+                  <button onClick={(e) => deleteConversation(conv.id, e)} className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all shrink-0">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
               ))
+            }
+          </div>
+        )}
+
+        {mode === "ghost" && (
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">Ghost Mode</p>
+
+            {/* Network status */}
+            {ghostStatus !== null && (
+              <div className={cn(
+                "p-2.5 rounded-lg border space-y-1.5",
+                ghostStatus.online > 0
+                  ? "border-violet-500/20 bg-violet-500/5"
+                  : "border-yellow-500/20 bg-yellow-500/5"
+              )}>
+                <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Network</p>
+                <div className="flex items-center gap-2">
+                  <span className={cn("w-2 h-2 rounded-full shrink-0",
+                    ghostStatus.online > 0 ? "bg-emerald-400 animate-pulse" : "bg-yellow-400/60"
+                  )} />
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {ghostStatus.online} / {ghostStatus.total} node{ghostStatus.total !== 1 ? "s" : ""} online
+                  </span>
+                </div>
+              </div>
             )}
+
+            {/* No nodes warning */}
+            {ghostStatus !== null && ghostStatus.total === 0 && (
+              <div className="p-2.5 rounded-lg border border-yellow-500/20 bg-yellow-500/5 space-y-2">
+                <p className="font-mono text-[10px] text-yellow-400/80 leading-relaxed">
+                  No ghost nodes registered. Messages will fall back to local Claude.
+                </p>
+                <Link href="/ghost-network" className="flex items-center gap-1 font-mono text-[10px] text-violet-400 hover:text-violet-300 transition-colors">
+                  Set up nodes <ArrowRight className="w-2.5 h-2.5" />
+                </Link>
+              </div>
+            )}
+
+            {/* Routing indicator */}
+            {ghostRouting && streaming && (
+              <div className="p-2.5 rounded-lg border border-violet-500/20 bg-violet-500/5 space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <Activity className="w-3 h-3 text-violet-400 animate-pulse" />
+                  <p className="font-mono text-[10px] text-violet-400">Routing to node</p>
+                </div>
+                <p className="font-mono text-[10px] text-foreground font-bold">{ghostRouting.nodeName}</p>
+                {ghostRouting.region !== "unknown" && (
+                  <p className="font-mono text-[10px] text-muted-foreground/60">{ghostRouting.region}</p>
+                )}
+              </div>
+            )}
+
+            {/* Fallback indicator */}
+            {ghostFallback && (
+              <div className="p-2.5 rounded-lg border border-yellow-500/20 bg-yellow-500/5">
+                <p className="font-mono text-[10px] text-yellow-400 leading-relaxed">
+                  Ghost nodes unreachable. Processing locally via Claude.
+                </p>
+              </div>
+            )}
+
+            {/* Latest response meta */}
+            {latestMeta && (
+              <div className="p-2.5 rounded-lg border border-violet-500/20 bg-violet-500/5 space-y-1.5">
+                <p className="font-mono text-[10px] text-violet-400 uppercase tracking-wider">Last Response</p>
+                <div className="font-mono text-[10px] text-muted-foreground space-y-0.5">
+                  {latestMeta.nodeName && <p>Node: {latestMeta.nodeName}</p>}
+                  {latestMeta.processingMs && <p>Time: {Math.round(latestMeta.processingMs)}ms</p>}
+                  {latestMeta.routed === false && <p className="text-yellow-400/70">Ran locally (fallback)</p>}
+                  {latestMeta.routed === true && (
+                    <div className="flex items-center gap-1 text-emerald-400">
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                      <span>Distributed</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <Link href="/ghost-network"
+              className="flex items-center gap-1.5 font-mono text-xs text-violet-400/60 hover:text-violet-400 transition-colors"
+            >
+              <Ghost className="w-3 h-3" /> Manage nodes
+            </Link>
           </div>
         )}
 
@@ -500,12 +613,11 @@ export default function Chat() {
                 </div>
               </div>
             )}
-            <a
-              href={`${BASE}/intelligence`}
+            <Link href="/intelligence"
               className="flex items-center gap-1.5 font-mono text-xs text-primary/60 hover:text-primary transition-colors"
             >
               <Brain className="w-3 h-3" /> View knowledge base
-            </a>
+            </Link>
           </div>
         )}
       </div>
@@ -517,16 +629,19 @@ export default function Chat() {
           <div className="flex items-center gap-3">
             <Bot className="w-5 h-5 text-primary" />
             <span className="font-mono text-sm font-bold text-foreground">
-              {mode === "native" ? "OmniLearn Native" : "OmniLearn Agent"}
+              {mode === "native" ? "OmniLearn Native" : mode === "ghost" ? "OmniLearn Ghost" : "OmniLearn Agent"}
             </span>
-            <div className={cn(
-              "flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-mono",
-              activeCfg.badge
-            )}>
+            <div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-mono", activeCfg.badge)}>
               <activeCfg.icon className="w-3 h-3" />
               {activeCfg.label}
             </div>
-            {mode !== "native" && installedSkillIds.length > 0 && (
+            {mode === "ghost" && ghostStatus && ghostStatus.online > 0 && (
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-xs font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {ghostStatus.online} node{ghostStatus.online > 1 ? "s" : ""}
+              </div>
+            )}
+            {mode !== "native" && mode !== "ghost" && installedSkillIds.length > 0 && (
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-xs font-mono">
                 <Zap className="w-3 h-3" />
                 {installedSkillIds.length} skill{installedSkillIds.length > 1 ? "s" : ""}
@@ -538,98 +653,110 @@ export default function Chat() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6">
           {messages.length === 0 && !streaming && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-2xl mx-auto text-center py-16"
-            >
-              <div className={cn(
-                "w-16 h-16 rounded-2xl border flex items-center justify-center mx-auto mb-6",
-                mode === "native"
-                  ? "bg-emerald-500/10 border-emerald-500/20"
-                  : "bg-primary/10 border-primary/20"
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto text-center py-16">
+              <div className={cn("w-16 h-16 rounded-2xl border flex items-center justify-center mx-auto mb-6",
+                mode === "native" ? "bg-emerald-500/10 border-emerald-500/20" :
+                mode === "ghost" ? "bg-violet-500/10 border-violet-500/20" :
+                "bg-primary/10 border-primary/20"
               )}>
-                {mode === "native"
-                  ? <Brain className="w-8 h-8 text-emerald-400" />
-                  : <Bot className="w-8 h-8 text-primary" />}
+                {mode === "native" ? <Brain className="w-8 h-8 text-emerald-400" /> :
+                 mode === "ghost" ? <Ghost className="w-8 h-8 text-violet-400" /> :
+                 <Bot className="w-8 h-8 text-primary" />}
               </div>
               <h2 className="text-2xl font-bold mb-2">
-                {mode === "native" ? "OmniLearn Native Intelligence" : "OmniLearn is ready"}
+                {mode === "native" ? "OmniLearn Native Intelligence" :
+                 mode === "ghost" ? "Ghost Network Ready" :
+                 "OmniLearn is ready"}
               </h2>
               <p className="text-muted-foreground font-mono text-sm mb-8">
                 {mode === "native"
                   ? "Powered by OmniLearn's own knowledge graph, TF-IDF retrieval, and character engine. No external AI. Learns from every message."
-                  : `Running in ${mode === "local" ? "local mode — on your hardware" : "ghost mode — distributed execution"}.${installedSkillIds.length > 0 ? ` ${installedSkillIds.length} skill${installedSkillIds.length > 1 ? "s" : ""} active.` : " Install skills to expand capabilities."}`}
+                  : mode === "ghost"
+                  ? ghostStatus && ghostStatus.total === 0
+                    ? "No ghost nodes registered yet. Messages will run locally via Claude until you add nodes."
+                    : `${ghostStatus?.online ?? 0} node${(ghostStatus?.online ?? 0) !== 1 ? "s" : ""} online. Messages route to the least-loaded node automatically.`
+                  : `Running locally on your hardware. ${installedSkillIds.length > 0 ? `${installedSkillIds.length} skill${installedSkillIds.length > 1 ? "s" : ""} active.` : "Install skills to expand capabilities."}`}
               </p>
+
+              {mode === "ghost" && ghostStatus?.total === 0 && (
+                <Link href="/ghost-network"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-500/20 border border-violet-500/30 text-violet-300 hover:bg-violet-500/30 font-mono text-sm transition-all mb-8"
+                >
+                  <Ghost className="w-4 h-4" /> Set up ghost nodes
+                </Link>
+              )}
+
               <div className="grid grid-cols-2 gap-3 text-left max-w-lg mx-auto">
                 {(mode === "native" ? [
                   "What do you know about OmniLearn?",
                   "How does your memory system work?",
                   "What is TF-IDF and how do you use it?",
                   "Tell me about your character traits.",
+                ] : mode === "ghost" ? [
+                  "Explain distributed AI computation.",
+                  "What are the benefits of ghost mode?",
+                  "How does node selection work?",
+                  "Compare centralised vs distributed AI.",
                 ] : [
                   "What have you learned about distributed AI systems?",
-                  "Explain how memory tiering works in this agent.",
-                  "Summarise the federated volunteer computing model.",
-                  "What makes an OmniLearn instance irreplaceable?",
-                ]).map(suggestion => (
-                  <button
-                    key={suggestion}
-                    onClick={() => setInput(suggestion)}
-                    className="p-3 rounded-lg border border-border/40 bg-card/40 hover:border-primary/30 hover:bg-primary/5 text-left transition-all group"
+                  "Explain the OmniLearn architecture.",
+                  "How do AI agents self-improve?",
+                  "What is federated learning?",
+                ]).map(prompt => (
+                  <button key={prompt} onClick={() => { setInput(prompt); textareaRef.current?.focus(); }}
+                    className="text-left p-3 rounded-xl border border-border/40 bg-card/30 hover:border-primary/40 hover:bg-card/60 transition-all group"
                   >
-                    <p className="font-mono text-xs text-muted-foreground group-hover:text-foreground">{suggestion}</p>
-                    <ChevronRight className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 mt-1 transition-opacity" />
+                    <span className="font-mono text-xs text-muted-foreground group-hover:text-foreground transition-colors">{prompt}</span>
+                    <ChevronRight className="w-3 h-3 text-muted-foreground/30 group-hover:text-primary transition-colors mt-1" />
                   </button>
                 ))}
               </div>
             </motion.div>
           )}
 
-          <AnimatePresence initial={false}>
+          <AnimatePresence>
             {messages.map(msg => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={cn("flex gap-3 max-w-4xl", msg.role === "user" ? "ml-auto flex-row-reverse" : "")}
+              <motion.div key={msg.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                className={cn("flex gap-3 max-w-3xl", msg.role === "user" ? "ml-auto flex-row-reverse" : "")}
               >
-                <div className={cn(
-                  "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                <div className={cn("w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 mt-0.5",
                   msg.role === "user"
-                    ? "bg-secondary border border-border/40"
-                    : mode === "native"
-                      ? "bg-emerald-500/10 border border-emerald-500/20"
-                      : "bg-primary/10 border border-primary/20"
+                    ? "bg-primary/10 border-primary/20"
+                    : mode === "ghost" ? "bg-violet-500/10 border-violet-500/20"
+                    : mode === "native" ? "bg-emerald-500/10 border-emerald-500/20"
+                    : "bg-secondary border-border/40"
                 )}>
                   {msg.role === "user"
-                    ? <User className="w-3.5 h-3.5 text-muted-foreground" />
-                    : mode === "native"
-                      ? <Brain className="w-3.5 h-3.5 text-emerald-400" />
-                      : <Bot className="w-3.5 h-3.5 text-primary" />}
+                    ? <User className="w-3.5 h-3.5 text-primary" />
+                    : mode === "ghost" ? <Ghost className="w-3.5 h-3.5 text-violet-400" />
+                    : mode === "native" ? <Brain className="w-3.5 h-3.5 text-emerald-400" />
+                    : <Bot className="w-3.5 h-3.5 text-muted-foreground" />}
                 </div>
-                <div className={cn(
-                  "max-w-2xl px-4 py-3 rounded-xl border",
+                <div className={cn("rounded-2xl px-4 py-3 max-w-2xl",
                   msg.role === "user"
-                    ? "bg-secondary/40 border-border/40 text-foreground"
-                    : mode === "native"
-                      ? "bg-card/60 border-emerald-500/10"
-                      : "bg-card/60 border-border/30"
+                    ? "bg-primary/10 border border-primary/20"
+                    : "bg-card/60 border border-border/40"
                 )}>
-                  {msg.role === "assistant"
-                    ? <MarkdownContent text={msg.content} />
-                    : <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
+                  <MarkdownContent text={msg.content} />
+                  {/* Ghost / Native message metadata */}
                   {msg.role === "assistant" && msg.meta && (
-                    <div className="flex gap-3 mt-2 pt-2 border-t border-border/20">
-                      {msg.meta.nodesUsed !== undefined && (
-                        <span className="font-mono text-[10px] text-muted-foreground/40">
-                          {msg.meta.nodesUsed} nodes used
+                    <div className="mt-2 pt-2 border-t border-border/20 flex items-center gap-3 flex-wrap">
+                      {msg.meta.nodeName && (
+                        <span className="font-mono text-[10px] text-muted-foreground/60 flex items-center gap-1">
+                          <Ghost className="w-2.5 h-2.5 text-violet-400/60" />
+                          {msg.meta.nodeName}
                         </span>
                       )}
-                      {msg.meta.newNodesAdded !== undefined && msg.meta.newNodesAdded > 0 && (
-                        <span className="font-mono text-[10px] text-emerald-400/60">
-                          +{msg.meta.newNodesAdded} learned
+                      {msg.meta.processingMs && (
+                        <span className="font-mono text-[10px] text-muted-foreground/60">{Math.round(msg.meta.processingMs)}ms</span>
+                      )}
+                      {msg.meta.routed === true && (
+                        <span className="font-mono text-[10px] text-emerald-400/60 flex items-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5" /> distributed
                         </span>
+                      )}
+                      {msg.meta.nodesUsed !== undefined && (
+                        <span className="font-mono text-[10px] text-muted-foreground/60">{msg.meta.nodesUsed} nodes</span>
                       )}
                     </div>
                   )}
@@ -640,48 +767,50 @@ export default function Chat() {
 
           {/* Streaming message */}
           {streaming && streamingContent && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 max-w-4xl">
-              <div className={cn(
-                "w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 mt-0.5",
-                mode === "native" ? "bg-emerald-500/10 border-emerald-500/20" : "bg-primary/10 border-primary/20"
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 max-w-3xl">
+              <div className={cn("w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 mt-0.5",
+                mode === "ghost" ? "bg-violet-500/10 border-violet-500/20" :
+                mode === "native" ? "bg-emerald-500/10 border-emerald-500/20" :
+                "bg-secondary border-border/40"
               )}>
-                {mode === "native"
-                  ? <Brain className="w-3.5 h-3.5 text-emerald-400" />
-                  : <Bot className="w-3.5 h-3.5 text-primary" />}
+                {mode === "ghost" ? <Ghost className="w-3.5 h-3.5 text-violet-400" /> :
+                 mode === "native" ? <Brain className="w-3.5 h-3.5 text-emerald-400" /> :
+                 <Bot className="w-3.5 h-3.5 text-muted-foreground" />}
               </div>
-              <div className={cn(
-                "max-w-2xl px-4 py-3 rounded-xl border bg-card/60",
-                mode === "native" ? "border-emerald-500/20" : "border-primary/20"
-              )}>
+              <div className="rounded-2xl px-4 py-3 bg-card/60 border border-border/40 max-w-2xl">
                 <MarkdownContent text={streamingContent} />
-                <span className={cn(
-                  "inline-block w-1.5 h-4 animate-pulse ml-0.5 align-middle",
-                  mode === "native" ? "bg-emerald-400/70" : "bg-primary/70"
+                <span className={cn("inline-block w-1.5 h-4 rounded-sm ml-0.5 animate-pulse",
+                  mode === "ghost" ? "bg-violet-400" : mode === "native" ? "bg-emerald-400" : "bg-primary"
                 )} />
               </div>
             </motion.div>
           )}
 
-          {/* Thinking indicator */}
+          {/* Routing / thinking indicator */}
           {streaming && !streamingContent && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
-              <div className={cn(
-                "w-7 h-7 rounded-lg border flex items-center justify-center shrink-0",
-                mode === "native" ? "bg-emerald-500/10 border-emerald-500/20" : "bg-primary/10 border-primary/20"
+              <div className={cn("w-7 h-7 rounded-lg border flex items-center justify-center shrink-0",
+                mode === "ghost" ? "bg-violet-500/10 border-violet-500/20" :
+                mode === "native" ? "bg-emerald-500/10 border-emerald-500/20" :
+                "bg-secondary border-border/40"
               )}>
-                <Loader2 className={cn("w-3.5 h-3.5 animate-spin", mode === "native" ? "text-emerald-400" : "text-primary")} />
+                {mode === "ghost" ? <Ghost className="w-3.5 h-3.5 text-violet-400" /> :
+                 mode === "native" ? <Brain className="w-3.5 h-3.5 text-emerald-400" /> :
+                 <Bot className="w-3.5 h-3.5 text-muted-foreground" />}
               </div>
-              <div className="px-4 py-3 rounded-xl border bg-card/60 border-border/30">
-                <div className="flex gap-1 items-center">
-                  {[0, 0.2, 0.4].map(d => (
-                    <div key={d} className={cn(
-                      "w-1.5 h-1.5 rounded-full animate-bounce",
-                      mode === "native" ? "bg-emerald-400/60" : "bg-primary/60"
-                    )} style={{ animationDelay: `${d}s` }} />
-                  ))}
-                  {mode === "native" && (
-                    <span className="ml-2 font-mono text-[10px] text-muted-foreground/50">searching knowledge…</span>
-                  )}
+              <div className="rounded-2xl px-4 py-3 bg-card/60 border border-border/40">
+                <div className="flex items-center gap-2">
+                  <Loader2 className={cn("w-3 h-3 animate-spin",
+                    mode === "ghost" ? "text-violet-400" : mode === "native" ? "text-emerald-400" : "text-muted-foreground"
+                  )} />
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {mode === "ghost"
+                      ? ghostRouting
+                        ? `Processing on ${ghostRouting.nodeName}${ghostRouting.region !== "unknown" ? ` (${ghostRouting.region})` : ""}…`
+                        : "Selecting ghost node…"
+                      : mode === "native" ? "Querying knowledge graph…"
+                      : "Thinking…"}
+                  </span>
                 </div>
               </div>
             </motion.div>
@@ -690,224 +819,142 @@ export default function Chat() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
-        <div className="shrink-0 border-t border-border/40 bg-card/20 backdrop-blur p-4">
-          <div className="max-w-4xl mx-auto flex gap-3">
+        {/* ── Skills bar ── */}
+        {mode !== "native" && mode !== "ghost" && (
+          <div className="px-4 py-2 border-t border-border/30 bg-card/10 flex items-center gap-2 overflow-x-auto shrink-0">
+            {skills.filter(s => s.isInstalled).map(skill => (
+              <div key={skill.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-xs font-mono whitespace-nowrap shrink-0">
+                <SkillIcon icon={skill.icon} className="w-3 h-3" />
+                {skill.name}
+                <button onClick={() => removeSkill(skill.id)} className="hover:text-red-400 transition-colors ml-0.5">
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            ))}
+            <button onClick={() => setShowCatalog(c => !c)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-border/40 text-muted-foreground hover:text-primary hover:border-primary/30 text-xs font-mono transition-all whitespace-nowrap shrink-0"
+            >
+              <Plus className="w-3 h-3" />
+              {skills.some(s => s.isInstalled) ? "Skills" : "Add skills"}
+            </button>
+          </div>
+        )}
+
+        {/* ── Input area ── */}
+        <div className="px-4 py-4 border-t border-border/40 bg-card/10 shrink-0">
+          <div className={cn("flex items-end gap-3 rounded-2xl border bg-background/60 backdrop-blur px-4 py-3 transition-colors",
+            mode === "ghost" ? "border-violet-500/30 focus-within:border-violet-500/50" :
+            mode === "native" ? "border-emerald-500/30 focus-within:border-emerald-500/50" :
+            "border-border/60 focus-within:border-primary/40"
+          )}>
             <textarea
               ref={textareaRef}
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-              placeholder={mode === "native"
-                ? "Message OmniLearn Native… everything you say becomes knowledge"
-                : "Message OmniLearn… (Enter to send, Shift+Enter for newline)"}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+              placeholder={
+                mode === "ghost" ? "Message ghost network…" :
+                mode === "native" ? "Message native intelligence…" :
+                "Message OmniLearn…"
+              }
               rows={1}
-              disabled={streaming}
-              className="flex-1 bg-background border border-border/50 rounded-xl px-4 py-3 text-sm font-mono resize-none focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/40 disabled:opacity-50 transition-all max-h-48 overflow-y-auto"
+              className="flex-1 bg-transparent font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none resize-none max-h-32"
               style={{ lineHeight: "1.5" }}
             />
-            <button
-              onClick={sendMessage}
-              disabled={streaming || !input.trim()}
-              className={cn(
-                "px-4 py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 font-mono text-sm shrink-0",
-                mode === "native"
-                  ? "bg-emerald-500 text-background hover:bg-emerald-400"
-                  : "bg-primary text-background hover:bg-primary/80"
+            <button onClick={sendMessage} disabled={streaming || !input.trim()}
+              className={cn("p-2 rounded-xl transition-all shrink-0",
+                streaming || !input.trim()
+                  ? "bg-muted text-muted-foreground/30"
+                  : mode === "ghost" ? "bg-violet-500 text-white hover:bg-violet-400"
+                  : mode === "native" ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90"
               )}
             >
               {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </div>
+          <p className="text-center font-mono text-[10px] text-muted-foreground/30 mt-2">
+            {mode === "ghost"
+              ? "Routes to ghost nodes — falls back to Claude if none available"
+              : mode === "native"
+              ? "OmniLearn native intelligence — learns from every message"
+              : "Enter to send · Shift+Enter for new line"}
+          </p>
         </div>
       </div>
 
-      {/* ── Skills panel (only in non-native modes) ── */}
-      {mode !== "native" && (
-        <div className="hidden lg:flex w-64 border-l border-border/40 bg-card/30 flex-col shrink-0">
-          <div className="px-4 py-4 border-b border-border/40 flex items-center justify-between">
-            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Skills</span>
-            <div className="flex gap-1.5">
-              <button
-                onClick={() => { setShowSkillCreator(true); setShowCatalog(false); }}
-                className="p-1 rounded hover:bg-secondary/40 text-muted-foreground hover:text-primary transition-colors"
-                title="Create skill"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => { setShowCatalog(c => !c); setShowSkillCreator(false); }}
-                className={cn(
-                  "p-1 rounded hover:bg-secondary/40 transition-colors",
-                  showCatalog ? "text-primary" : "text-muted-foreground hover:text-primary"
-                )}
-                title="Browse catalog"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {/* Skill Creator */}
-            <AnimatePresence>
-              {showSkillCreator && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="rounded-lg border border-primary/20 bg-card/60 p-3 space-y-2 overflow-hidden"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs text-primary">New skill</span>
-                    <button onClick={() => setShowSkillCreator(false)} className="text-muted-foreground hover:text-foreground">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <input
-                    value={newSkill.name}
-                    onChange={e => setNewSkill(p => ({ ...p, name: e.target.value }))}
-                    placeholder="Skill name"
-                    className="w-full bg-background border border-border/50 rounded-md px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-primary/50"
-                  />
-                  <input
-                    value={newSkill.description}
-                    onChange={e => setNewSkill(p => ({ ...p, description: e.target.value }))}
-                    placeholder="Description"
-                    className="w-full bg-background border border-border/50 rounded-md px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-primary/50"
-                  />
-                  <textarea
-                    value={newSkill.systemPrompt}
-                    onChange={e => setNewSkill(p => ({ ...p, systemPrompt: e.target.value }))}
-                    placeholder="System prompt…"
-                    rows={3}
-                    className="w-full bg-background border border-border/50 rounded-md px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-primary/50 resize-none"
-                  />
-                  <button
-                    onClick={createCustomSkill}
-                    disabled={!newSkill.name || !newSkill.systemPrompt}
-                    className="w-full py-1.5 bg-primary/10 border border-primary/30 text-primary rounded-md font-mono text-xs hover:bg-primary/20 disabled:opacity-40 transition-all"
-                  >
-                    Create skill
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Catalog */}
-            <AnimatePresence>
-              {showCatalog && uninstalledCatalog.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="space-y-1"
-                >
-                  <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60 px-1">Catalog</p>
-                  {uninstalledCatalog.map(skill => (
-                    <button
-                      key={skill.name}
-                      onClick={() => installSkill(skill)}
-                      className="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-secondary/30 text-left group transition-all"
-                    >
-                      <div className="w-5 h-5 rounded border border-border/40 bg-card/40 flex items-center justify-center shrink-0">
-                        <SkillIcon icon={skill.icon} className="w-2.5 h-2.5 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </div>
-                      <span className="font-mono text-xs text-muted-foreground group-hover:text-foreground truncate">{skill.name}</span>
-                      <Plus className="w-2.5 h-2.5 text-primary opacity-0 group-hover:opacity-100 ml-auto shrink-0 transition-opacity" />
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Installed skills */}
-            {skills.filter(s => s.isInstalled).length === 0 && !showCatalog ? (
-              <div className="py-8 text-center space-y-2">
-                <Sparkles className="w-5 h-5 text-muted-foreground/30 mx-auto" />
-                <p className="font-mono text-xs text-muted-foreground/40">No skills installed</p>
-                <button
-                  onClick={() => setShowCatalog(true)}
-                  className="font-mono text-xs text-primary/60 hover:text-primary transition-colors"
-                >
-                  Browse catalog
-                </button>
-              </div>
-            ) : (
-              skills.filter(s => s.isInstalled).map(skill => (
-                <div
-                  key={skill.id}
-                  className="flex items-center gap-2 px-2 py-2 rounded-md bg-primary/5 border border-primary/10 group"
-                >
-                  <div className="w-5 h-5 rounded border border-primary/20 bg-primary/10 flex items-center justify-center shrink-0">
-                    <SkillIcon icon={skill.icon} className="w-2.5 h-2.5 text-primary" />
-                  </div>
-                  <span className="font-mono text-xs text-foreground truncate flex-1">{skill.name}</span>
-                  <button
-                    onClick={() => removeSkill(skill.id)}
-                    className="opacity-0 group-hover:opacity-100 hover:text-red-400 text-muted-foreground/40 transition-all"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Native mode right panel ── */}
-      {mode === "native" && (
-        <div className="hidden lg:flex w-64 border-l border-border/40 bg-card/30 flex-col shrink-0">
-          <div className="px-4 py-4 border-b border-border/40">
-            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Intelligence</span>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-5">
-            <div className="space-y-2">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">Engine</p>
-              <div className="space-y-1.5 font-mono text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  TF-IDF retrieval
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  Fact extraction
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  Character synthesis
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  Persistent learning
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">How to teach it</p>
-              <ul className="space-y-2 font-mono text-xs text-muted-foreground">
-                <li className="flex gap-2"><span className="text-primary shrink-0">1.</span>Say facts: "X is Y"</li>
-                <li className="flex gap-2"><span className="text-primary shrink-0">2.</span>Use Training at /intelligence</li>
-                <li className="flex gap-2"><span className="text-primary shrink-0">3.</span>Ask questions — it will honestly say what it doesn't know</li>
-              </ul>
-            </div>
-
-            <a
-              href={`${BASE}/intelligence`}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 font-mono text-xs transition-all"
+      {/* ── Skill catalog modal ── */}
+      <AnimatePresence>
+        {showCatalog && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-background/80 backdrop-blur flex items-end md:items-center justify-center p-4"
+            onClick={() => setShowCatalog(false)}
+          >
+            <motion.div initial={{ y: 40 }} animate={{ y: 0 }} exit={{ y: 40 }}
+              className="w-full max-w-md rounded-2xl border border-border/60 bg-card shadow-2xl overflow-hidden"
+              onClick={e => e.stopPropagation()}
             >
-              <Brain className="w-3.5 h-3.5" /> Open Intelligence
-            </a>
-          </div>
-        </div>
-      )}
+              <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between">
+                <div>
+                  <h3 className="font-mono text-sm font-bold">Skill catalog</h3>
+                  <p className="font-mono text-xs text-muted-foreground mt-0.5">Enhance OmniLearn's capabilities</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setShowSkillCreator(c => !c)}
+                    className="font-mono text-xs text-primary hover:text-primary/80 transition-colors"
+                  >
+                    {showSkillCreator ? "Close" : "+ Custom"}
+                  </button>
+                  <button onClick={() => setShowCatalog(false)} className="text-muted-foreground hover:text-foreground">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+                {showSkillCreator && (
+                  <div className="p-3 rounded-xl border border-primary/20 bg-primary/5 space-y-2.5 mb-3">
+                    <p className="font-mono text-xs font-bold text-foreground">Create custom skill</p>
+                    <input value={newSkill.name} onChange={e => setNewSkill(s => ({ ...s, name: e.target.value }))}
+                      placeholder="Skill name" className="w-full px-2.5 py-1.5 rounded-lg border border-border/60 bg-background font-mono text-xs focus:outline-none focus:border-primary/50" />
+                    <input value={newSkill.description} onChange={e => setNewSkill(s => ({ ...s, description: e.target.value }))}
+                      placeholder="Short description" className="w-full px-2.5 py-1.5 rounded-lg border border-border/60 bg-background font-mono text-xs focus:outline-none focus:border-primary/50" />
+                    <textarea value={newSkill.systemPrompt} onChange={e => setNewSkill(s => ({ ...s, systemPrompt: e.target.value }))}
+                      placeholder="System prompt — instructions for OmniLearn when this skill is active" rows={3}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-border/60 bg-background font-mono text-xs focus:outline-none focus:border-primary/50 resize-none" />
+                    <button onClick={createCustomSkill}
+                      className="w-full py-1.5 rounded-lg bg-primary text-primary-foreground font-mono text-xs font-bold hover:bg-primary/90 transition-colors"
+                    >
+                      Add skill
+                    </button>
+                  </div>
+                )}
+
+                {uninstalledCatalog.length === 0 && !showSkillCreator && (
+                  <p className="text-center font-mono text-xs text-muted-foreground/50 py-6">All skills installed</p>
+                )}
+
+                {uninstalledCatalog.map(skill => (
+                  <div key={skill.name} className="flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:border-primary/30 transition-all group">
+                    <div className="w-8 h-8 rounded-lg border border-border/40 bg-secondary/30 flex items-center justify-center shrink-0">
+                      <SkillIcon icon={skill.icon} className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-mono text-xs font-bold text-foreground">{skill.name}</p>
+                      <p className="font-mono text-[10px] text-muted-foreground/70 truncate">{skill.description}</p>
+                    </div>
+                    <button onClick={() => installSkill(skill)}
+                      className="px-2.5 py-1 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 font-mono text-xs transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      Install
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
