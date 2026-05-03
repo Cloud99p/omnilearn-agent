@@ -4,10 +4,10 @@ import {
   Send, Server, Ghost, Plus, Trash2, Bot, User, Loader2,
   Wrench, Search, Code, Brain, Globe, Shield, ChevronRight,
   X, Sparkles, MessageSquare, Zap, FileText, Database,
-  CheckCircle2, XCircle, ArrowRight, Activity, ChevronDown, BookOpen,
+  CheckCircle2, XCircle, ArrowRight, Activity, ChevronDown, BookOpen, Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Link, useSearch } from "wouter";
+import { Link, useSearch, useLocation } from "wouter";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -150,9 +150,13 @@ function MarkdownContent({ text }: { text: string }) {
 
 export default function Chat() {
   const search = useSearch();
+  const [, navigate] = useLocation();
   const initialMode = ((): Mode => {
+    const isOnboarded = localStorage.getItem("omni_onboarded") === "true";
     const p = new URLSearchParams(search).get("mode");
-    return p === "native" || p === "ghost" ? p : "local";
+    if (p === "native") return "native";
+    if ((p === "ghost" || p === "local") && isOnboarded) return p as Mode;
+    return "native";
   })();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -171,6 +175,10 @@ export default function Chat() {
   const [latestMeta, setLatestMeta] = useState<Message["meta"] | null>(null);
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem("omni_onboarded") === "true");
   const [modeOpen, setModeOpen] = useState(false);
+  const [contributing, setContributing] = useState(false);
+  const [tasksContributed, setTasksContributed] = useState(() =>
+    parseInt(localStorage.getItem("omni_tasks_contributed") || "0", 10)
+  );
   const [ghostStatus, setGhostStatus] = useState<GhostStatus | null>(null);
   const [ghostRouting, setGhostRouting] = useState<{ nodeName: string; region: string } | null>(null);
   const [ghostFallback, setGhostFallback] = useState(false);
@@ -188,6 +196,34 @@ export default function Chat() {
     fetchSkills();
     fetchGhostStatus();
   }, []);
+
+  // Idle CPU contribution — when onboarded and not actively chatting, donate cycles to the ghost network
+  useEffect(() => {
+    if (!onboarded) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const contribute = async () => {
+      if (streaming) return;
+      setContributing(true);
+      try {
+        const res = await fetch(`${BASE}/api/ghost/contribute`, { method: "POST" });
+        if (res.ok) {
+          const data = await res.json() as { processed: boolean };
+          if (data.processed) {
+            setTasksContributed(prev => {
+              const next = prev + 1;
+              localStorage.setItem("omni_tasks_contributed", String(next));
+              return next;
+            });
+          }
+        }
+      } catch { /* silent */ } finally {
+        setContributing(false);
+      }
+      timer = setTimeout(contribute, 30_000);
+    };
+    timer = setTimeout(contribute, 30_000);
+    return () => clearTimeout(timer);
+  }, [onboarded, streaming]);
 
   useEffect(() => {
     if (mode !== "native") setNativeConvId(null);
@@ -458,38 +494,6 @@ export default function Chat() {
 
   const activeCfg = MODE_CONFIG[mode];
 
-  if (!onboarded) {
-    return (
-      <div className="flex h-screen items-center justify-center p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full text-center p-8 rounded-2xl border border-border bg-card space-y-5"
-        >
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto">
-            <BookOpen className="w-7 h-7 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold mb-2">Set up first</h2>
-            <p className="text-muted-foreground font-mono text-sm leading-relaxed">
-              Complete the quick onboarding guide before chatting — it makes sure Omni is running correctly on your system.
-            </p>
-          </div>
-          <Link href="/onboarding">
-            <button className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-mono text-sm font-semibold transition-colors">
-              Take me to setup <ArrowRight className="w-4 h-4" />
-            </button>
-          </Link>
-          <button
-            onClick={() => { localStorage.setItem("omni_onboarded", "true"); setOnboarded(true); }}
-            className="font-mono text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-          >
-            Skip for now
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-screen overflow-hidden">
       {/* ── Conversation sidebar ── */}
@@ -520,22 +524,39 @@ export default function Chat() {
                   className="overflow-hidden"
                 >
                   <div className="mt-1 space-y-1">
-                    {(["local", "ghost", "native"] as Mode[]).filter(m => m !== mode).map(m => {
+                    {(["native", "local", "ghost"] as Mode[]).filter(m => m !== mode).map(m => {
                       const cfg = MODE_CONFIG[m];
                       const Icon = cfg.icon;
+                      const locked = !onboarded && m !== "native";
                       return (
                         <button key={m}
-                          onClick={() => { setMode(m); setModeOpen(false); }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border/30 text-muted-foreground hover:text-foreground hover:bg-secondary/30 transition-all"
+                          onClick={() => {
+                            if (locked) { navigate("/onboarding"); setModeOpen(false); return; }
+                            setMode(m); setModeOpen(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all",
+                            locked
+                              ? "border-border/20 text-muted-foreground/40 hover:border-border/40 hover:text-muted-foreground/60"
+                              : "border-border/30 text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                          )}
                         >
                           <Icon className="w-3.5 h-3.5 shrink-0" />
                           <div className="flex-1 text-left">
                             <p className="font-mono text-xs font-medium leading-none">{cfg.label}</p>
-                            <p className="font-mono text-[10px] text-muted-foreground/60 mt-0.5">{cfg.desc}</p>
+                            <p className={cn("font-mono text-[10px] mt-0.5", locked ? "text-muted-foreground/30" : "text-muted-foreground/60")}>
+                              {locked ? "Complete setup to unlock" : cfg.desc}
+                            </p>
                           </div>
+                          {locked && <Lock className="w-3 h-3 shrink-0 text-muted-foreground/25" />}
                         </button>
                       );
                     })}
+                    {!onboarded && (
+                      <Link href="/onboarding" className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-primary/60 hover:text-primary transition-colors">
+                        <BookOpen className="w-3 h-3" /> Complete setup to unlock all modes
+                      </Link>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -693,6 +714,40 @@ export default function Chat() {
             >
               <Brain className="w-3 h-3" /> View knowledge base
             </Link>
+          </div>
+        )}
+
+        {/* Network contribution footer */}
+        {onboarded && (
+          <div className="px-3 py-3 border-t border-border/30 shrink-0">
+            <div className={cn(
+              "flex items-center gap-2 px-2.5 py-2 rounded-lg border transition-all duration-500",
+              contributing
+                ? "bg-cyan-500/10 border-cyan-500/20"
+                : "bg-secondary/10 border-border/20"
+            )}>
+              {contributing ? (
+                <>
+                  <Activity className="w-3 h-3 text-cyan-400 animate-pulse shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-mono text-[10px] text-cyan-400 leading-none">Processing network task</p>
+                    <p className="font-mono text-[9px] text-cyan-400/50 mt-0.5">contributing idle cycles</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-3 h-3 text-muted-foreground/30 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-mono text-[10px] text-muted-foreground/40 leading-none">
+                      {tasksContributed > 0
+                        ? `${tasksContributed} task${tasksContributed !== 1 ? "s" : ""} contributed`
+                        : "Network contributor"}
+                    </p>
+                    <p className="font-mono text-[9px] text-muted-foreground/25 mt-0.5">idle cycles → ghost network</p>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

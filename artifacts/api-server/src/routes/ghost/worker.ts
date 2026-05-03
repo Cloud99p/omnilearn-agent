@@ -349,6 +349,58 @@ router.post("/worker/execute/:taskId", async (req, res) => {
   }
 });
 
+// POST /api/ghost/contribute — local idle worker picks up and processes one pending ghost task
+// Called by single-machine users when idle; no invite token required (same-instance trust)
+router.post("/contribute", async (req, res) => {
+  try {
+    const [task] = await db.select().from(ghostWorkerTasks)
+      .where(eq(ghostWorkerTasks.status, "pending"))
+      .orderBy(ghostWorkerTasks.createdAt)
+      .limit(1);
+
+    if (!task) { res.json({ processed: false }); return; }
+
+    const [claimed] = await db.update(ghostWorkerTasks)
+      .set({ status: "assigned", workerId: "local-contributor", assignedAt: new Date() })
+      .where(and(
+        eq(ghostWorkerTasks.taskId, task.taskId),
+        eq(ghostWorkerTasks.status, "pending"),
+      ))
+      .returning();
+
+    if (!claimed) { res.json({ processed: false }); return; }
+
+    const payload = JSON.parse(task.payload) as {
+      message: string; history?: Array<{ role: "user" | "assistant"; content: string }>; systemPrompt?: string;
+    };
+    const start = Date.now();
+    try {
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-5",
+        max_tokens: 8192,
+        system: payload.systemPrompt ?? "You are Omni, a distributed AI agent contributing to the ghost network.",
+        messages: [...(payload.history ?? []), { role: "user" as const, content: payload.message }],
+      });
+      const text = response.content.find(c => c.type === "text")?.text ?? "";
+      const processingMs = Date.now() - start;
+      await db.update(ghostWorkerTasks)
+        .set({ status: "complete", result: text, completedAt: new Date() })
+        .where(eq(ghostWorkerTasks.taskId, task.taskId));
+      req.log.info({ taskId: task.taskId, processingMs }, "Local contributor processed task");
+      res.json({ processed: true, taskId: task.taskId, processingMs });
+    } catch (aiErr) {
+      await db.update(ghostWorkerTasks)
+        .set({ status: "failed", completedAt: new Date() })
+        .where(eq(ghostWorkerTasks.taskId, task.taskId));
+      req.log.error(aiErr, "Local contributor AI failed");
+      res.json({ processed: false, error: "AI processing failed" });
+    }
+  } catch (err) {
+    req.log.error(err, "Local contributor error");
+    res.status(500).json({ error: "Contribute failed" });
+  }
+});
+
 // GET /api/ghost/workers — list active browser workers
 router.get("/workers", async (req, res) => {
   try {
