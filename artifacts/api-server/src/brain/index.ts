@@ -239,10 +239,11 @@ export async function trainOnText(
   text: string,
   source: string,
   clerkId: string | null,
-): Promise<{ added: number; skipped: number }> {
+): Promise<{ added: number; skipped: number; nodes: KnowledgeNode[] }> {
   const facts = extractFacts(text);
   let added = 0;
   let skipped = 0;
+  const insertedNodes: KnowledgeNode[] = [];
 
   for (const fact of facts) {
     const existing = await retrieveRelevantNodes(fact.content, clerkId, 1);
@@ -250,7 +251,8 @@ export async function trainOnText(
       skipped++;
       continue;
     }
-    await insertNode(fact.content, fact.type, fact.tags, fact.confidence, source, clerkId);
+    const node = await insertNode(fact.content, fact.type, fact.tags, fact.confidence, source, clerkId);
+    insertedNodes.push(node);
     added++;
   }
 
@@ -258,8 +260,41 @@ export async function trainOnText(
   if (text.length > 60 && text.length < 500) {
     const existing = await retrieveRelevantNodes(text, clerkId, 1);
     if (existing.length === 0 || existing[0].similarity < 0.7) {
-      await insertNode(text.trim(), "fact", extractKeyTerms(text), 0.8, source, clerkId);
+      const node = await insertNode(text.trim(), "fact", extractKeyTerms(text), 0.8, source, clerkId);
+      insertedNodes.push(node);
       added++;
+    }
+  }
+
+  // Create co-occurrence edges between nodes inserted from the same batch
+  if (insertedNodes.length >= 2) {
+    for (let i = 0; i < insertedNodes.length; i++) {
+      for (let j = i + 1; j < Math.min(insertedNodes.length, i + 4); j++) {
+        try {
+          await db.insert(knowledgeEdges).values({
+            fromId: insertedNodes[i].id,
+            toId: insertedNodes[j].id,
+            relationship: "co-occurs",
+            weight: 0.7,
+          });
+        } catch { /* skip duplicate edges */ }
+      }
+    }
+  }
+
+  // For each new node, link to the most similar existing node (if any)
+  for (const node of insertedNodes) {
+    const similar = await retrieveRelevantNodes(node.content, clerkId, 3);
+    const closeMatch = similar.find(s => s.id !== node.id && s.similarity > 0.2);
+    if (closeMatch) {
+      try {
+        await db.insert(knowledgeEdges).values({
+          fromId: node.id,
+          toId: closeMatch.id,
+          relationship: "related-to",
+          weight: closeMatch.similarity,
+        });
+      } catch { /* skip */ }
     }
   }
 
@@ -278,7 +313,7 @@ export async function trainOnText(
     });
   }
 
-  return { added, skipped };
+  return { added, skipped, nodes: insertedNodes };
 }
 
 export async function addDirectFact(
@@ -289,6 +324,21 @@ export async function addDirectFact(
   clerkId: string | null,
 ): Promise<KnowledgeNode> {
   const node = await insertNode(content, type, tags, confidence, "manual", clerkId);
+
+  // Link to similar existing nodes to build the knowledge graph
+  const similar = await retrieveRelevantNodes(content, clerkId, 3);
+  for (const match of similar) {
+    if (match.id !== node.id && match.similarity > 0.15) {
+      try {
+        await db.insert(knowledgeEdges).values({
+          fromId: node.id,
+          toId: match.id,
+          relationship: match.similarity > 0.5 ? "related-to" : "co-occurs",
+          weight: Math.round(match.similarity * 100) / 100,
+        });
+      } catch { /* skip duplicate edges */ }
+    }
+  }
 
   const character = await getOrCreateCharacter(clerkId);
   await updateCharacter(character.id, {

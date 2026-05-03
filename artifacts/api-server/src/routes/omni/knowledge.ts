@@ -101,6 +101,39 @@ router.post("/", async (req, res) => {
   res.status(201).json(node);
 });
 
+// POST /api/omni/knowledge/rebuild-edges — backfill edges for all existing nodes
+router.post("/rebuild-edges", async (req, res) => {
+  const allNodes = await db.select().from(knowledgeNodes);
+  let created = 0;
+
+  for (let i = 0; i < allNodes.length; i++) {
+    const node = allNodes[i];
+    const tokens = node.tokens as string[];
+    if (tokens.length === 0) continue;
+
+    // Find up to 3 most similar other nodes using TF-IDF scores
+    const similar = await retrieveRelevantNodes(node.content, null, 5);
+    const closeMatches = similar.filter(s => s.id !== node.id && s.similarity > 0.15).slice(0, 3);
+
+    for (const match of closeMatches) {
+      // Only create edge if the from_id < to_id to avoid both directions being created for every pair
+      const fromId = Math.min(node.id, match.id);
+      const toId = Math.max(node.id, match.id);
+      try {
+        await db.insert(knowledgeEdges).values({
+          fromId,
+          toId,
+          relationship: match.similarity > 0.45 ? "related-to" : "co-occurs",
+          weight: Math.round(match.similarity * 100) / 100,
+        });
+        created++;
+      } catch { /* skip duplicate */ }
+    }
+  }
+
+  res.json({ success: true, edgesCreated: created, nodesScanned: allNodes.length });
+});
+
 // DELETE /api/omni/knowledge/:id
 router.delete("/:id", async (req, res) => {
   const id = Number(req.params.id);
