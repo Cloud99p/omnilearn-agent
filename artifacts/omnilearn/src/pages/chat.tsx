@@ -335,7 +335,9 @@ export default function Chat() {
     if (!res.ok) throw new Error("Failed to create conversation");
     const conv: Conversation = await res.json();
     setConversations(prev => [conv, ...prev]);
-    setActiveConvId(conv.id);
+    if (mode === "native") setNativeConvId(conv.id);
+    if (mode === "ghost") setGhostConvId(conv.id);
+    if (mode === "local") setActiveConvId(conv.id);
     return conv.id;
   };
 
@@ -358,10 +360,12 @@ export default function Chat() {
     setWebActivity(null);
 
     try {
+      let convId = nativeConvId;
+      if (!convId) convId = await createConversation(content);
       const res = await fetch(`${BASE}/api/omni/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, conversationId: nativeConvId }),
+        body: JSON.stringify({ content, conversationId: convId }),
       });
       if (!res.ok || !res.body) throw new Error("Stream failed");
 
@@ -399,7 +403,7 @@ export default function Chat() {
     } finally {
       setStreaming(false);
     }
-  }, [nativeConvId]);
+  }, [nativeConvId, createConversation]);
 
   // ── Ghost mode send ───────────────────────────────────────────────────────
   const sendGhostMessage = useCallback(async (content: string) => {
