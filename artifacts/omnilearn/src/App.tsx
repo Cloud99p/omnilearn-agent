@@ -29,6 +29,7 @@ import IntelligencePage from "@/pages/intelligence";
 import GhostNetworkPage from "@/pages/ghost-network";
 import WorkerPage from "@/pages/worker";
 import BenchmarkPage from "@/pages/benchmark";
+import SmarterPage from "@/pages/smarter";
 
 const queryClient = new QueryClient();
 
@@ -176,6 +177,7 @@ function Router() {
         <Route path="/intelligence" component={IntelligencePage} />
         <Route path="/ghost-network" component={GhostNetworkPage} />
         <Route path="/benchmark" component={BenchmarkPage} />
+        <Route path="/smarter" component={SmarterPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
