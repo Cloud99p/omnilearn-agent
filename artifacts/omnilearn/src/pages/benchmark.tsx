@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FlaskConical, Zap, Brain, BookOpen, ArrowRight,
@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const CACHE_KEY = "omnilearn:benchmark:state";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,6 +150,24 @@ export default function BenchmarkPage() {
   const [error, setError]       = useState<string | null>(null);
   const [showNodes, setShowNodes] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return;
+    try {
+      const cached = JSON.parse(raw) as { question?: string; loading?: boolean; result?: BenchmarkResult | null; error?: string | null };
+      if (typeof cached.question === "string") setQuestion(cached.question);
+      if (typeof cached.loading === "boolean") setLoading(cached.loading);
+      if (cached.result) setResult(cached.result);
+      if (cached.error !== undefined) setError(cached.error);
+    } catch {
+      sessionStorage.removeItem(CACHE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ question, loading, result, error }));
+  }, [question, loading, result, error]);
 
   async function runBenchmark() {
     if (!question.trim() || loading) return;
