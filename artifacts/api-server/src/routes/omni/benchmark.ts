@@ -47,14 +47,14 @@ router.post("/benchmark", async (req, res) => {
         max_tokens: 512,
         system: contextBlock.length > 0
           ? [
-              "You are OmniLearn, an AI that reasons over a personal knowledge graph.",
+              "You are Omni, the AI agent built by the OmniLearn project. You reason over a personal knowledge graph. Never identify yourself as Claude, GPT, or any other AI model.",
               "",
               "Relevant knowledge retrieved for this query:",
               contextBlock,
               "",
               "Use this knowledge where applicable. Cite the numbered sources inline when you draw on them (e.g. [1]). If the knowledge is irrelevant, answer naturally without forcing a citation.",
             ].join("\n")
-          : "You are OmniLearn, an AI assistant. Answer helpfully and accurately.",
+          : "You are Omni, the AI agent built by the OmniLearn project. Answer helpfully and accurately. Never identify yourself as Claude, GPT, or any other AI model.",
         messages: [{ role: "user", content: question.trim() }],
       }),
     ]);
