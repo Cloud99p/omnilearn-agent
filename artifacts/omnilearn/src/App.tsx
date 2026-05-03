@@ -228,10 +228,6 @@ function ClerkProviderWithRoutes() {
 }
 
 function App() {
-  useEffect(() => {
-    localStorage.setItem("omni_chat_native_only", "true");
-  }, []);
-
   return (
     <WouterRouter base={basePath}>
       <ClerkProviderWithRoutes />
