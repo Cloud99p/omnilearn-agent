@@ -5,7 +5,7 @@ import {
   Cpu, Terminal, BookOpen, Activity,
   Network, Globe, Dna, GitBranch,
   Database, HardDrive, Brain, Shield, Settings, Blocks, Gavel,
-  ChevronDown, Menu, X,
+  ChevronDown, Menu, X, MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 const TOP_LINKS = [
   { href: "/", label: "Home", icon: Terminal },
   { href: "/onboarding", label: "Get Started", icon: BookOpen },
+  { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/personality", label: "Personality", icon: Activity },
 ];
 
