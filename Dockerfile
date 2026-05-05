@@ -28,9 +28,6 @@ COPY lib/integrations-anthropic-ai ./lib/integrations-anthropic-ai
 # Build the API server (runs typecheck + build)
 RUN pnpm --filter @workspace/api-server run build
 
-# Prune dev dependencies for smaller image
-RUN pnpm prune --prod
-
 # Expose port
 EXPOSE 3000
 
