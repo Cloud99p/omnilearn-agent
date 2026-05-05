@@ -9,7 +9,6 @@ services:
     region: oregon
     plan: starter
     branch: main
-    dockerContextPath: .
     dockerfilePath: ./Dockerfile
     envVars:
       - key: NODE_ENV
