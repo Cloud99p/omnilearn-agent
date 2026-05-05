@@ -2,60 +2,75 @@
 
 ## Architecture
 
-OmniLearn has **two components** that deploy separately:
-
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Frontend (Vercel)           Backend (Render)               │
+│  Frontend (Vercel)           Backend (Railway)              │
 │  - React + Vite              - Express API server           │
-│  - Static hosting            - PostgreSQL database          │
-│  - /api/* → proxy to backend - /api/* endpoints             │
+│  - Free static hosting       - $5 free credit/month         │
+│  - /api/* → proxy to backend - PostgreSQL (Neon - free)     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🚀 Deploy Backend to Render (Recommended)
+## 🚀 Step 1: Create Neon Database (Free)
 
-### Step 1: Create Render Account
-1. Go to [render.com](https://render.com)
-2. Sign up with GitHub
+### 1.1 Go to Neon
+1. Open [neon.tech](https://neon.tech)
+2. Sign up with GitHub (free, no credit card)
 
-### Step 2: Deploy from Blueprint
-1. Click **New** → **Blueprint**
-2. Click **Connect repository** and select `omnilearn-agent`
-3. Render will detect `render.yaml` and show the configuration
+### 1.2 Create Project
+1. Click **Create a project**
+2. Name: `omnilearn`
+3. Region: Choose closest to you (e.g., `us-east`)
+4. Click **Create project**
 
-### Step 3: Set Environment Variables
-In the Blueprint setup, you'll see environment variables. Set these:
-
-| Variable | Value |
-|----------|-------|
-| `CLERK_SECRET_KEY` | `sk_test_...` (from Clerk dashboard) |
-| `CLERK_PUBLISHABLE_KEY` | `pk_test_...` (from Clerk dashboard) |
-| `ANTHROPIC_API_KEY` | `sk-ant-...` (from Anthropic dashboard) |
-| `PORT` | `3000` |
-
-**Note:** `DATABASE_URL` is automatically set from the PostgreSQL database defined in `render.yaml`.
-
-### Step 4: Apply Blueprint
-1. Click **Apply**
-2. Render will create:
-   - **Web Service** (`omnilearn-api`) — your Express server
-   - **PostgreSQL Database** (`omnilearn-db`) — your database
-3. Wait for deployment (~3-5 minutes)
-
-### Step 5: Get Your Backend URL
-Once deployed:
-1. Go to the **omnilearn-api** service dashboard
-2. Copy the URL (e.g., `https://omnilearn-api.onrender.com`)
+### 1.3 Get Connection String
+1. On the project dashboard, find **Connection string**
+2. Copy the **URI** (looks like):
+   ```
+   postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/dbname?sslmode=require
+   ```
+3. **Save this** — you'll need it for Railway
 
 ---
 
-## 🚀 Deploy Frontend to Vercel
+## 🚀 Step 2: Deploy API Server to Railway
 
-### Step 1: Update vercel.json
-Replace `YOUR-RENDER-URL` with your actual Render URL:
+### 2.1 Go to Railway
+1. Open [railway.app](https://railway.app)
+2. Sign up with GitHub
+3. You get **$5 free credit/month** (no credit card required)
+
+### 2.2 Deploy from GitHub
+1. Click **New Project**
+2. Click **Deploy from GitHub repo**
+3. Select `Cloud99p/omnilearn-agent`
+4. Railway will auto-detect the `Dockerfile`
+
+### 2.3 Set Environment Variables
+Click on your project → **Variables** → Add these:
+
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | (paste from Neon - step 1.3) |
+| `CLERK_SECRET_KEY` | `sk_test_...` |
+| `CLERK_PUBLISHABLE_KEY` | `pk_test_...` |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` |
+| `PORT` | `3000` |
+
+### 2.4 Deploy
+1. Click **Deploy** at the top
+2. Wait ~3-5 minutes for build
+3. Once deployed, click **Settings** → **Domains**
+4. Copy your Railway URL (e.g., `https://omnilearn-production-xyz.up.railway.app`)
+
+---
+
+## 🚀 Step 3: Update Vercel Frontend
+
+### 3.1 Update vercel.json
+Replace `YOUR-RAILWAY-URL` with your actual Railway URL:
 
 ```json
 {
@@ -65,40 +80,59 @@ Replace `YOUR-RENDER-URL` with your actual Render URL:
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://YOUR-RENDER-URL.onrender.com/api/:path*"
+      "destination": "https://YOUR-RAILWAY-URL.up.railway.app/api/:path*"
     }
   ]
 }
 ```
 
-### Step 2: Push to GitHub
+### 3.2 Push to GitHub
 ```bash
+cd /mnt/data/openclaw/workspace/.openclaw/workspace/omnilearn-agent
+
 git add -A
-git commit -m "chore: update vercel.json with Render backend URL"
+git commit -m "chore: update vercel.json with Railway backend URL"
 git push origin main
 ```
 
-### Step 3: Vercel Auto-Deploy
-Vercel will automatically redeploy with the new API proxy.
+### 3.3 Vercel Auto-Deploy
+Vercel will automatically redeploy with the working API proxy.
+
+---
+
+## ✅ Verify Deployment
+
+### 1. Backend Health Check
+Visit: `https://your-railway-url.up.railway.app/api/healthz`
+
+Should return:
+```json
+{"status":"healthy"}
+```
+
+### 2. Frontend
+Visit your Vercel URL:
+- Sign up should work
+- Chat should connect to backend
+- No 404 errors on `/api/*` routes
+
+### 3. Test API
+Visit: `https://your-vercel-url.app/api/healthz`
+
+Should proxy to Railway and return `{"status":"healthy"}`
 
 ---
 
 ## 🔧 Environment Variables
 
-### Required (Backend - Render)
+### Backend (Railway)
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | Auto-set by Render from PostgreSQL |
-| `CLERK_SECRET_KEY` | Clerk API secret key |
+| `DATABASE_URL` | From Neon PostgreSQL |
+| `CLERK_SECRET_KEY` | Clerk API secret |
 | `CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
-| `ANTHROPIC_API_KEY` | Anthropic Claude API key |
-| `PORT` | Server port (default: 3000) |
-
-### Optional (Backend)
-| Variable | Description |
-|----------|-------------|
-| `GITHUB_TOKEN` | GitHub OAuth for repo features |
-| `GHOST_SECRET` | Ghost network secret key |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `PORT` | 3000 (default) |
 
 ### Frontend (Vercel)
 | Variable | Description |
@@ -107,77 +141,51 @@ Vercel will automatically redeploy with the new API proxy.
 
 ---
 
-## ✅ Verify Deployment
+## 📊 Cost Breakdown
 
-### 1. Backend Health Check
-Visit: `https://your-render-url.onrender.com/api/healthz`
+| Service | Tier | Cost |
+|---------|------|------|
+| Vercel | Hobby | **Free** |
+| Railway | Hobby | **$5 credit/month** (free) |
+| Neon | Free | **Free** |
+| Clerk | Free | 10,000 MAU free |
+| Anthropic | Pay-as-you-go | ~$0.01-0.10/conversation |
 
-Should return:
-```json
-{"status":"healthy"}
-```
-
-### 2. Frontend
-Visit your Vercel URL (e.g., `https://omnilearn.vercel.app`)
-
-- Sign up should work
-- Chat should connect to backend
-- No 404 errors on `/api/*` routes
-
-### 3. API Routes
-Test: `https://your-vercel-url.app/api/me`
-
-Should proxy to Render backend and return user info (if authenticated).
+**Total: ~$0-5/month** (Railway credit lasts ~1-2 months for small apps)
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Frontend can't connect to API
-- Check `vercel.json` rewrites — URL must be correct
-- Verify backend is running (check Render logs)
-- Ensure no CORS errors in browser console
+### Railway build fails
+- Check logs in Railway dashboard
+- Verify `Dockerfile` is at repo root
+- Ensure all dependencies install correctly
 
-### Database connection errors
-- Render auto-sets `DATABASE_URL` — don't override it
-- Check Render PostgreSQL is running
-- Database schema auto-migrates on first deploy
+### Database connection error
+- Verify `DATABASE_URL` includes `?sslmode=require`
+- Check Neon project is active
+- Test connection in Neon SQL editor
 
-### Clerk authentication fails
-- Verify both `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY`
+### Frontend 404 on /api/*
+- Check `vercel.json` rewrites — URL must match Railway exactly
+- Verify Railway service is running (not crashed)
+- Check Railway logs for errors
+
+### Clerk auth fails
+- Verify both Clerk keys are correct
 - Check Clerk dashboard → API Keys
-- Ensure OAuth (Google/GitHub) is enabled in Clerk
-
-### Render service goes to sleep
-- Free tier services sleep after 15 min of inactivity
-- Upgrade to **Starter** plan ($7/month) to prevent sleep
-- Or use a uptime monitor (e.g., UptimeRobot) to ping every 5 min
+- Enable OAuth (Google/GitHub) in Clerk if needed
 
 ---
 
-## 📊 Cost Estimates
+## 🎯 When Railway Credit Runs Out
 
-| Service | Tier | Cost |
-|---------|------|------|
-| Vercel | Hobby | Free |
-| Render Web Service | Starter | $7/month |
-| Render PostgreSQL | Starter | $7/month |
-| Clerk | Free | 10,000 MAU free |
-| Anthropic | Pay-as-you-go | ~$0.01-0.10 per conversation |
+After ~1-2 months, Railway's $5 credit may run out. Options:
 
-**Total: ~$14-20/month** for a production setup.
-
----
-
-## 🎯 Alternative: Single-Service Deployment
-
-If you want to save money, deploy everything to Render (frontend + backend):
-
-1. Update `render.yaml` to serve frontend from the same service
-2. Configure static files in Dockerfile
-3. Single service = $7/month total
-
-Let me know if you want this setup!
+1. **Add $5/month** to Railway (still cheap)
+2. **Move to Render** (~$14/month, more reliable)
+3. **Stay on Replit** (free, already working)
 
 ---
 
