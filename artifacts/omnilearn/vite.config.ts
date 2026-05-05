@@ -53,7 +53,7 @@ export default defineConfig({
           vendor: ['react', 'react-dom', 'wouter'],
           ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-tooltip'],
           forms: ['react-hook-form', '@hookform/resolvers', 'zod'],
-          charts: ['recharts', 'd3-shape', 'd3-scale'],
+          charts: ['recharts'],
           queries: ['@tanstack/react-query'],
           motion: ['framer-motion'],
         },
