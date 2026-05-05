@@ -144,7 +144,7 @@ router.post("/github/repos/:owner/:repo/fork", requireAuth, async (req, res) => 
     res.status(403).json({ error: "GitHub account not connected." });
     return;
   }
-  const { owner, repo } = req.params;
+  const { owner, repo } = req.params as { owner: string; repo: string };
   try {
     const octokit = makeOctokit(token);
     const { data } = await octokit.repos.createFork({ owner, repo });
@@ -167,9 +167,9 @@ router.get("/github/repos/:owner/:repo/contents", requireAuth, async (req, res) 
     res.status(403).json({ error: "GitHub account not connected." });
     return;
   }
-  const { owner, repo } = req.params;
-  const pathQuery = req.query.path;
-  const path = Array.isArray(pathQuery) ? pathQuery[0] : (pathQuery ?? "");
+  const { owner, repo } = req.params as { owner: string; repo: string };
+  const pathQuery = req.query.path as string | string[] | undefined;
+  const path = (Array.isArray(pathQuery) ? pathQuery[0] : pathQuery) ?? "";
   try {
     const octokit = makeOctokit(token);
     const { data } = await octokit.repos.getContent({ owner, repo, path });

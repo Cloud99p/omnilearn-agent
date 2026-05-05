@@ -3,6 +3,7 @@ import type { KnowledgeNode, CharacterState } from "@workspace/db/schema";
 import { getVoiceModifiers } from "./character.js";
 import { webSearch, fetchUrl } from "./web-tools.js";
 import { logger } from "../lib/logger.js";
+import type Anthropic from "@anthropic-ai/sdk";
 
 export interface RetrievedNode extends KnowledgeNode {
   similarity: number;
@@ -26,7 +27,7 @@ export type ActivityEvent =
 
 // ── Tool definitions for Claude ────────────────────────────────────────────────
 
-const WEB_TOOLS: import("@anthropic-ai/sdk").Tool[] = [
+const WEB_TOOLS: Anthropic.Tool[] = [
   {
     name: "web_search",
     description: "Search the web for current information, news, facts, or anything you need to look up. Use this when you need real-time data, recent events, or information outside your knowledge. Returns search result snippets and an abstract if available.",
@@ -106,7 +107,7 @@ ${knowledgeBlock}
 - Be honest when information is uncertain or conflicting.`;
 
   // Build message history
-  const histMessages: import("@anthropic-ai/sdk").MessageParam[] = history.slice(-8).map(h => ({
+  const histMessages: Anthropic.MessageParam[] = history.slice(-8).map(h => ({
     role: h.role as "user" | "assistant",
     content: h.content,
   }));
@@ -120,8 +121,7 @@ ${knowledgeBlock}
   const MAX_SEARCHES = 4;
   const MAX_FETCHES = 3;
 
-  type MessageParam = import("@anthropic-ai/sdk").MessageParam;
-  const messages: MessageParam[] = [...histMessages];
+  const messages: Anthropic.MessageParam[] = [...histMessages];
 
   while (iteration < MAX_ITERATIONS) {
     iteration++;
@@ -147,7 +147,7 @@ ${knowledgeBlock}
       // Add assistant's turn (with tool_use blocks) to messages
       messages.push({ role: "assistant", content: response.content });
 
-      const toolResults: import("@anthropic-ai/sdk").ToolResultBlockParam[] = [];
+      const toolResults: Anthropic.ToolResultBlockParam[] = [];
 
       for (const block of toolUseBlocks) {
         if (block.type !== "tool_use") continue;

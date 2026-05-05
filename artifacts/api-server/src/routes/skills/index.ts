@@ -22,7 +22,8 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   const parsed = CreateSkillBody.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "Invalid body", details: parsed.error });
+    res.status(400).json({ error: "Invalid body", details: parsed.error });
+    return;
   }
   try {
     const [skill] = await db
@@ -38,10 +39,10 @@ router.post("/", async (req, res) => {
       })
       .returning();
     res.status(201).json(skill);
+    return;
   } catch (err) {
     req.log.error({ err }, "Failed to create skill");
     res.status(500).json({ error: "Failed to create skill" });
-    return;
   }
 });
 
@@ -59,7 +60,6 @@ router.delete("/:skillId", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to delete skill");
     res.status(500).json({ error: "Failed to delete skill" });
-    return;
   }
 });
 
