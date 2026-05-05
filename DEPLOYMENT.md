@@ -6,7 +6,7 @@ OmniLearn has **two components** that deploy separately:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Frontend (Vercel)           Backend (Railway/Render)       │
+│  Frontend (Vercel)           Backend (Render)               │
 │  - React + Vite              - Express API server           │
 │  - Static hosting            - PostgreSQL database          │
 │  - /api/* → proxy to backend - /api/* endpoints             │
@@ -15,78 +15,57 @@ OmniLearn has **two components** that deploy separately:
 
 ---
 
-## 🚀 Deploy Backend to Railway (Recommended)
-
-### Step 1: Create Railway Account
-1. Go to [railway.app](https://railway.app)
-2. Sign up with GitHub
-
-### Step 2: Deploy PostgreSQL
-1. **New** → **Database** → **PostgreSQL**
-2. Wait for provisioning (~30 seconds)
-3. Copy the `DATABASE_URL` from the PostgreSQL service
-
-### Step 3: Deploy API Server
-1. **New** → **GitHub Repo** → Select `omnilearn-agent`
-2. Railway auto-detects the `Dockerfile` and `railway.toml`
-3. Add these environment variables:
-
-| Variable | Value |
-|----------|-------|
-| `DATABASE_URL` | `postgresql://...` (from Railway DB) |
-| `CLERK_SECRET_KEY` | `sk_test_...` |
-| `CLERK_PUBLISHABLE_KEY` | `pk_test_...` |
-| `ANTHROPIC_API_KEY` | `sk-ant-...` |
-| `PORT` | `3000` |
-
-4. **Deploy** — Railway will build and start the server
-5. Copy your Railway URL (e.g., `https://omnilearn-production-abc123.railway.app`)
-
-### Step 4: Update Vercel Frontend
-1. Open `vercel.json`
-2. Replace `YOUR-RAILWAY-URL` with your actual Railway URL
-3. Commit and push
-
----
-
-## 🚀 Deploy Backend to Render
+## 🚀 Deploy Backend to Render (Recommended)
 
 ### Step 1: Create Render Account
 1. Go to [render.com](https://render.com)
 2. Sign up with GitHub
 
-### Step 2: Create Web Service
-1. **New** → **Web Service**
-2. Connect `omnilearn-agent` repo
-3. Configure:
-   - **Name**: `omnilearn-api`
-   - **Environment**: `Docker`
-   - **Build Command**: `docker build -t . -f Dockerfile`
-   - **Start Command**: `pnpm --filter @workspace/api-server run start`
+### Step 2: Deploy from Blueprint
+1. Click **New** → **Blueprint**
+2. Click **Connect repository** and select `omnilearn-agent`
+3. Render will detect `render.yaml` and show the configuration
 
-### Step 3: Add PostgreSQL
-1. **New** → **PostgreSQL**
-2. Copy the `DATABASE_URL` (internal or external)
+### Step 3: Set Environment Variables
+In the Blueprint setup, you'll see environment variables. Set these:
 
-### Step 4: Set Environment Variables
-Same as Railway (see above)
+| Variable | Value |
+|----------|-------|
+| `CLERK_SECRET_KEY` | `sk_test_...` (from Clerk dashboard) |
+| `CLERK_PUBLISHABLE_KEY` | `pk_test_...` (from Clerk dashboard) |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` (from Anthropic dashboard) |
+| `PORT` | `3000` |
 
-### Step 5: Deploy
-Render will build and deploy. Copy your `.onrender.com` URL.
+**Note:** `DATABASE_URL` is automatically set from the PostgreSQL database defined in `render.yaml`.
+
+### Step 4: Apply Blueprint
+1. Click **Apply**
+2. Render will create:
+   - **Web Service** (`omnilearn-api`) — your Express server
+   - **PostgreSQL Database** (`omnilearn-db`) — your database
+3. Wait for deployment (~3-5 minutes)
+
+### Step 5: Get Your Backend URL
+Once deployed:
+1. Go to the **omnilearn-api** service dashboard
+2. Copy the URL (e.g., `https://omnilearn-api.onrender.com`)
 
 ---
 
 ## 🚀 Deploy Frontend to Vercel
 
 ### Step 1: Update vercel.json
-Replace `YOUR-RAILWAY-URL` with your backend URL:
+Replace `YOUR-RENDER-URL` with your actual Render URL:
 
 ```json
 {
+  "buildCommand": "pnpm -r --filter @workspace/omnilearn run build",
+  "outputDirectory": "artifacts/omnilearn/dist/public",
+  "installCommand": "pnpm install",
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://your-backend.railway.app/api/:path*"
+      "destination": "https://YOUR-RENDER-URL.onrender.com/api/:path*"
     }
   ]
 }
@@ -94,6 +73,8 @@ Replace `YOUR-RAILWAY-URL` with your backend URL:
 
 ### Step 2: Push to GitHub
 ```bash
+git add -A
+git commit -m "chore: update vercel.json with Render backend URL"
 git push origin main
 ```
 
@@ -104,10 +85,10 @@ Vercel will automatically redeploy with the new API proxy.
 
 ## 🔧 Environment Variables
 
-### Required (Backend)
+### Required (Backend - Render)
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
+| `DATABASE_URL` | Auto-set by Render from PostgreSQL |
 | `CLERK_SECRET_KEY` | Clerk API secret key |
 | `CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
 | `ANTHROPIC_API_KEY` | Anthropic Claude API key |
@@ -123,21 +104,30 @@ Vercel will automatically redeploy with the new API proxy.
 | Variable | Description |
 |----------|-------------|
 | `VITE_CLERK_PUBLISHABLE_KEY` | Client-side Clerk key |
-| `VITE_API_BASE_URL` | Backend API URL |
 
 ---
 
 ## ✅ Verify Deployment
 
-1. **Backend Health Check**: Visit `https://your-backend.railway.app/api/healthz`
-   - Should return: `{"status":"healthy"}`
+### 1. Backend Health Check
+Visit: `https://your-render-url.onrender.com/api/healthz`
 
-2. **Frontend**: Visit your Vercel URL
-   - Sign up should work
-   - Chat should connect to backend
+Should return:
+```json
+{"status":"healthy"}
+```
 
-3. **API Routes**: Test `https://your-vercel-url.app/api/me`
-   - Should proxy to backend
+### 2. Frontend
+Visit your Vercel URL (e.g., `https://omnilearn.vercel.app`)
+
+- Sign up should work
+- Chat should connect to backend
+- No 404 errors on `/api/*` routes
+
+### 3. API Routes
+Test: `https://your-vercel-url.app/api/me`
+
+Should proxy to Render backend and return user info (if authenticated).
 
 ---
 
@@ -145,18 +135,23 @@ Vercel will automatically redeploy with the new API proxy.
 
 ### Frontend can't connect to API
 - Check `vercel.json` rewrites — URL must be correct
-- Verify backend is running (check Railway logs)
-- Ensure CORS is enabled (backend default allows all)
+- Verify backend is running (check Render logs)
+- Ensure no CORS errors in browser console
 
 ### Database connection errors
-- Verify `DATABASE_URL` is correct
-- Check Railway PostgreSQL is running
-- Ensure database schema is pushed: `pnpm --filter @workspace/db run push`
+- Render auto-sets `DATABASE_URL` — don't override it
+- Check Render PostgreSQL is running
+- Database schema auto-migrates on first deploy
 
 ### Clerk authentication fails
 - Verify both `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY`
 - Check Clerk dashboard → API Keys
 - Ensure OAuth (Google/GitHub) is enabled in Clerk
+
+### Render service goes to sleep
+- Free tier services sleep after 15 min of inactivity
+- Upgrade to **Starter** plan ($7/month) to prevent sleep
+- Or use a uptime monitor (e.g., UptimeRobot) to ping every 5 min
 
 ---
 
@@ -165,12 +160,24 @@ Vercel will automatically redeploy with the new API proxy.
 | Service | Tier | Cost |
 |---------|------|------|
 | Vercel | Hobby | Free |
-| Railway | Hobby | $5/month (PostgreSQL) |
-| Render | Free | Free (with sleep) |
+| Render Web Service | Starter | $7/month |
+| Render PostgreSQL | Starter | $7/month |
 | Clerk | Free | 10,000 MAU free |
 | Anthropic | Pay-as-you-go | ~$0.01-0.10 per conversation |
 
-**Total: ~$5-10/month** for a production setup.
+**Total: ~$14-20/month** for a production setup.
+
+---
+
+## 🎯 Alternative: Single-Service Deployment
+
+If you want to save money, deploy everything to Render (frontend + backend):
+
+1. Update `render.yaml` to serve frontend from the same service
+2. Configure static files in Dockerfile
+3. Single service = $7/month total
+
+Let me know if you want this setup!
 
 ---
 

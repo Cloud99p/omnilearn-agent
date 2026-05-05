@@ -1,5 +1,5 @@
 # Dockerfile for OmniLearn API Server
-# Deploy to Railway, Render, or any Docker host
+# Deploy to Render, Railway, or any Docker host
 
 FROM node:24-alpine
 
@@ -9,15 +9,15 @@ RUN corepack enable && corepack prepare pnpm@10 --activate
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files (for dependency installation)
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY artifacts/api-server/package.json ./artifacts/api-server/
 COPY lib/db/package.json ./lib/db/
 COPY lib/api-zod/package.json ./lib/api-zod/
 COPY lib/integrations-anthropic-ai/package.json ./lib/integrations-anthropic-ai/
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile --prod
+# Install all dependencies (including dev for build)
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY artifacts/api-server ./artifacts/api-server
@@ -25,8 +25,11 @@ COPY lib/db ./lib/db
 COPY lib/api-zod ./lib/api-zod
 COPY lib/integrations-anthropic-ai ./lib/integrations-anthropic-ai
 
-# Build the API server
+# Build the API server (runs typecheck + build)
 RUN pnpm --filter @workspace/api-server run build
+
+# Prune dev dependencies for smaller image
+RUN pnpm prune --prod
 
 # Expose port
 EXPOSE 3000
