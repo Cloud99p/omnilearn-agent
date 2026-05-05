@@ -16,11 +16,8 @@ COPY lib/db/package.json ./lib/db/
 COPY lib/api-zod/package.json ./lib/api-zod/
 COPY lib/integrations-anthropic-ai/package.json ./lib/integrations-anthropic-ai/
 
-# Install all dependencies (including dev for tsx)
+# Install all dependencies (tsx is included as devDependency)
 RUN pnpm install
-
-# Install tsx globally for running TypeScript
-RUN pnpm add -g tsx
 
 # Copy source code
 COPY artifacts/api-server ./artifacts/api-server
@@ -37,6 +34,7 @@ EXPOSE 3000
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV PATH="/app/node_modules/.bin:$PATH"
 
 # Start the server
 CMD ["pnpm", "--filter", "@workspace/api-server", "run", "start"]
