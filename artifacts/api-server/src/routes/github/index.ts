@@ -168,7 +168,8 @@ router.get("/github/repos/:owner/:repo/contents", requireAuth, async (req, res) 
     return;
   }
   const { owner, repo } = req.params;
-  const path = String(req.query.path ?? "");
+  const pathQuery = req.query.path;
+  const path = Array.isArray(pathQuery) ? pathQuery[0] : (pathQuery ?? "");
   try {
     const octokit = makeOctokit(token);
     const { data } = await octokit.repos.getContent({ owner, repo, path });
