@@ -145,7 +145,11 @@ router.post("/nodes/:id/ping", async (req, res) => {
         signal: AbortSignal.timeout(8_000),
       });
       pingMs = Date.now() - start;
-      if (r.ok) { status = "online"; nodeInfo = await r.json(); }
+      if (r.ok) {
+        status = "online";
+        const json = await r.json() as Record<string, unknown>;
+        nodeInfo = json;
+      }
     } catch { /* offline */ }
 
     const [updated] = await db.update(ghostNodes).set({

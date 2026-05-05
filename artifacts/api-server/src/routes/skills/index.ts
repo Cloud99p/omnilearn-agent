@@ -14,6 +14,7 @@ router.get("/", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to list skills");
     res.status(500).json({ error: "Failed to list skills" });
+    return;
   }
 });
 
@@ -40,13 +41,17 @@ router.post("/", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to create skill");
     res.status(500).json({ error: "Failed to create skill" });
+    return;
   }
 });
 
 // Uninstall / delete a skill
 router.delete("/:skillId", async (req, res) => {
   const params = DeleteSkillParams.safeParse(req.params);
-  if (!params.success) return res.status(400).json({ error: "Invalid params" });
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid params" });
+    return;
+  }
 
   try {
     await db.delete(skills).where(eq(skills.id, params.data.skillId));
@@ -54,6 +59,7 @@ router.delete("/:skillId", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to delete skill");
     res.status(500).json({ error: "Failed to delete skill" });
+    return;
   }
 });
 
