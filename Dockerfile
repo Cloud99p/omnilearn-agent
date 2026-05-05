@@ -16,8 +16,11 @@ COPY lib/db/package.json ./lib/db/
 COPY lib/api-zod/package.json ./lib/api-zod/
 COPY lib/integrations-anthropic-ai/package.json ./lib/integrations-anthropic-ai/
 
-# Install all dependencies (including dev for build)
+# Install all dependencies (including dev for tsx)
 RUN pnpm install --frozen-lockfile
+
+# Install tsx globally for running TypeScript
+RUN pnpm add -g tsx
 
 # Copy source code
 COPY artifacts/api-server ./artifacts/api-server
