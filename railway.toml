@@ -1,10 +1,18 @@
-# Railway deployment configuration
+# Railway Deployment Configuration
 # https://docs.railway.app/guides/deploy
 
 [build]
-builder = "NIXPACKS"
+builder = "DOCKERFILE"
+dockerfilePath = "./Dockerfile"
 
 [deploy]
 startCommand = "pnpm --filter @workspace/api-server run start"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
+
+# Environment variables (set in Railway dashboard)
+# DATABASE_URL - from Neon PostgreSQL
+# CLERK_SECRET_KEY
+# CLERK_PUBLISHABLE_KEY
+# ANTHROPIC_API_KEY
+# PORT=3000
