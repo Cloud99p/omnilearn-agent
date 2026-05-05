@@ -1,0 +1,5 @@
+{
+  "buildCommand": "pnpm -r --filter @workspace/omnilearn --filter @workspace/api-server run build",
+  "outputDirectory": "artifacts/omnilearn/dist/public",
+  "installCommand": "pnpm install"
+}
