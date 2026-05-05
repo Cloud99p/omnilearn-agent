@@ -48,3 +48,16 @@ Thumbs.db
 .cache/
 .local/
 .replit
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+.vercel
+.vercel/output
+
+# Logs
+logs
+*.log
