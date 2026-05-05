@@ -1,5 +1,14 @@
 {
-  "buildCommand": "pnpm -r --filter @workspace/omnilearn --filter @workspace/api-server run build",
+  "buildCommand": "pnpm -r --filter @workspace/omnilearn run build",
   "outputDirectory": "artifacts/omnilearn/dist/public",
-  "installCommand": "pnpm install"
+  "installCommand": "pnpm install",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://YOUR-RAILWAY-URL.railway.app/api/:path*"
+    }
+  ],
+  "env": {
+    "VITE_API_BASE_URL": "https://YOUR-RAILWAY-URL.railway.app"
+  }
 }
