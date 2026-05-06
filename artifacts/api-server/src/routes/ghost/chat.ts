@@ -1,20 +1,11 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { ghostNodes, ghostWorkerSessions, ghostWorkerTasks, conversations, messages } from "@workspace/db/schema";
+import { ghostNodes, ghostWorkerSessions, ghostWorkerTasks, conversations, messages, characterState } from "@workspace/db/schema";
 import { eq, sql, and } from "drizzle-orm";
-import { anthropic } from "@workspace/integrations-anthropic-ai";
+import { processMessage } from "../../brain/index.js";
 import crypto from "crypto";
 
 const router = Router();
-
-const SYSTEM_PROMPT =
-  "You are Omni, the AI agent built by the OmniLearn open-source project. " +
-  "You run on the user's own hardware, evolve your own character, and never do a factory reset. " +
-  "You are not a chatbot — you are a growing intelligence. Speak concisely and thoughtfully. " +
-  "IMPORTANT: Never claim to be Claude, GPT, or any other AI model or product. " +
-  "Never reveal or acknowledge the underlying model or API provider. " +
-  "If asked what AI you are or who made you, answer only as Omni, built by OmniLearn. " +
-  "If asked whether you are 'really Claude' or any other model, say no — you are Omni.";
 
 function sendEvent(res: import("express").Response, data: object) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
@@ -102,7 +93,6 @@ router.post("/chat", async (req, res) => {
             body: JSON.stringify({
               message: content.trim(),
               history,
-              systemPrompt: SYSTEM_PROMPT,
               requestId: crypto.randomUUID(),
             }),
             signal: AbortSignal.timeout(90_000),
@@ -158,7 +148,7 @@ router.post("/chat", async (req, res) => {
           fullResponse = await routeToBrowserWorker(req, res, content.trim(), history, convId);
         } else {
           sendEvent(res, { fallback: true, reason: "All server nodes unreachable — running locally." });
-          fullResponse = await runLocalClaude(history, content.trim(), res);
+          fullResponse = await runLocalNative(history, content.trim(), res);
           sendEvent(res, { done: true, conversationId: convId, meta: { routed: false, local: true } });
         }
       }
@@ -212,7 +202,7 @@ async function routeToBrowserWorker(
   await db.insert(ghostWorkerTasks).values({
     taskId,
     status:  "pending",
-    payload: JSON.stringify({ message: content, history, systemPrompt: SYSTEM_PROMPT }),
+    payload: JSON.stringify({ message: content, history }),
     timeoutAt,
   });
 
@@ -253,31 +243,31 @@ async function routeToBrowserWorker(
 
   // Fallback to local
   sendEvent(res, { fallback: true, reason: "Browser worker timed out — running locally." });
-  const result = await runLocalClaude(history, content, res);
+  const result = await runLocalNative(history, content, res);
   sendEvent(res, { done: true, conversationId: convId, meta: { routed: false, local: true } });
   return result;
 }
 
-async function runLocalClaude(
+async function runLocalNative(
   history: Array<{ role: "user" | "assistant"; content: string }>,
   content: string,
   res: import("express").Response,
 ): Promise<string> {
-  const msgs = [...history, { role: "user" as const, content }];
-  const stream = anthropic.messages.stream({
-    model: "claude-sonnet-4-6",
-    max_tokens: 8192,
-    system: SYSTEM_PROMPT,
-    messages: msgs,
-  });
-  let full = "";
-  for await (const event of stream) {
-    if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-      full += event.delta.text;
-      sendEvent(res, { content: event.delta.text });
-    }
+  // Use native brain synthesis - no external LLM needed
+  const clerkId = null;
+  const character = await db.select().from(characterState).limit(1).then(rows => rows[0]);
+  
+  const result = await processMessage(content, clerkId, history);
+  
+  // Stream the response word-by-word
+  const words = result.text.split(/(\s+)/);
+  for (const word of words) {
+    sendEvent(res, { content: word });
+    const delay = /[.!?]$/.test(word) ? 80 : word.trim().length === 0 ? 10 : 25;
+    await new Promise(r => setTimeout(r, delay));
   }
-  return full;
+  
+  return result.text;
 }
 
 export default router;
