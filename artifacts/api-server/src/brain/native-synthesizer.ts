@@ -1,6 +1,7 @@
 import type { KnowledgeNode, CharacterState } from "@workspace/db/schema";
 import { getVoiceModifiers } from "./character.js";
 import { logger } from "../lib/logger.js";
+import { webSearch, fetchUrl, type SearchResult } from "./web-tools.js";
 
 export interface RetrievedNode extends KnowledgeNode {
   similarity: number;
@@ -12,7 +13,14 @@ export interface NativeSynthesisContext {
   nodes: RetrievedNode[];
   character: CharacterState;
   history: Array<{ role: string; content: string }>;
+  onActivity?: (event: ActivityEvent) => void;
 }
+
+export type ActivityEvent =
+  | { type: "searching"; query: string }
+  | { type: "fetching"; url: string }
+  | { type: "search_done"; resultCount: number }
+  | { type: "fetch_done"; title: string };
 
 export interface NativeSynthesisResult {
   text: string;
@@ -33,22 +41,55 @@ export interface NativeSynthesisResult {
 export async function synthesizeNative(
   ctx: NativeSynthesisContext,
 ): Promise<NativeSynthesisResult> {
-  const { query, queryType, nodes, character, history } = ctx;
+  const { query, queryType, nodes, character, history, onActivity } = ctx;
   const voice = getVoiceModifiers(character);
 
   // Filter to relevant nodes (similarity > 0.05)
   const relevantNodes = nodes.filter(n => n.similarity > 0.05).slice(0, 8);
   const nodesUsed = relevantNodes.length;
 
+  // Detect if web search is needed (current events, news, recent facts)
+  const needsWebSearch = detectNeedForWebSearch(query, relevantNodes);
+  let searchResults: SearchResult[] = [];
+  let fetchedContent: { title: string; text: string } | null = null;
+
+  if (needsWebSearch && onActivity) {
+    // Search the web
+    onActivity({ type: "searching", query });
+    const searchResult = await webSearch(query);
+    searchResults = searchResult.results;
+    onActivity({ type: "search_done", resultCount: searchResults.length });
+
+    // Fetch top result if it looks promising
+    if (searchResults.length > 0 && searchResults[0].url) {
+      onActivity({ type: "fetching", url: searchResults[0].url });
+      try {
+        const fetched = await fetchUrl(searchResults[0].url);
+        fetchedContent = { title: fetched.title, text: fetched.text };
+        onActivity({ type: "fetch_done", title: fetched.title });
+      } catch (err) {
+        logger.warn({ err, url: searchResults[0].url }, "Failed to fetch URL");
+      }
+    }
+  }
+
   // Build response based on query type and available knowledge
   let responseText: string;
 
-  if (relevantNodes.length === 0) {
-    // No relevant knowledge — respond honestly and invite learning
+  if (relevantNodes.length === 0 && searchResults.length === 0) {
+    // No relevant knowledge and no web results — respond honestly
     responseText = buildUnknownResponse(query, queryType, character);
   } else {
-    // Synthesize from knowledge nodes
-    responseText = synthesizeFromNodes(query, relevantNodes, character, voice, queryType);
+    // Synthesize from knowledge nodes + web results
+    responseText = synthesizeFromNodesAndWeb(
+      query,
+      relevantNodes,
+      searchResults,
+      fetchedContent,
+      character,
+      voice,
+      queryType,
+    );
   }
 
   // Add character flavor to the response
@@ -56,7 +97,7 @@ export async function synthesizeNative(
 
   return {
     text: responseText,
-    nodesUsed,
+    nodesUsed: nodesUsed + (searchResults.length > 0 ? searchResults.length : 0),
     newNodesAdded: 0, // Will be updated by caller after learning
     character: {
       curiosity: character.curiosity,
