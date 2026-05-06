@@ -474,8 +474,8 @@ export default function Chat() {
     }
   }, [ghostConvId]);
 
-  // ── Claude mode send ──────────────────────────────────────────────────────
-  const sendClaudeMessage = useCallback(async (content: string) => {
+  // ── Local mode send (knowledge graph only, NO web search) ─────────────────
+  const sendLocalMessage = useCallback(async (content: string) => {
     const tempUserMsg: Message = { id: Date.now(), role: "user", content, createdAt: new Date().toISOString() };
     setMessages(prev => [...prev, tempUserMsg]);
     setStreamingSession("local");
@@ -485,10 +485,10 @@ export default function Chat() {
       let convId = activeConvId;
       if (!convId) convId = await createConversation();
 
-      const res = await fetch(`${BASE}/api/anthropic/conversations/${convId}/messages/stream`, {
+      const res = await fetch(`${BASE}/api/local/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, installedSkillIds }),
+        body: JSON.stringify({ content, conversationId: convId }),
       });
       if (!res.ok || !res.body) throw new Error("Stream failed");
 
@@ -518,7 +518,7 @@ export default function Chat() {
     } finally {
       setStreamingSession(null);
     }
-  }, [activeConvId, mode, installedSkillIds]);
+  }, [activeConvId]);
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || streamingSession !== null) return;
@@ -526,8 +526,8 @@ export default function Chat() {
     setInput("");
     if (mode === "native") await sendNativeMessage(content);
     else if (mode === "ghost") await sendGhostMessage(content);
-    else await sendClaudeMessage(content);
-  }, [input, streamingSession, mode, sendNativeMessage, sendGhostMessage, sendClaudeMessage]);
+    else await sendLocalMessage(content);  // Local mode: knowledge graph only
+  }, [input, streamingSession, mode, sendNativeMessage, sendGhostMessage, sendLocalMessage]);
 
   const installSkill = async (catalog: typeof SKILL_CATALOG[0]) => {
     const res = await fetch(`${BASE}/api/skills`, {
