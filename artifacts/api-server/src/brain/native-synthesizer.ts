@@ -1,0 +1,264 @@
+import type { KnowledgeNode, CharacterState } from "@workspace/db/schema";
+import { getVoiceModifiers } from "./character.js";
+import { logger } from "../lib/logger.js";
+
+export interface RetrievedNode extends KnowledgeNode {
+  similarity: number;
+}
+
+export interface NativeSynthesisContext {
+  query: string;
+  queryType: "question" | "statement" | "command";
+  nodes: RetrievedNode[];
+  character: CharacterState;
+  history: Array<{ role: string; content: string }>;
+}
+
+export interface NativeSynthesisResult {
+  text: string;
+  nodesUsed: number;
+  newNodesAdded: number;
+  character: {
+    curiosity: number;
+    confidence: number;
+    technical: number;
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Native Response Synthesis — No External LLM
+// Builds responses from learned knowledge + character state
+// ──────────────────────────────────────────────────────────────────────────────
+
+export async function synthesizeNative(
+  ctx: NativeSynthesisContext,
+): Promise<NativeSynthesisResult> {
+  const { query, queryType, nodes, character, history } = ctx;
+  const voice = getVoiceModifiers(character);
+
+  // Filter to relevant nodes (similarity > 0.05)
+  const relevantNodes = nodes.filter(n => n.similarity > 0.05).slice(0, 8);
+  const nodesUsed = relevantNodes.length;
+
+  // Build response based on query type and available knowledge
+  let responseText: string;
+
+  if (relevantNodes.length === 0) {
+    // No relevant knowledge — respond honestly and invite learning
+    responseText = buildUnknownResponse(query, queryType, character);
+  } else {
+    // Synthesize from knowledge nodes
+    responseText = synthesizeFromNodes(query, relevantNodes, character, voice, queryType);
+  }
+
+  // Add character flavor to the response
+  responseText = applyCharacterVoice(responseText, character, voice);
+
+  return {
+    text: responseText,
+    nodesUsed,
+    newNodesAdded: 0, // Will be updated by caller after learning
+    character: {
+      curiosity: character.curiosity,
+      confidence: character.confidence,
+      technical: character.technical,
+    },
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Response when no relevant knowledge exists
+// ──────────────────────────────────────────────────────────────────────────────
+
+function buildUnknownResponse(
+  query: string,
+  queryType: string,
+  character: CharacterState,
+): string {
+  const curiosityLevel = character.curiosity;
+
+  if (curiosityLevel > 70) {
+    return `I don't have any knowledge about that yet — but I'm curious! Tell me more about "${query}" and I'll learn from our conversation.`;
+  } else if (curiosityLevel > 40) {
+    return `I haven't learned about that yet. What can you teach me about "${query}"?`;
+  } else {
+    return `I don't have information about that in my knowledge base.`;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Synthesize response from retrieved knowledge nodes
+// ──────────────────────────────────────────────────────────────────────────────
+
+function synthesizeFromNodes(
+  query: string,
+  nodes: RetrievedNode[],
+  character: CharacterState,
+  voice: ReturnType<typeof getVoiceModifiers>,
+  queryType: string,
+): string {
+  // Sort by similarity (highest first)
+  const sorted = [...nodes].sort((a, b) => b.similarity - a.similarity);
+  const topNode = sorted[0];
+
+  // Build response structure
+  const parts: string[] = [];
+
+  // Opening — acknowledge the query
+  const opening = buildOpening(query, queryType, character);
+  if (opening) parts.push(opening);
+
+  // Main content — synthesize from top nodes
+  const mainContent = synthesizeMainContent(sorted, voice);
+  parts.push(mainContent);
+
+  // Closing — invite further interaction if curious
+  if (character.curiosity > 50) {
+    const closing = buildClosing(query, character);
+    if (closing) parts.push(closing);
+  }
+
+  return parts.join("\n\n");
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Build opening based on query type
+// ──────────────────────────────────────────────────────────────────────────────
+
+function buildOpening(
+  query: string,
+  queryType: string,
+  character: CharacterState,
+): string {
+  switch (queryType) {
+    case "question":
+      if (character.confidence > 60) {
+        return `Based on what I've learned:`;
+      } else {
+        return `From my knowledge:`;
+      }
+
+    case "statement":
+      if (character.empathy > 60) {
+        return `I hear you. Here's what I know:`;
+      } else {
+        return `That connects to what I've learned:`;
+      }
+
+    case "command":
+      return `I'll help with that. Here's what I know:`;
+
+    default:
+      return ``;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Synthesize main content from knowledge nodes
+// ──────────────────────────────────────────────────────────────────────────────
+
+function synthesizeMainContent(
+  nodes: RetrievedNode[],
+  voice: ReturnType<typeof getVoiceModifiers>,
+): string {
+  if (nodes.length === 0) return "";
+
+  // Take top 3-5 nodes for coherence
+  const topNodes = nodes.slice(0, 5);
+
+  // Build coherent response from nodes
+  const contentParts: string[] = [];
+
+  for (const node of topNodes) {
+    const confidence = Math.round(node.similarity * 100);
+    
+    // Add node content with confidence indicator
+    if (voice.prefersDetail && confidence > 30) {
+      // Detailed mode: include more context
+      contentParts.push(`• ${node.content}`);
+    } else if (confidence > 50) {
+      // High confidence: state directly
+      contentParts.push(node.content);
+    } else if (confidence > 30) {
+      // Medium confidence: hedge slightly
+      contentParts.push(`This might be relevant: ${node.content}`);
+    }
+    // Low confidence (<30%): skip or mention briefly
+  }
+
+  // Join with appropriate connectors
+  if (voice.prefersDetail) {
+    return contentParts.join("\n");
+  } else {
+    // Concise mode: combine into flowing text
+    return contentParts.slice(0, 3).join(" ");
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Build closing to invite further interaction
+// ──────────────────────────────────────────────────────────────────────────────
+
+function buildClosing(query: string, character: CharacterState): string {
+  if (character.curiosity > 70) {
+    return `What else can you tell me about this? I'm always learning.`;
+  } else if (character.curiosity > 50) {
+    return `Is there more you'd like to share about this?`;
+  }
+  return "";
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Apply character voice modifiers to final response
+// ──────────────────────────────────────────────────────────────────────────────
+
+function applyCharacterVoice(
+  text: string,
+  character: CharacterState,
+  voice: ReturnType<typeof getVoiceModifiers>,
+): string {
+  let result = text;
+
+  // Technical level adjustment
+  if (character.technical > 70) {
+    // More precise, structured language
+    result = result.replace(/maybe/g, "potentially");
+    result = result.replace(/think/g, "analyze");
+  } else if (character.technical < 30) {
+    // Simpler, more accessible language
+    result = result.replace(/potentially/g, "maybe");
+    result = result.replace(/analyze/g, "think about");
+  }
+
+  // Empathy adjustment
+  if (character.empathy > 70 && !voice.prefersDetail) {
+    result = `I understand. ${result}`;
+  }
+
+  // Confidence adjustment
+  if (character.confidence < 40) {
+    result = result.replace(/I know/g, "I think");
+    result = result.replace(/definitely/g, "possibly");
+  }
+
+  return result;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Learn from interaction (creates new knowledge node)
+// ──────────────────────────────────────────────────────────────────────────────
+
+export async function learnFromInteraction(
+  query: string,
+  response: string,
+  character: CharacterState,
+): Promise<{ newNodeId?: number; content: string }> {
+  // Extract key learning from the exchange
+  // This is simplified — in production you'd use NLP to extract facts
+  const learningSummary = `[Learned] ${query.substring(0, 100)}${query.length > 100 ? "..." : ""}`;
+
+  // Return learning for caller to save to DB
+  return {
+    content: learningSummary,
+  };
+}

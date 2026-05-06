@@ -12,9 +12,10 @@ import {
   detectTechnicalContent, detectEmotionalContent,
 } from "./character.js";
 import {
-  synthesizeWithTools, synthesizeLearningAck, synthesizeStatusResponse,
+  synthesizeLearningAck, synthesizeStatusResponse,
   type RetrievedNode, type ActivityCallback,
 } from "./synthesizer.js";
+import { synthesizeNative } from "./native-synthesizer.js";
 import { SEED_KNOWLEDGE } from "./seed.js";
 import { logger } from "../lib/logger.js";
 
@@ -215,10 +216,9 @@ export async function processMessage(
     const mainTopic = keyTerms[0] ?? extractKeyTerms(userMessage)[0] ?? "this topic";
     text = synthesizeLearningAck(newNodesAdded, mainTopic, character);
   } else {
-    text = await synthesizeWithTools(
-      { query: userMessage, queryType, nodes: retrieved, character, history },
-      onActivity,
-    );
+    // Use native synthesis — no external LLM, learns from knowledge graph
+    const result = await synthesizeNative({ query: userMessage, queryType, nodes: retrieved, character, history });
+    text = result.text;
   }
 
   // 4. Update character traits based on the interaction
