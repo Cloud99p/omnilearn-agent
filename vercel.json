@@ -1,7 +1,7 @@
 {
   "buildCommand": "pnpm -r --filter @workspace/omnilearn run build",
   "outputDirectory": "artifacts/omnilearn/dist/public",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "rewrites": [
     {
       "source": "/api/:path*",
