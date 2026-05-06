@@ -217,7 +217,7 @@ export async function processMessage(
     text = synthesizeLearningAck(newNodesAdded, mainTopic, character);
   } else {
     // Use native synthesis — no external LLM, learns from knowledge graph
-    const result = await synthesizeNative({ query: userMessage, queryType, nodes: retrieved, character, history });
+    const result = await synthesizeNative({ query: userMessage, queryType, nodes: retrieved, character, history, onActivity });
     text = result.text;
   }
 

@@ -108,6 +108,42 @@ export async function synthesizeNative(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Detect if web search is needed
+// ──────────────────────────────────────────────────────────────────────────────
+
+function detectNeedForWebSearch(
+  query: string,
+  nodes: RetrievedNode[],
+): boolean {
+  const lower = query.toLowerCase();
+
+  // Triggers for web search
+  const webTriggers = [
+    "news", "current", "recent", "latest", "today", "yesterday", "this week",
+    "who is", "what is happening", "what happened", "when did",
+    "weather", "stock", "price of", "score", "results",
+    "new", "just", "breaking", "announced", "released",
+  ];
+
+  // If query has web triggers, search
+  if (webTriggers.some(trigger => lower.includes(trigger))) {
+    return true;
+  }
+
+  // If no relevant knowledge nodes, search
+  if (nodes.length === 0 || nodes.every(n => n.similarity < 0.2)) {
+    return true;
+  }
+
+  // If query is a question about external facts
+  if (lower.startsWith("what is ") || lower.startsWith("who is ") || lower.startsWith("where is ")) {
+    return true;
+  }
+
+  return false;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Response when no relevant knowledge exists
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -125,6 +161,78 @@ function buildUnknownResponse(
   } else {
     return `I don't have information about that in my knowledge base.`;
   }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Synthesize response from knowledge nodes + web results
+// ──────────────────────────────────────────────────────────────────────────────
+
+function synthesizeFromNodesAndWeb(
+  query: string,
+  nodes: RetrievedNode[],
+  searchResults: SearchResult[],
+  fetchedContent: { title: string; text: string } | null,
+  character: CharacterState,
+  voice: ReturnType<typeof getVoiceModifiers>,
+  queryType: string,
+): string {
+  const parts: string[] = [];
+
+  // Opening
+  const opening = buildOpening(query, queryType, character);
+  if (opening) parts.push(opening);
+
+  // Web results (if available)
+  if (searchResults.length > 0) {
+    const webSection = synthesizeFromWeb(searchResults, fetchedContent, voice);
+    if (webSection) parts.push(webSection);
+  }
+
+  // Knowledge nodes (if available)
+  if (nodes.length > 0) {
+    const knowledgeSection = synthesizeFromNodes(query, nodes, character, voice, queryType);
+    if (knowledgeSection) parts.push(knowledgeSection);
+  }
+
+  // Closing
+  if (character.curiosity > 50) {
+    const closing = buildClosing(query, character);
+    if (closing) parts.push(closing);
+  }
+
+  return parts.join("\n\n");
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Synthesize from web search results
+// ──────────────────────────────────────────────────────────────────────────────
+
+function synthesizeFromWeb(
+  searchResults: SearchResult[],
+  fetchedContent: { title: string; text: string } | null,
+  voice: ReturnType<typeof getVoiceModifiers>,
+): string {
+  const topResults = searchResults.slice(0, 3);
+  const parts: string[] = [];
+
+  // Add fetched content if available (full page)
+  if (fetchedContent) {
+    const summary = fetchedContent.text.slice(0, 400);
+    parts.push(`From ${fetchedContent.title}: ${summary}...`);
+  }
+
+  // Add search result snippets
+  for (const result of topResults) {
+    if (voice.prefersDetail) {
+      parts.push(`• ${result.title}: ${result.snippet}`);
+    } else {
+      parts.push(result.snippet);
+    }
+  }
+
+  if (parts.length === 0) return "";
+
+  return `Here's what I found:\n${parts.join("\n")}`;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
