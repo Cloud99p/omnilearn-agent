@@ -212,6 +212,8 @@ export async function processMessage(
   const isTeaching = queryType === "statement" && newNodesAdded > 0 && retrieved[0]?.similarity < 0.25;
 
   let text: string;
+  let learnedFacts: Array<{ content: string; type: string; tags: string[] }> = [];
+  
   if (isTeaching) {
     const mainTopic = keyTerms[0] ?? extractKeyTerms(userMessage)[0] ?? "this topic";
     text = synthesizeLearningAck(newNodesAdded, mainTopic, character);
@@ -219,6 +221,18 @@ export async function processMessage(
     // Use native synthesis — no external LLM, learns from knowledge graph
     const result = await synthesizeNative({ query: userMessage, queryType, nodes: retrieved, character, history, onActivity });
     text = result.text;
+    learnedFacts = result.learnedFacts || [];
+    
+    // Save learned facts to knowledge graph
+    for (const fact of learnedFacts) {
+      try {
+        const existing = await retrieveRelevantNodes(fact.content, clerkId, 1);
+        if (existing.length > 0 && existing[0].similarity > 0.85) continue; // Skip duplicates
+        
+        await insertNode(fact.content, fact.type, fact.tags, 0.7, "conversation", clerkId);
+        newNodesAdded++;
+      } catch { /* skip */ }
+    }
   }
 
   // 4. Update character traits based on the interaction

@@ -26,6 +26,7 @@ export interface NativeSynthesisResult {
   text: string;
   nodesUsed: number;
   newNodesAdded: number;
+  learnedFacts: Array<{ content: string; type: string; tags: string[] }>;
   character: {
     curiosity: number;
     confidence: number;
@@ -95,10 +96,14 @@ export async function synthesizeNative(
   // Add character flavor to the response
   responseText = applyCharacterVoice(responseText, character, voice);
 
+  // Extract facts to learn from this interaction
+  const learnedFacts = extractLearnings(query, responseText, searchResults, relevantNodes);
+
   return {
     text: responseText,
     nodesUsed: nodesUsed + (searchResults.length > 0 ? searchResults.length : 0),
-    newNodesAdded: 0, // Will be updated by caller after learning
+    newNodesAdded: learnedFacts.length,
+    learnedFacts,
     character: {
       curiosity: character.curiosity,
       confidence: character.confidence,
@@ -204,35 +209,65 @@ function synthesizeFromNodesAndWeb(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Synthesize from web search results
+// Synthesize from web search results — ACTUAL SYNTHESIS, NOT DUMP
 // ──────────────────────────────────────────────────────────────────────────────
 
 function synthesizeFromWeb(
+  query: string,
   searchResults: SearchResult[],
   fetchedContent: { title: string; text: string } | null,
   voice: ReturnType<typeof getVoiceModifiers>,
 ): string {
-  const topResults = searchResults.slice(0, 3);
-  const parts: string[] = [];
+  if (searchResults.length === 0 && !fetchedContent) return "";
 
-  // Add fetched content if available (full page)
+  // Extract key information from search results
+  const keyPoints: string[] = [];
+  
+  // Process fetched content first (full page = more reliable)
   if (fetchedContent) {
-    const summary = fetchedContent.text.slice(0, 400);
-    parts.push(`From ${fetchedContent.title}: ${summary}...`);
+    // Extract 2-3 key sentences from the fetched page
+    const sentences = fetchedContent.text.split(/[.!?]+/).filter(s => s.trim().length > 20);
+    const topSentences = sentences.slice(0, 3).map(s => s.trim() + ".");
+    keyPoints.push(...topSentences);
   }
-
-  // Add search result snippets
-  for (const result of topResults) {
-    if (voice.prefersDetail) {
-      parts.push(`• ${result.title}: ${result.snippet}`);
-    } else {
-      parts.push(result.snippet);
+  
+  // Extract key info from snippets
+  for (const result of searchResults.slice(0, 3)) {
+    if (result.snippet && result.snippet.length > 30) {
+      // Clean up the snippet (remove markdown, URLs, etc.)
+      const clean = result.snippet
+        .replace(/!?\[.*?\]\(.*?\)/g, "")
+        .replace(/https?:\/\/\S+/g, "")
+        .replace(/[*_`]/g, "")
+        .trim();
+      if (clean.length > 20) {
+        keyPoints.push(clean);
+      }
     }
   }
 
-  if (parts.length === 0) return "";
+  // Synthesize into coherent response
+  if (keyPoints.length === 0) return "I found some information, but nothing clear.";
 
-  return `Here's what I found:\n${parts.join("\n")}`;
+  // Build natural response
+  const intro = getWebIntro(query, keyPoints.length);
+  const synthesized = keyPoints.slice(0, 4).join(" ");
+  
+  if (voice.prefersDetail) {
+    return `${intro}\n\n${synthesized}`;
+  } else {
+    return synthesized;
+  }
+}
+
+function getWebIntro(query: string, pointCount: number): string {
+  const intros = [
+    `Based on current information about "${query}":`,
+    `Here's what I found about "${query}":`,
+    `From my search on "${query}":`,
+    `Looking at what's available about "${query}":`,
+  ];
+  return intros[Math.floor(Math.random() * intros.length)];
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -394,20 +429,51 @@ function applyCharacterVoice(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Learn from interaction (creates new knowledge node)
+// Extract learnings from interaction
 // ──────────────────────────────────────────────────────────────────────────────
 
-export async function learnFromInteraction(
+function extractLearnings(
   query: string,
   response: string,
-  character: CharacterState,
-): Promise<{ newNodeId?: number; content: string }> {
-  // Extract key learning from the exchange
-  // This is simplified — in production you'd use NLP to extract facts
-  const learningSummary = `[Learned] ${query.substring(0, 100)}${query.length > 100 ? "..." : ""}`;
+  searchResults: SearchResult[],
+  nodes: RetrievedNode[],
+): Array<{ content: string; type: string; tags: string[] }> {
+  const facts: Array<{ content: string; type: string; tags: string[] }> = [];
 
-  // Return learning for caller to save to DB
-  return {
-    content: learningSummary,
-  };
+  // Extract key terms from query
+  const keyTerms = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(w => w.length > 3 && !['what', 'where', 'when', 'who', 'why', 'how', 'does', 'is', 'are', 'was', 'were'].includes(w));
+
+  // Learn from web search results (new information)
+  for (const result of searchResults.slice(0, 2)) {
+    if (result.snippet && result.snippet.length > 30) {
+      const clean = result.snippet
+        .replace(/!?\[.*?\]\(.*?\)/g, "")
+        .replace(/https?:\/\/\S+/g, "")
+        .replace(/[*_`]/g, "")
+        .trim();
+      if (clean.length > 20) {
+        facts.push({
+          content: clean,
+          type: "fact",
+          tags: keyTerms.slice(0, 5),
+        });
+      }
+    }
+  }
+
+  // Learn from the conversation itself (user taught something)
+  if (response.length > 50 && nodes.length === 0) {
+    // This was new info, save a summary
+    const summary = response.slice(0, 200);
+    facts.push({
+      content: summary,
+      type: "conversation",
+      tags: [...keyTerms.slice(0, 3), "learned"],
+    });
+  }
+
+  return facts;
 }
