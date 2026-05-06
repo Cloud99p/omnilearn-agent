@@ -9,7 +9,8 @@ import {
 import { cn } from "@/lib/utils";
 import { Link, useSearch, useLocation } from "wouter";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+// Use Railway API URL directly (Vercel proxy unreliable)
+const BASE = import.meta.env.VITE_API_URL || import.meta.env.BASE_URL.replace(/\/$/, "");
 
 type Mode = "local" | "ghost" | "native";
 type Role = "user" | "assistant";
