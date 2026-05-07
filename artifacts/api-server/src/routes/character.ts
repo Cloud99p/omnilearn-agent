@@ -2,11 +2,40 @@ import { Router } from "express";
 import { z } from "zod";
 import { db } from "@workspace/db";
 import { characterState } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { rebalanceTraits, needsRebalancing } from "../brain/character.js";
-import { getOrCreateCharacter } from "../brain/character-store.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { logger } from "../lib/logger.js";
+
+const router = Router();
+
+async function getOrCreateCharacterState(clerkId: string) {
+  const [existing] = await db
+    .select()
+    .from(characterState)
+    .where(eq(characterState.clerkId, clerkId))
+    .limit(1);
+  
+  if (existing) return existing;
+  
+  const [created] = await db
+    .insert(characterState)
+    .values({
+      clerkId,
+      curiosity: 50,
+      caution: 50,
+      confidence: 50,
+      verbosity: 50,
+      technical: 50,
+      empathy: 50,
+      creativity: 50,
+      totalInteractions: 0,
+      totalKnowledgeNodes: 0,
+    })
+    .returning();
+  
+  return created;
+}
 
 const router = Router();
 
@@ -15,7 +44,7 @@ const router = Router();
 router.get("/", requireAuth, async (req, res) => {
   try {
     const clerkId = req.auth.userId;
-    const character = await getOrCreateCharacter(clerkId);
+    const character = await getOrCreateCharacterState(clerkId);
     
     res.json({
       success: true,
@@ -53,7 +82,7 @@ router.post("/rebalance", requireAuth, async (req, res) => {
     const clerkId = req.auth.userId;
     const { force, decayFactor } = rebalanceSchema.parse(req.body);
     
-    const character = await getOrCreateCharacter(clerkId);
+    const character = await getOrCreateCharacterState(clerkId);
     
     // Check if rebalancing is needed (or force it)
     if (!force && !needsRebalancing(character)) {
