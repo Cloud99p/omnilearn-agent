@@ -271,19 +271,16 @@ function synthesizeFromNodesOnly(
   voice: ReturnType<typeof getVoiceModifiers>,
   queryType: string,
 ): string {
-  const parts: string[] =
+  const parts: string[] = [];
 
   const opening = buildOpening(query, queryType, character);
   if (opening) parts.push(opening);
 
-  // Synthesize from knowledge nodes
   const knowledgeSection = synthesizeFromNodes(query, nodes, character, voice, queryType);
   if (knowledgeSection) parts.push(knowledgeSection);
 
-  // Add invitation to update/correct
-  if (character.curiosity > 40) {
-    parts.push("If you have updated information or corrections, feel free to share — I'm always learning!");
-  }
+  const closing = buildClosing(query, character);
+  if (closing) parts.push(closing);
 
   return parts.join("\n\n");
 }
@@ -308,8 +305,10 @@ function synthesizeFromWebOnly(
   const webSection = synthesizeFromWeb(query, searchResults, fetchedContent, voice);
   if (webSection) parts.push(webSection);
 
-  // Closing: offer to learn this
-  parts.push("Would you like me to remember this information for future conversations?");
+  // Closing: automatically learning (no prompt needed)
+  if (character.curiosity > 40) {
+    parts.push("I've added this to my knowledge base for future reference.");
+  }
 
   return parts.join("\n\n");
 }
@@ -345,11 +344,7 @@ function synthesizeFromNodesAndWeb(
     if (knowledgeSection) parts.push(knowledgeSection);
   }
 
-  // Closing
-  if (character.curiosity > 50) {
-    const closing = buildClosing(query, character);
-    if (closing) parts.push(closing);
-  }
+  // No repetitive closing - keep responses clean
 
   return parts.join("\n\n");
 }
@@ -460,27 +455,14 @@ function buildOpening(
   queryType: string,
   character: CharacterState,
 ): string {
-  switch (queryType) {
-    case "question":
-      if (character.confidence > 60) {
-        return `Based on what I've learned:`;
-      } else {
-        return `From my knowledge:`;
-      }
-
-    case "statement":
-      if (character.empathy > 60) {
-        return `I hear you. Here's what I know:`;
-      } else {
-        return `That connects to what I've learned:`;
-      }
-
-    case "command":
-      return `I'll help with that. Here's what I know:`;
-
-    default:
-      return ``;
+  // Simple, non-repetitive opening
+  if (queryType === "question") {
+    return character.confidence > 60 ? "Based on what I've learned:" : "Here's what I know:";
   }
+  if (queryType === "statement") {
+    return character.empathy > 60 ? "Thanks for sharing. I've learned:" : "I've learned:";
+  }
+  return "";
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -530,10 +512,10 @@ function synthesizeMainContent(
 // ──────────────────────────────────────────────────────────────────────────────
 
 function buildClosing(query: string, character: CharacterState): string {
-  if (character.curiosity > 70) {
-    return `What else can you tell me about this? I'm always learning.`;
-  } else if (character.curiosity > 50) {
-    return `Is there more you'd like to share about this?`;
+  // No closing question - learning is automatic, no need to ask
+  // Just a brief acknowledgment
+  if (character.curiosity > 60) {
+    return "I've added this to my knowledge base.";
   }
   return "";
 }
@@ -610,15 +592,25 @@ function extractLearnings(
     }
   }
 
-  // Learn from the conversation itself (user taught something)
-  if (response.length > 50 && nodes.length === 0) {
-    // This was new info, save a summary
-    const summary = response.slice(0, 200);
-    facts.push({
-      content: summary,
-      type: "conversation",
-      tags: [...keyTerms.slice(0, 3), "learned"],
-    });
+  // Learn from web search content (full page, not just snippets)
+  if (searchResults.length > 0) {
+    // Extract 2-3 key facts from the search
+    for (const result of searchResults.slice(0, 3)) {
+      if (result.snippet && result.snippet.length > 40) {
+        const clean = result.snippet
+          .replace(/!?.*?\(.*?\)/g, "")
+          .replace(/https?:\/\/\S+/g, "")
+          .replace(/[*_`]/g, "")
+          .trim();
+        if (clean.length > 30 && !facts.some(f => f.content.includes(clean.slice(0, 20)))) {
+          facts.push({
+            content: clean,
+            type: "fact",
+            tags: [...keyTerms.slice(0, 5), "web"],
+          });
+        }
+      }
+    }
   }
 
   return facts;
