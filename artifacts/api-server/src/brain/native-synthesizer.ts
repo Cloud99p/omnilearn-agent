@@ -77,20 +77,26 @@ export async function synthesizeNative(
   // Build response based on query type and available knowledge
   let responseText: string;
 
-  if (relevantNodes.length === 0 && searchResults.length === 0) {
-    // No relevant knowledge and no web results — respond honestly
-    responseText = buildUnknownResponse(query, queryType, character);
-  } else {
-    // Synthesize from knowledge nodes + web results
-    responseText = synthesizeFromNodesAndWeb(
-      query,
-      relevantNodes,
-      searchResults,
-      fetchedContent,
-      character,
-      voice,
-      queryType,
-    );
+  try {
+    if (relevantNodes.length === 0 && searchResults.length === 0) {
+      // No relevant knowledge and no web results — respond honestly
+      responseText = buildUnknownResponse(query, queryType, character);
+    } else {
+      // Synthesize from knowledge nodes + web results
+      responseText = synthesizeFromNodesAndWeb(
+        query,
+        relevantNodes,
+        searchResults,
+        fetchedContent,
+        character,
+        voice,
+        queryType,
+      );
+    }
+  } catch (err) {
+    logger.error({ err, query }, "Native synthesis failed, using fallback");
+    // Fallback: simple response acknowledging the query
+    responseText = buildFallbackResponse(query, character);
   }
 
   // Add character flavor to the response
