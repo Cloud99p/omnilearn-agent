@@ -6,10 +6,13 @@ on:
   pull_request:
     branches: [main]
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+env:
+  NODE_VERSION: '24'
+  PNPM_VERSION: '10'
 
+jobs:
+  lint-and-format:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,19 +20,82 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Format check
+        run: pnpm run format:check
+
       - name: Type check
         run: pnpm run typecheck
 
+  build:
+    runs-on: ubuntu-latest
+    needs: lint-and-format
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Build
         run: pnpm run build
+
+      - name: Verify build artifacts
+        run: |
+          # Check that key build outputs exist
+          test -d artifacts/api-server/dist
+          test -d artifacts/omnilearn/dist
+          echo "Build artifacts verified"
+
+  deploy-check:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify deployment configs
+        run: |
+          # Check Railway config
+          test -f railway.toml
+          # Check Vercel config
+          test -f vercel.json
+          # Check Dockerfile
+          test -f Dockerfile
+          echo "Deployment configs verified"
+
+      - name: Check environment variables
+        run: |
+          # Verify .env.example exists with required variables
+          test -f .env.example
+          grep -q "DATABASE_URL" .env.example
+          grep -q "CLERK_PUBLISHABLE_KEY" .env.example
+          echo "Environment template verified"
+
+      - name: Create deployment preview
+        run: |
+          echo "Deployment configuration is ready"
+          echo "Deploy to Railway: https://railway.app/"
+          echo "Deploy to Vercel: https://vercel.com/new"
