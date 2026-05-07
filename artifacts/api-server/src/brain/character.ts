@@ -14,15 +14,29 @@ export function clamp(v: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, v));
 }
 
+/**
+ * Apply soft cap to prevent extreme trait values
+ * After threshold, gains are reduced by 75%
+ */
+export function applySoftCap(currentValue: number, delta: number, threshold = 70, reductionFactor = 0.25): number {
+  if (currentValue < threshold) {
+    return delta; // Full gain below threshold
+  }
+  // Above threshold: reduce gains significantly
+  const excess = currentValue - threshold;
+  const capMultiplier = excess > 20 ? 0.1 : reductionFactor; // Even stricter after 90
+  return delta * capMultiplier;
+}
+
 export function applyDeltas(state: CharacterState, delta: TraitDelta): Partial<CharacterState> {
   return {
-    curiosity: clamp(state.curiosity + (delta.curiosity ?? 0)),
-    caution: clamp(state.caution + (delta.caution ?? 0)),
-    confidence: clamp(state.confidence + (delta.confidence ?? 0)),
-    verbosity: clamp(state.verbosity + (delta.verbosity ?? 0)),
-    technical: clamp(state.technical + (delta.technical ?? 0)),
-    empathy: clamp(state.empathy + (delta.empathy ?? 0)),
-    creativity: clamp(state.creativity + (delta.creativity ?? 0)),
+    curiosity: clamp(state.curiosity + applySoftCap(state.curiosity, delta.curiosity ?? 0)),
+    caution: clamp(state.caution + applySoftCap(state.caution, delta.caution ?? 0)),
+    confidence: clamp(state.confidence + applySoftCap(state.confidence, delta.confidence ?? 0)),
+    verbosity: clamp(state.verbosity + applySoftCap(state.verbosity, delta.verbosity ?? 0)),
+    technical: clamp(state.technical + applySoftCap(state.technical, delta.technical ?? 0)),
+    empathy: clamp(state.empathy + applySoftCap(state.empathy, delta.empathy ?? 0)),
+    creativity: clamp(state.creativity + applySoftCap(state.creativity, delta.creativity ?? 0)),
   };
 }
 
@@ -34,10 +48,10 @@ export function computeTraitDeltaFromLearning(
 ): TraitDelta {
   const delta: TraitDelta = {};
 
-  // Learning new things increases curiosity slightly
+  // Learning new things increases curiosity slightly (REDUCED from 0.4 to 0.15)
   if (newNodeCount > 0) {
-    delta.curiosity = Math.min(newNodeCount * 0.4, 2.0);
-    delta.confidence = Math.min(newNodeCount * 0.2, 1.0);
+    delta.curiosity = Math.min(newNodeCount * 0.15, 1.0); // Was 0.4, now 0.15
+    delta.confidence = Math.min(newNodeCount * 0.1, 0.5); // Was 0.2, now 0.1
   }
 
   // Conflicting information increases caution
@@ -58,6 +72,41 @@ export function computeTraitDeltaFromLearning(
   }
 
   return delta;
+}
+
+/**
+ * Gradually rebalance traits toward center (50) over time
+ * Prevents any single trait from dominating permanently
+ * Call this periodically (e.g., once per day or every 10 interactions)
+ */
+export function rebalanceTraits(state: CharacterState, decayFactor = 0.02): TraitDelta {
+  const target = 50; // Center point
+  const delta: TraitDelta = {};
+  
+  const traits: Array<keyof TraitDelta> = ['curiosity', 'caution', 'confidence', 'verbosity', 'technical', 'empathy', 'creativity'];
+  
+  for (const trait of traits) {
+    const current = state[trait] ?? 50;
+    const distance = target - current;
+    // Only apply decay if trait is significantly off-center (>15 points)
+    if (Math.abs(distance) > 15) {
+      delta[trait] = distance * decayFactor;
+    }
+  }
+  
+  return delta;
+}
+
+/**
+ * Check if trait rebalancing is needed
+ * Returns true if any trait is >25 points from center
+ */
+export function needsRebalancing(state: CharacterState, threshold = 25): boolean {
+  const traits: Array<keyof TraitDelta> = ['curiosity', 'caution', 'confidence', 'verbosity', 'technical', 'empathy', 'creativity'];
+  return traits.some(trait => {
+    const current = state[trait] ?? 50;
+    return Math.abs(current - 50) > threshold;
+  });
 }
 
 export function getVoiceModifiers(state: CharacterState): {

@@ -8,7 +8,7 @@ import { proposeHebbianDelta, type EdgeRelationship } from "./hebbian.js";
 import { tokenize, queryScore, buildTfidfVector, computeIdfFromVectors } from "./tfidf.js";
 import { extractFacts, detectQueryType, extractKeyTerms } from "./extractor.js";
 import {
-  applyDeltas, computeTraitDeltaFromLearning,
+  applyDeltas, computeTraitDeltaFromLearning, rebalanceTraits, needsRebalancing,
   detectTechnicalContent, detectEmotionalContent,
 } from "./character.js";
 import {
@@ -273,7 +273,24 @@ export async function processMessage(
 
   // 4. Update character traits based on the interaction
   const hadConflict = false; // Future: detect contradictions
-  const delta = computeTraitDeltaFromLearning(newNodesAdded, hadConflict, isTechnical, isEmotional);
+  let delta = computeTraitDeltaFromLearning(newNodesAdded, hadConflict, isTechnical, isEmotional);
+  
+  // Check if rebalancing is needed (traits too extreme)
+  if (needsRebalancing(character)) {
+    const rebalance = rebalanceTraits(character, 0.03); // 3% decay toward center
+    // Merge rebalancing with learning delta
+    delta = {
+      curiosity: (delta.curiosity ?? 0) + (rebalance.curiosity ?? 0),
+      caution: (delta.caution ?? 0) + (rebalance.caution ?? 0),
+      confidence: (delta.confidence ?? 0) + (rebalance.confidence ?? 0),
+      verbosity: (delta.verbosity ?? 0) + (rebalance.verbosity ?? 0),
+      technical: (delta.technical ?? 0) + (rebalance.technical ?? 0),
+      empathy: (delta.empathy ?? 0) + (rebalance.empathy ?? 0),
+      creativity: (delta.creativity ?? 0) + (rebalance.creativity ?? 0),
+    };
+    logger.info({ rebalance }, "Character traits rebalanced toward center");
+  }
+  
   const updatedTraits = applyDeltas(character, delta);
   await updateCharacter(character.id, {
     ...updatedTraits,
