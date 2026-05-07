@@ -210,7 +210,8 @@ export async function processMessage(
   const retrieved = await retrieveRelevantNodes(searchQuery, clerkId, 6);
 
   // 3. Determine if this is primarily a "teach me" statement vs a question
-  const isTeaching = queryType === "statement" && newNodesAdded > 0 && retrieved[0]?.similarity < 0.25;
+  // Always show learning confirmation when new nodes are added
+  const isTeaching = queryType === "statement" && newNodesAdded > 0;
 
   let text: string;
   let learnedFacts: Array<{ content: string; type: string; tags: string[] }> = [];
