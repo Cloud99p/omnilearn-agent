@@ -14,6 +14,8 @@ const FACT_PATTERNS: Array<{ re: RegExp; type: ExtractedFact["type"]; conf: numb
   { re: /([A-Za-z][\w\s]{2,40}?)\s+(?:consists? of|contains?|includes?|has)\s+([\w][\w\s,]{2,60})/gi, type: "fact", conf: 0.70 },
   { re: /([A-Za-z][\w\s]{2,40}?)\s+(?:was|were)\s+(?:designed?|built?|created?|developed?)\s+(?:to|for|by)\s+([\w][\w\s,]{2,60})/gi, type: "fact", conf: 0.72 },
   { re: /([A-Za-z][\w\s]{2,40}?)\s+(?:works?|operates?|functions?|runs?)\s+(?:by|through|via|on)\s+([\w][\w\s,]{2,60})/gi, type: "fact", conf: 0.68 },
+  // NEW: Capture simple declarative sentences as facts
+  { re: /^(\w+\s+\w+\s+\w+)\s+(?:is|are|was|were)\s+(\w+)$/i, type: "fact", conf: 0.60 },
 ];
 
 export function extractFacts(text: string): ExtractedFact[] {
