@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { submitUserReport, moderateContent } from "../lib/moderation.js";
 import { logger } from "../lib/logger.js";
-import { requireAuth } from "../middlewares/auth.js";
+import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
 
 const router = Router();
 
@@ -17,7 +17,7 @@ const reportSchema = z.object({
 
 router.post("/report", requireAuth, async (req, res) => {
   try {
-    const clerkId = req.auth.userId;
+    const clerkId = (req as AuthenticatedRequest).clerkId;
     const body = reportSchema.parse(req.body);
 
     const result = await submitUserReport({
