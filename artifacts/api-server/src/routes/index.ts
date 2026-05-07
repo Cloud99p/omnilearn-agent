@@ -10,19 +10,21 @@ import ghostRouter from "./ghost/index.js";
 import networkRouter from "./network.js";
 import brainProposalsRouter from "./brain/proposals.js";
 import brainOntologyRouter from "./brain/ontology.js";
+import { defaultLimiter, chatLimiter, skillCreateLimiter, githubLimiter } from "../middlewares/rateLimit";
 
 const router: IRouter = Router();
 
-router.use(healthRouter);
-router.use("/anthropic", chatRouter);  // Main chat (native with web search)
-router.use("/local", localChatRouter);  // Local chat (knowledge graph only, no web)
-router.use("/skills", skillsRouter);
-router.use(meRouter);
-router.use(githubRouter);
-router.use(omniRouter);
-router.use(ghostRouter);
-router.use(networkRouter);
-router.use("/brain", brainProposalsRouter);
-router.use("/brain", brainOntologyRouter);
+// Apply rate limiters to routes
+router.use(healthRouter); // No rate limit on health checks
+router.use("/anthropic", chatLimiter, chatRouter);  // Main chat (30 req/hour)
+router.use("/local", chatLimiter, localChatRouter);  // Local chat (30 req/hour)
+router.use("/skills", defaultLimiter, skillsRouter); // Default limit (100 req/15min)
+router.use(meRouter); // Default limit
+router.use(githubLimiter, githubRouter); // GitHub API (10 req/hour)
+router.use(defaultLimiter, omniRouter); // Default limit
+router.use(defaultLimiter, ghostRouter); // Default limit
+router.use(defaultLimiter, networkRouter); // Default limit
+router.use("/brain", defaultLimiter, brainProposalsRouter); // Default limit
+router.use("/brain", defaultLimiter, brainOntologyRouter); // Default limit
 
 export default router;
