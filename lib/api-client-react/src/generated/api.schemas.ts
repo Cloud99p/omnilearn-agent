@@ -5,8 +5,49 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type HealthStatusStatus =
+  (typeof HealthStatusStatus)[keyof typeof HealthStatusStatus];
+
+export const HealthStatusStatus = {
+  ok: "ok",
+  degraded: "degraded",
+  error: "error",
+} as const;
+
+export type HealthStatusDatabaseStatus =
+  (typeof HealthStatusDatabaseStatus)[keyof typeof HealthStatusDatabaseStatus];
+
+export const HealthStatusDatabaseStatus = {
+  connected: "connected",
+  error: "error",
+} as const;
+
+export type HealthStatusDatabase = {
+  status: HealthStatusDatabaseStatus;
+  /** Database query latency in milliseconds */
+  latencyMs?: number;
+};
+
+export type HealthStatusClerkStatus =
+  (typeof HealthStatusClerkStatus)[keyof typeof HealthStatusClerkStatus];
+
+export const HealthStatusClerkStatus = {
+  configured: "configured",
+  missing: "missing",
+} as const;
+
+export type HealthStatusClerk = {
+  status: HealthStatusClerkStatus;
+};
+
 export interface HealthStatus {
-  status: string;
+  status: HealthStatusStatus;
+  version: string;
+  /** Uptime in seconds */
+  uptime: number;
+  timestamp: string;
+  database?: HealthStatusDatabase;
+  clerk?: HealthStatusClerk;
 }
 
 export interface Conversation {

@@ -11,7 +11,24 @@ import * as zod from "zod";
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
-  status: zod.string(),
+  status: zod.enum(["ok", "degraded", "error"]),
+  version: zod.string(),
+  uptime: zod.number().describe("Uptime in seconds"),
+  timestamp: zod.coerce.date(),
+  database: zod
+    .object({
+      status: zod.enum(["connected", "error"]),
+      latencyMs: zod
+        .number()
+        .optional()
+        .describe("Database query latency in milliseconds"),
+    })
+    .optional(),
+  clerk: zod
+    .object({
+      status: zod.enum(["configured", "missing"]),
+    })
+    .optional(),
 });
 
 /**
