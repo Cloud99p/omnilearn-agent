@@ -173,8 +173,33 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+          enum: [ok, degraded, error]
+        version:
+          type: string
+        uptime:
+          type: integer
+          description: Uptime in seconds
+        timestamp:
+          type: string
+          format: date-time
+        database:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [connected, error]
+            latencyMs:
+              type: integer
+              description: Database query latency in milliseconds
+          required: [status]
+        clerk:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [configured, missing]
+          required: [status]
+      required: [status, version, uptime, timestamp]
 
     Conversation:
       type: object
