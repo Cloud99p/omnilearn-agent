@@ -76,4 +76,30 @@ export const SEED_KNOWLEDGE: SeedFact[] = [
   { content: "Server-sent events enable a server to push real-time data to a client over a single HTTP connection", type: "fact", tags: ["sse","server","events","real-time"], confidence: 0.90 },
   { content: "PostgreSQL is an open-source relational database system that supports complex queries and JSONB storage", type: "fact", tags: ["postgresql","database","relational","jsonb"], confidence: 0.93 },
   { content: "TypeScript is a strongly typed superset of JavaScript that compiles to plain JavaScript", type: "fact", tags: ["typescript","javascript","typed","compiled"], confidence: 0.95 },
+
+  // How to use OmniLearn
+  { content: "To teach OmniLearn something new, simply tell it facts or information in natural language during conversation", type: "rule", tags: ["teaching","conversation","facts","learning"], confidence: 0.99 },
+  { content: "OmniLearn automatically extracts and stores knowledge from conversations without requiring explicit commands", type: "fact", tags: ["automatic","extraction","storage","conversations"], confidence: 0.97 },
+  { content: "You can ask OmniLearn questions and it will search its knowledge graph to find relevant information", type: "rule", tags: ["questions","search","knowledge","graph"], confidence: 0.97 },
+  { content: "Local mode uses only the knowledge graph without any external web search or AI APIs", type: "fact", tags: ["local","mode","knowledge","offline"], confidence: 0.99 },
+  { content: "Native mode combines knowledge graph with web search for comprehensive answers", type: "fact", tags: ["native","mode","web","search"], confidence: 0.99 },
+  { content: "Ghost mode enables distributed processing across multiple OmniLearn instances", type: "fact", tags: ["ghost","mode","distributed","instances"], confidence: 0.90 },
+
+  // OmniLearn features
+  { content: "OmniLearn has a character system with 7 evolving traits: curiosity, confidence, caution, technical, empathy, verbosity, and creativity", type: "fact", tags: ["character","traits","personality","evolution"], confidence: 0.99 },
+  { content: "The knowledge graph stores information as nodes (facts) and edges (relationships between facts)", type: "concept", tags: ["knowledge","graph","nodes","edges"], confidence: 0.97 },
+  { content: "Hebbian learning strengthens connections between related knowledge nodes over time", type: "fact", tags: ["hebbian","learning","connections","strengthening"], confidence: 0.95 },
+  { content: "Ontology reflection allows OmniLearn to evaluate and improve its own knowledge structure", type: "fact", tags: ["ontology","reflection","self-improvement","structure"], confidence: 0.93 },
+  { content: "Skills are modular extensions that add specialized capabilities to OmniLearn", type: "fact", tags: ["skills","modules","extensions","capabilities"], confidence: 0.95 },
+
+  // Learning tips
+  { content: "The more specific and detailed your explanations, the better OmniLearn will understand and remember", type: "rule", tags: ["tips","specific","detailed","learning"], confidence: 0.95 },
+  { content: "Reinforcing knowledge through multiple conversations strengthens the memory connections", type: "rule", tags: ["reinforcement","conversations","memory","strengthening"], confidence: 0.93 },
+  { content: "Asking follow-up questions helps OmniLearn build deeper understanding of topics", type: "rule", tags: ["questions","follow-up","understanding","depth"], confidence: 0.93 },
+
+  // Common AI concepts
+  { content: "Large language models are trained on vast amounts of text data to predict and generate human-like responses", type: "fact", tags: ["llm","language","models","training"], confidence: 0.95 },
+  { content: "Vector databases store embeddings for fast semantic similarity searches", type: "fact", tags: ["vector","database","embeddings","similarity"], confidence: 0.93 },
+  { content: "Prompt engineering is the practice of crafting inputs to guide AI model outputs", type: "fact", tags: ["prompt","engineering","ai","guidance"], confidence: 0.93 },
+  { content: "Context window refers to the maximum amount of text an AI model can process at once", type: "fact", tags: ["context","window","ai","processing"], confidence: 0.93 },
 ];
