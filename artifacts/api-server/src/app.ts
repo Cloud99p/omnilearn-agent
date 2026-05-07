@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
+import * as Sentry from "@sentry/node";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import {
@@ -9,6 +10,10 @@ import {
   clerkProxyMiddleware,
 } from "./middlewares/clerkProxyMiddleware";
 import { runOntologyReflection } from "./brain/ontology.js";
+import { initSentry, sentryRequestHandler, sentryErrorHandler } from "./lib/sentry";
+
+// Initialize Sentry (must be first, before any other imports)
+initSentry();
 
 const app: Express = express();
 
@@ -17,6 +22,9 @@ const app: Express = express();
 // const ONTOLOGY_INTERVAL_MS = 10 * 60 * 1000;
 // function scheduleOntologyReflection() { ... }
 // logger.info("Ontology reflection enabled");
+
+// Sentry request handler (must be before other middleware)
+app.use(sentryRequestHandler());
 
 app.use(
   pinoHttp({
@@ -53,5 +61,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(clerkMiddleware());
 
 app.use("/api", router);
+
+// Sentry error handler (must be last, after all routes)
+app.use(sentryErrorHandler());
 
 export default app;
