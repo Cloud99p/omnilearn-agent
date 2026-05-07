@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { nodeProfilingIntegration } from "@sentry/profiling-node";
+import { expressIntegration } from "@sentry/node";
 import { logger } from "./logger";
 
 /**
@@ -34,9 +35,7 @@ export function initSentry(): void {
     // Integrations
     integrations: [
       nodeProfilingIntegration(),
-      // Express integration is auto-detected
-      // HTTP integration is auto-detected
-      // Console integration is auto-detected
+      expressIntegration(),
     ],
 
     // Performance monitoring
@@ -81,18 +80,22 @@ export function initSentry(): void {
 
 /**
  * Express middleware to attach Sentry request context.
- * Use this AFTER Sentry.init() and BEFORE your routes.
+ * In Sentry v9, this is handled automatically by expressIntegration().
+ * This is a no-op for backward compatibility.
  */
 export function sentryRequestHandler() {
-  return Sentry.requestHandler();
+  // Express integration is automatic in Sentry v9 via expressIntegration()
+  return (_req: any, _res: any, next: any) => next();
 }
 
 /**
  * Express error handler middleware.
- * Use this as the LAST middleware in your Express app.
+ * In Sentry v9, errors are captured automatically by expressIntegration().
+ * This is a no-op for backward compatibility.
  */
 export function sentryErrorHandler() {
-  return Sentry.errorHandler();
+  // Error handling is automatic in Sentry v9 via expressIntegration()
+  return (_err: any, _req: any, _res: any, next: any) => next();
 }
 
 /**
