@@ -110,11 +110,13 @@ export async function synthesizeNative(
   let responseText: string;
 
   try {
+    // Case 1: No knowledge AND no web results — honest unknown response
     if (relevantNodes.length === 0 && searchResults.length === 0) {
-      // No relevant knowledge and no web results — respond honestly
       responseText = buildUnknownResponse(query, queryType, character);
-    } else {
-      // Synthesize from knowledge nodes + web results
+    }
+    // Case 2: Have knowledge but searched web anyway (verification/update)
+    else if (relevantNodes.length > 0 && searchResults.length > 0) {
+      // Combine knowledge graph + web for comprehensive answer
       responseText = synthesizeFromNodesAndWeb(
         query,
         relevantNodes,
@@ -125,9 +127,32 @@ export async function synthesizeNative(
         queryType,
       );
     }
+    // Case 3: Only have knowledge graph (no web search needed)
+    else if (relevantNodes.length > 0) {
+      responseText = synthesizeFromNodesOnly(
+        query,
+        relevantNodes,
+        character,
+        voice,
+        queryType,
+      );
+    }
+    // Case 4: Only have web results (empty knowledge graph)
+    else if (searchResults.length > 0) {
+      responseText = synthesizeFromWebOnly(
+        query,
+        searchResults,
+        fetchedContent,
+        character,
+        voice,
+      );
+    }
+    // Fallback (shouldn't reach here, but safety net)
+    else {
+      responseText = buildFallbackResponse(query, character);
+    }
   } catch (err) {
     logger.error({ err, query }, "Native synthesis failed, using fallback");
-    // Fallback: simple response acknowledging the query
     responseText = buildFallbackResponse(query, character);
   }
 
@@ -160,37 +185,53 @@ function detectNeedForWebSearch(
 ): boolean {
   const lower = query.toLowerCase();
 
-  // ALWAYS search web for questions when knowledge is limited
-  // This ensures Native mode provides value even with empty knowledge graph
-  
-  // Question words - ALWAYS trigger web search
-  const questionWords = [
-    "what", "who", "where", "when", "why", "how",
-    "explain", "define", "describe", "tell me about",
-    "what is", "who is", "where is", "when is",
-    "how does", "how to", "what are", "who are",
-  ];
-  
-  if (questionWords.some(word => lower.startsWith(word + " ") || lower === word)) {
-    return true;
-  }
-  
-  // Triggers for current/recent information
-  const webTriggers = [
-    "news", "current", "recent", "latest", "today", "yesterday", "this week",
+  // STRATEGY: Check database first, search web only when needed
+  // Priority: Knowledge Graph → Web Search (if insufficient)
+
+  // 1. ALWAYS search web for time-sensitive topics
+  const timeTriggers = [
+    "news", "current", "recent", "latest", "today", "yesterday", 
+    "this week", "this month", "this year",
     "weather", "stock", "price of", "score", "results",
-    "new", "just", "breaking", "announced", "released", "202", "203",
+    "new", "just", "breaking", "announced", "released",
   ];
+  
+  if (timeTriggers.some(trigger => lower.includes(trigger))) {
+    return true; // These change frequently, always check web
+  }
 
-  if (webTriggers.some(trigger => lower.includes(trigger))) {
+  // 2. If NO knowledge nodes found, search web
+  if (nodes.length === 0) {
+    return true; // Empty knowledge graph, need external info
+  }
+
+  // 3. If knowledge exists but has LOW confidence/similarity, search web to supplement
+  const bestNode = nodes.reduce((best, node) => 
+    node.similarity > best.similarity ? node : best, nodes[0]);
+  
+  if (bestNode.similarity < 0.3) {
+    // We have SOME related knowledge, but not very relevant
+    // Search web to get better information
     return true;
   }
 
-  // If no relevant knowledge nodes, ALWAYS search web
-  if (nodes.length === 0 || nodes.every(n => n.similarity < 0.15)) {
-    return true;
+  // 4. If we have GOOD knowledge (similarity > 0.5), DON'T search web
+  // Trust the knowledge graph for well-established topics
+  if (bestNode.similarity > 0.5 && nodes.length >= 2) {
+    return false; // Sufficient knowledge, no web search needed
   }
 
+  // 5. For questions about facts that might have changed, search web
+  const factUpdateTriggers = [
+    "what is", "who is", "where is", "when is",
+  ];
+  
+  if (factUpdateTriggers.some(trigger => lower.startsWith(trigger))) {
+    // If we have moderate knowledge (0.3-0.5), search web to verify/update
+    return bestNode.similarity < 0.5;
+  }
+
+  // Default: Don't search web if we have decent knowledge
   return false;
 }
 
@@ -217,6 +258,60 @@ function buildUnknownResponse(
   else {
     return `I don't have information about that in my knowledge base yet.\n\nThis means we haven't discussed it before. Feel free to teach me — I learn from every conversation we have!`;
   }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Synthesize from knowledge nodes ONLY (no web search)
+// ──────────────────────────────────────────────────────────────────────────────
+
+function synthesizeFromNodesOnly(
+  query: string,
+  nodes: RetrievedNode[],
+  character: CharacterState,
+  voice: ReturnType<typeof getVoiceModifiers>,
+  queryType: string,
+): string {
+  const parts: string[] =
+
+  const opening = buildOpening(query, queryType, character);
+  if (opening) parts.push(opening);
+
+  // Synthesize from knowledge nodes
+  const knowledgeSection = synthesizeFromNodes(query, nodes, character, voice, queryType);
+  if (knowledgeSection) parts.push(knowledgeSection);
+
+  // Add invitation to update/correct
+  if (character.curiosity > 40) {
+    parts.push("If you have updated information or corrections, feel free to share — I'm always learning!");
+  }
+
+  return parts.join("\n\n");
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Synthesize from web results ONLY (empty knowledge graph)
+// ──────────────────────────────────────────────────────────────────────────────
+
+function synthesizeFromWebOnly(
+  query: string,
+  searchResults: SearchResult[],
+  fetchedContent: { title: string; text: string } | null,
+  character: CharacterState,
+  voice: ReturnType<typeof getVoiceModifiers>,
+): string {
+  const parts: string[] = [];
+
+  // Opening: acknowledge this is from web search
+  parts.push("I found some information about this from the web:");
+
+  // Web results
+  const webSection = synthesizeFromWeb(query, searchResults, fetchedContent, voice);
+  if (webSection) parts.push(webSection);
+
+  // Closing: offer to learn this
+  parts.push("Would you like me to remember this information for future conversations?");
+
+  return parts.join("\n\n");
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
