@@ -39,6 +39,21 @@ export interface NativeSynthesisResult {
 // Builds responses from learned knowledge + character state
 // ──────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Fallback response when synthesis fails
+ */
+function buildFallbackResponse(query: string, character: CharacterState): string {
+  const voice = getVoiceModifiers(character);
+  const intros = [
+    `I'm still learning about "${query}".`,
+    `That's an interesting topic - "${query}".`,
+    `I haven't fully explored "${query}" yet.`,
+  ];
+  const intro = intros[Math.floor(Math.random() * intros.length)];
+  
+  return `${intro} ${voice.greeting || "What"} would you like to teach me about it?`;
+}
+
 export async function synthesizeNative(
   ctx: NativeSynthesisContext,
 ): Promise<NativeSynthesisResult> {
