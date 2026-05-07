@@ -2,10 +2,10 @@ import { Router } from "express";
 import { z } from "zod";
 import { db } from "@workspace/db";
 import { characterState } from "@workspace/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { rebalanceTraits, needsRebalancing } from "../brain/character.js";
-import { requireAuth } from "../middlewares/auth.js";
 import { logger } from "../lib/logger.js";
+import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
 
 const router = Router();
 
@@ -37,13 +37,11 @@ async function getOrCreateCharacterState(clerkId: string) {
   return created;
 }
 
-const router = Router();
-
 // ─── Get Current Character ───────────────────────────────────────────────────
 
 router.get("/", requireAuth, async (req, res) => {
   try {
-    const clerkId = req.auth.userId;
+    const clerkId = (req as AuthenticatedRequest).clerkId;
     const character = await getOrCreateCharacterState(clerkId);
     
     res.json({
@@ -79,12 +77,11 @@ const rebalanceSchema = z.object({
 
 router.post("/rebalance", requireAuth, async (req, res) => {
   try {
-    const clerkId = req.auth.userId;
+    const clerkId = (req as AuthenticatedRequest).clerkId;
     const { force, decayFactor } = rebalanceSchema.parse(req.body);
     
     const character = await getOrCreateCharacterState(clerkId);
     
-    // Check if rebalancing is needed (or force it)
     if (!force && !needsRebalancing(character)) {
       return res.json({
         success: true,
@@ -102,10 +99,8 @@ router.post("/rebalance", requireAuth, async (req, res) => {
       });
     }
     
-    // Calculate rebalancing delta
     const rebalance = rebalanceTraits(character, decayFactor);
     
-    // Apply rebalancing
     const updated = await db.update(characterState)
       .set({
         curiosity: Math.round(Math.max(0, Math.min(100, character.curiosity + (rebalance.curiosity ?? 0)))),
@@ -171,9 +166,8 @@ router.post("/rebalance", requireAuth, async (req, res) => {
 
 router.post("/reset", requireAuth, async (req, res) => {
   try {
-    const clerkId = req.auth.userId;
+    const clerkId = (req as AuthenticatedRequest).clerkId;
     
-    // Reset to defaults
     await db.update(characterState)
       .set({
         curiosity: 50,
