@@ -441,13 +441,7 @@ function buildOpening(
   queryType: string,
   character: CharacterState,
 ): string {
-  // Simple, non-repetitive opening
-  if (queryType === "question") {
-    return character.confidence > 60 ? "Based on what I've learned:" : "Here's what I know:";
-  }
-  if (queryType === "statement") {
-    return character.empathy > 60 ? "Thanks for sharing. I've learned:" : "I've learned:";
-  }
+  // Minimal opening - no meta-text
   return "";
 }
 
@@ -461,41 +455,48 @@ function synthesizeMainContent(
 ): string {
   if (nodes.length === 0) return "";
 
-  // Take top 3-5 nodes for coherence
-  const topNodes = nodes.slice(0, 5);
+  // Take top 3 nodes only
+  const topNodes = nodes.slice(0, 3);
 
   // Build coherent response from nodes
   const contentParts: string[] = [];
 
-  // Meta-phrases to filter out (from old buggy responses)
-  const metaPhrases = [
-    "that connects to what i've learned",
-    "i've learned:",
-    "is there more you'd like to share",
-    "would you like me to remember",
-    "based on what i've learned",
-    "from my knowledge",
+  // Aggressive meta-text filtering
+  const metaPatterns = [
+    /that connects to what/i,
+    /i've learned[:\s]/i,
+    /is there more/i,
+    /would you like/i,
+    /based on what/i,
+    /from my knowledge/i,
+    /i've added this/i,
+    /thanks for sharing/i,
+    /here's what/i,
+    /i'll help with/i,
   ];
 
   for (const node of topNodes) {
     let content = node.content.trim();
     
-    // Skip if it's mostly meta-text
-    if (metaPhrases.some(phrase => content.toLowerCase().includes(phrase))) {
+    // Skip meta-text nodes entirely
+    if (metaPatterns.some(pattern => pattern.test(content))) {
       continue;
     }
     
-    const confidence = Math.round(node.similarity * 100);
+    // Clean up common artifacts
+    content = content
+      .replace(/^(That|This|It) connects to what I've learned[:\s]*/i, '')
+      .replace(/^I've learned:\s*/i, '')
+      .replace(/^Based on what I've learned:\s*/i, '')
+      .trim();
     
-    // Add node content with confidence indicator
-    if (confidence > 50) {
-      contentParts.push(content);
-    } else if (confidence > 30 && voice.prefersDetail) {
-      contentParts.push(`• ${content}`);
-    }
+    // Skip if nothing left after cleanup
+    if (content.length < 10) continue;
+    
+    contentParts.push(content);
   }
 
-  // Always join with newlines for clarity
+  // Join with newlines
   return contentParts.join("\n\n");
 }
 
@@ -504,11 +505,7 @@ function synthesizeMainContent(
 // ──────────────────────────────────────────────────────────────────────────────
 
 function buildClosing(query: string, character: CharacterState): string {
-  // No closing question - learning is automatic, no need to ask
-  // Just a brief acknowledgment
-  if (character.curiosity > 60) {
-    return "I've added this to my knowledge base.";
-  }
+  // No closing - keeps responses clean and minimal
   return "";
 }
 
