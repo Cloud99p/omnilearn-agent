@@ -225,7 +225,7 @@ export default function Chat() {
     if (initialMode === "native" && savedNative) loadConversationById(parseInt(savedNative, 10));
     else if (initialMode === "ghost" && savedGhost) loadConversationById(parseInt(savedGhost, 10));
     else if (initialMode === "local" && savedLocal) loadConversationById(parseInt(savedLocal, 10));
-  }, []);
+  }, [mode]);
 
   // Idle CPU contribution — when onboarded and not actively chatting, donate cycles to the ghost network
   useEffect(() => {
