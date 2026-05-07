@@ -17,6 +17,7 @@ import {
 } from "./synthesizer.js";
 import { synthesizeNative } from "./native-synthesizer.js";
 import { SEED_KNOWLEDGE } from "./seed.js";
+import { moderateContent, logModerationAudit } from "../lib/moderation.js";
 import { logger } from "../lib/logger.js";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -223,10 +224,10 @@ export async function processMessage(
     text = result.text;
     learnedFacts = result.learnedFacts || [];
     
-    // Save learned facts to knowledge graph (with validation)
+    // Save learned facts to knowledge graph (with validation + moderation)
     for (const fact of learnedFacts) {
       try {
-        // SAFEGUARD: Skip meta-text (system messages)
+        // SAFEGUARD 1: Skip meta-text (system messages)
         const metaPatterns = [
           /i've learned[:\s]/i,
           /that connects to what/i,
@@ -241,7 +242,24 @@ export async function processMessage(
           continue;
         }
         
-        // Skip duplicates
+        // SAFEGUARD 2: Content moderation (harmful, illegal, PII)
+        const moderationResult = moderateContent(fact.content);
+        if (!moderationResult.approved) {
+          logModerationAudit({
+            timestamp: new Date().toISOString(),
+            userId: clerkId || "unknown",
+            action: "reject",
+            contentType: "knowledge_node",
+            reason: moderationResult.reason,
+          });
+          logger.warn(
+            { category: moderationResult.category, severity: moderationResult.severity },
+            "Content moderation: blocked from learning"
+          );
+          continue;
+        }
+        
+        // SAFEGUARD 3: Skip duplicates
         const existing = await retrieveRelevantNodes(fact.content, clerkId, 1);
         if (existing.length > 0 && existing[0].similarity > 0.85) continue;
         

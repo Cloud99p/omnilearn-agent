@@ -1,6 +1,8 @@
 import { db } from "@workspace/db";
 import { networkNeurons, networkSynapses, networkAgents, networkPulses } from "@workspace/db/schema";
 import { eq, desc, sql, and, count, sum, avg, max } from "drizzle-orm";
+import { moderateBatch, logModerationAudit } from "../lib/moderation.js";
+import { logger } from "../lib/logger.js";
 
 // ─── Token helpers ─────────────────────────────────────────────────────────────
 
@@ -85,6 +87,29 @@ export async function contributeNeurons(
   if (!items.length) return { added: 0, reinforced: 0, synapses: 0 };
 
   await touchAgent(agentName, agentEndpoint);
+
+  // SAFEGUARD: Content moderation for shared network
+  const { approved, rejected } = moderateBatch(items);
+  
+  if (rejected.length > 0) {
+    logModerationAudit({
+      timestamp: new Date().toISOString(),
+      userId: agentName,
+      action: "reject",
+      contentType: "network_neuron",
+      reason: `${rejected.length} items blocked by moderation`,
+    });
+    logger.warn(
+      { agent: agentName, rejected: rejected.length, total: items.length },
+      "Network contribution: content moderation blocked items"
+    );
+  }
+  
+  // Only process approved items
+  items = approved;
+  if (!items.length) {
+    return { added: 0, reinforced: 0, synapses: 0 };
+  }
 
   // Load recent neurons for dedup
   const recent = await db.select({
