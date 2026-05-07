@@ -218,7 +218,7 @@ export default function Chat() {
   useEffect(() => {
     fetchConversations();
     fetchSkills();
-    // fetchGhostStatus(); // Disabled - no nodes registered
+    fetchGhostStatus();
     const savedNative = localStorage.getItem("omni_conv_native");
     const savedGhost  = localStorage.getItem("omni_conv_ghost");
     const savedLocal  = localStorage.getItem("omni_conv_local");
@@ -357,9 +357,8 @@ export default function Chat() {
 
   const gatedModeOptions = [
     { value: "native" as const, label: "Native", icon: "native" },
+    { value: "ghost" as const, label: "Ghost", icon: "ghost" },
     { value: "local" as const, label: "Local", icon: "local" },
-    // Ghost mode disabled for efficient training (no nodes registered)
-    // { value: "ghost" as const, label: "Ghost", icon: "ghost" },
   ];
 
   const deleteConversation = async (id: number, e: React.MouseEvent) => {
