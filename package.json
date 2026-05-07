@@ -17,7 +17,8 @@
     "db:studio": "pnpm --filter @workspace/db run studio",
     "codegen": "pnpm --filter @workspace/api-spec run codegen",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\""
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "cleanup:knowledge": "tsx scripts/cleanup-knowledge.ts"
   },
   "private": true,
   "devDependencies": {

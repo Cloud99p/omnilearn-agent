@@ -467,30 +467,36 @@ function synthesizeMainContent(
   // Build coherent response from nodes
   const contentParts: string[] = [];
 
+  // Meta-phrases to filter out (from old buggy responses)
+  const metaPhrases = [
+    "that connects to what i've learned",
+    "i've learned:",
+    "is there more you'd like to share",
+    "would you like me to remember",
+    "based on what i've learned",
+    "from my knowledge",
+  ];
+
   for (const node of topNodes) {
+    let content = node.content.trim();
+    
+    // Skip if it's mostly meta-text
+    if (metaPhrases.some(phrase => content.toLowerCase().includes(phrase))) {
+      continue;
+    }
+    
     const confidence = Math.round(node.similarity * 100);
     
     // Add node content with confidence indicator
-    if (voice.prefersDetail && confidence > 30) {
-      // Detailed mode: include more context
-      contentParts.push(`• ${node.content}`);
-    } else if (confidence > 50) {
-      // High confidence: state directly
-      contentParts.push(node.content);
-    } else if (confidence > 30) {
-      // Medium confidence: hedge slightly
-      contentParts.push(`This might be relevant: ${node.content}`);
+    if (confidence > 50) {
+      contentParts.push(content);
+    } else if (confidence > 30 && voice.prefersDetail) {
+      contentParts.push(`• ${content}`);
     }
-    // Low confidence (<30%): skip or mention briefly
   }
 
-  // Join with appropriate connectors
-  if (voice.prefersDetail) {
-    return contentParts.join("\n");
-  } else {
-    // Concise mode: combine into flowing text
-    return contentParts.slice(0, 3).join(" ");
-  }
+  // Always join with newlines for clarity
+  return contentParts.join("\n\n");
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
