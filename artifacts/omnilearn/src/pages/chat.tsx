@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, type Dispatch, type SetStateAction } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send, Server, Ghost, Plus, Trash2, Bot, User, Loader2,
@@ -488,7 +488,11 @@ export default function Chat() {
 
     try {
       let convId = activeConvId;
-      if (!convId) convId = await createConversation();
+      if (!convId) {
+        convId = await createConversation();
+        // Save the new conversation ID for next message
+        setActiveConvId(convId);
+      }
 
       const res = await fetch(`${BASE}/api/local/chat`, {
         method: "POST",
@@ -523,7 +527,7 @@ export default function Chat() {
     } finally {
       setStreamingSession(null);
     }
-  }, [activeConvId]);
+  }, [activeConvId, setActiveConvId]);
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || streamingSession !== null) return;
