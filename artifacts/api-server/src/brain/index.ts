@@ -223,15 +223,33 @@ export async function processMessage(
     text = result.text;
     learnedFacts = result.learnedFacts || [];
     
-    // Save learned facts to knowledge graph
+    // Save learned facts to knowledge graph (with validation)
     for (const fact of learnedFacts) {
       try {
+        // SAFEGUARD: Skip meta-text (system messages)
+        const metaPatterns = [
+          /i've learned[:\s]/i,
+          /that connects to what/i,
+          /is there more/i,
+          /would you like/i,
+          /based on what/i,
+          /from my knowledge/i,
+          /i've added this/i,
+        ];
+        if (metaPatterns.some(p => p.test(fact.content))) {
+          logger.warn({ fact }, "Skipping meta-text from learning");
+          continue;
+        }
+        
+        // Skip duplicates
         const existing = await retrieveRelevantNodes(fact.content, clerkId, 1);
-        if (existing.length > 0 && existing[0].similarity > 0.85) continue; // Skip duplicates
+        if (existing.length > 0 && existing[0].similarity > 0.85) continue;
         
         await insertNode(fact.content, fact.type, fact.tags, 0.7, "conversation", clerkId);
         newNodesAdded++;
-      } catch { /* skip */ }
+      } catch (err) {
+        logger.warn({ err, fact }, "Failed to insert fact");
+      }
     }
   }
 

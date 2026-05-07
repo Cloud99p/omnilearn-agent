@@ -563,27 +563,34 @@ function extractLearnings(
     .split(/\s+/)
     .filter(w => w.length > 3 && !['what', 'where', 'when', 'who', 'why', 'how', 'does', 'is', 'are', 'was', 'were'].includes(w));
 
-  // Learn from web search results (new information)
-  for (const result of searchResults.slice(0, 2)) {
-    if (result.snippet && result.snippet.length > 30) {
-      const clean = result.snippet
-        .replace(/!?\[.*?\]\(.*?\)/g, "")
-        .replace(/https?:\/\/\S+/g, "")
-        .replace(/[*_`]/g, "")
-        .trim();
-      if (clean.length > 20) {
-        facts.push({
-          content: clean,
-          type: "fact",
-          tags: keyTerms.slice(0, 5),
-        });
-      }
-    }
-  }
+  // SAFEGUARD: Meta-text patterns that indicate system messages (DO NOT LEARN)
+  const metaPatterns = [
+    /i've learned[:\s]/i,
+    /that connects to what/i,
+    /is there more/i,
+    /would you like/i,
+    /based on what i've learned/i,
+    /from my knowledge/i,
+    /i've added this/i,
+    /thanks for sharing/i,
+    /here's what/i,
+    /i'll help with/i,
+    /i'm always learning/i,
+    /i don't have (any )?knowledge/i,
+    /i haven't learned/i,
+  ];
 
-  // Learn from web search content (full page, not just snippets)
+  // Helper: Check if content is safe to learn
+  const isSafeToLearn = (text: string): boolean => {
+    if (metaPatterns.some(p => p.test(text))) return false;
+    if (text.trim().length < 20) return false;
+    if (text.length > 500) return false;
+    if (text === text.toUpperCase() && text.length > 30) return false;
+    return true;
+  };
+
+  // Learn from web search content
   if (searchResults.length > 0) {
-    // Extract 2-3 key facts from the search
     for (const result of searchResults.slice(0, 3)) {
       if (result.snippet && result.snippet.length > 40) {
         const clean = result.snippet
@@ -591,7 +598,8 @@ function extractLearnings(
           .replace(/https?:\/\/\S+/g, "")
           .replace(/[*_`]/g, "")
           .trim();
-        if (clean.length > 30 && !facts.some(f => f.content.includes(clean.slice(0, 20)))) {
+        
+        if (isSafeToLearn(clean) && !facts.some(f => f.content.includes(clean.slice(0, 20)))) {
           facts.push({
             content: clean,
             type: "fact",
