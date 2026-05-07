@@ -68,15 +68,14 @@ export async function synthesizeNative(
   const nodesUsed = relevantNodes.length;
 
   // Detect if web search is needed (current events, news, recent facts)
-  const needsWebSearch = detectNeedForWebSearch(query, relevantNodes);
+  // BUT: if onActivity is undefined, we're in Local mode - NO web search!
+  const needsWebSearch = onActivity && detectNeedForWebSearch(query, relevantNodes);
   let searchResults: SearchResult[] = [];
   let fetchedContent: { title: string; text: string } | null = null;
 
   if (needsWebSearch) {
-    // Search the web (always, even if onActivity is not provided)
-    if (onActivity) {
-      onActivity({ type: "searching", query });
-    }
+    // Search the web (onActivity is defined, so we're not in Local mode)
+    onActivity({ type: "searching", query });
     
     try {
       const searchResult = await webSearch(query);
@@ -305,11 +304,7 @@ function synthesizeFromWebOnly(
   const webSection = synthesizeFromWeb(query, searchResults, fetchedContent, voice);
   if (webSection) parts.push(webSection);
 
-  // Closing: automatically learning (no prompt needed)
-  if (character.curiosity > 40) {
-    parts.push("I've added this to my knowledge base for future reference.");
-  }
-
+  // No closing meta-text - keeps responses clean
   return parts.join("\n\n");
 }
 
