@@ -72,23 +72,37 @@ export async function synthesizeNative(
   let searchResults: SearchResult[] = [];
   let fetchedContent: { title: string; text: string } | null = null;
 
-  if (needsWebSearch && onActivity) {
-    // Search the web
-    onActivity({ type: "searching", query });
-    const searchResult = await webSearch(query);
-    searchResults = searchResult.results;
-    onActivity({ type: "search_done", resultCount: searchResults.length });
-
-    // Fetch top result if it looks promising
-    if (searchResults.length > 0 && searchResults[0].url) {
-      onActivity({ type: "fetching", url: searchResults[0].url });
-      try {
-        const fetched = await fetchUrl(searchResults[0].url);
-        fetchedContent = { title: fetched.title, text: fetched.text };
-        onActivity({ type: "fetch_done", title: fetched.title });
-      } catch (err) {
-        logger.warn({ err, url: searchResults[0].url }, "Failed to fetch URL");
+  if (needsWebSearch) {
+    // Search the web (always, even if onActivity is not provided)
+    if (onActivity) {
+      onActivity({ type: "searching", query });
+    }
+    
+    try {
+      const searchResult = await webSearch(query);
+      searchResults = searchResult.results;
+      
+      if (onActivity) {
+        onActivity({ type: "search_done", resultCount: searchResults.length });
       }
+
+      // Fetch top result if it looks promising
+      if (searchResults.length > 0 && searchResults[0].url) {
+        if (onActivity) {
+          onActivity({ type: "fetching", url: searchResults[0].url });
+        }
+        try {
+          const fetched = await fetchUrl(searchResults[0].url);
+          fetchedContent = { title: fetched.title, text: fetched.text };
+          if (onActivity) {
+            onActivity({ type: "fetch_done", title: fetched.title });
+          }
+        } catch (err) {
+          logger.warn({ err, url: searchResults[0].url }, "Failed to fetch URL");
+        }
+      }
+    } catch (err) {
+      logger.warn({ err, query }, "Web search failed, continuing without web results");
     }
   }
 
@@ -146,26 +160,34 @@ function detectNeedForWebSearch(
 ): boolean {
   const lower = query.toLowerCase();
 
-  // Triggers for web search
+  // ALWAYS search web for questions when knowledge is limited
+  // This ensures Native mode provides value even with empty knowledge graph
+  
+  // Question words - ALWAYS trigger web search
+  const questionWords = [
+    "what", "who", "where", "when", "why", "how",
+    "explain", "define", "describe", "tell me about",
+    "what is", "who is", "where is", "when is",
+    "how does", "how to", "what are", "who are",
+  ];
+  
+  if (questionWords.some(word => lower.startsWith(word + " ") || lower === word)) {
+    return true;
+  }
+  
+  // Triggers for current/recent information
   const webTriggers = [
     "news", "current", "recent", "latest", "today", "yesterday", "this week",
-    "who is", "what is happening", "what happened", "when did",
     "weather", "stock", "price of", "score", "results",
-    "new", "just", "breaking", "announced", "released",
+    "new", "just", "breaking", "announced", "released", "202", "203",
   ];
 
-  // If query has web triggers, search
   if (webTriggers.some(trigger => lower.includes(trigger))) {
     return true;
   }
 
-  // If no relevant knowledge nodes, search
-  if (nodes.length === 0 || nodes.every(n => n.similarity < 0.2)) {
-    return true;
-  }
-
-  // If query is a question about external facts
-  if (lower.startsWith("what is ") || lower.startsWith("who is ") || lower.startsWith("where is ")) {
+  // If no relevant knowledge nodes, ALWAYS search web
+  if (nodes.length === 0 || nodes.every(n => n.similarity < 0.15)) {
     return true;
   }
 
