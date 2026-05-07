@@ -1,5 +1,5 @@
 import rateLimit from "express-rate-limit";
-import { logger } from "./logger";
+import { logger } from "../lib/logger";
 
 /**
  * Rate limiting configuration for API endpoints.
