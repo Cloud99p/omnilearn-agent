@@ -20,6 +20,12 @@ export function extractFacts(text: string): ExtractedFact[] {
   const facts: ExtractedFact[] = [];
   const seen = new Set<string>();
 
+  // Don't extract facts from questions - they're prompts, not knowledge!
+  const trimmed = text.trim();
+  if (trimmed.endsWith("?") || /^(what|who|where|when|why|how|is|are|can|could|does|do|will|would|should|tell|explain|describe)/i.test(trimmed)) {
+    return facts; // Return empty - no fact extraction from questions
+  }
+
   for (const { re, type, conf } of FACT_PATTERNS) {
     const pattern = new RegExp(re.source, re.flags);
     let match;
