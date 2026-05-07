@@ -10,6 +10,7 @@ import ghostRouter from "./ghost/index.js";
 import networkRouter from "./network.js";
 import brainProposalsRouter from "./brain/proposals.js";
 import brainOntologyRouter from "./brain/ontology.js";
+import { moderationRouter } from "./moderation.js";
 import { defaultLimiter, chatLimiter, skillCreateLimiter, githubLimiter } from "../middlewares/rateLimit";
 
 const router: IRouter = Router();
@@ -26,5 +27,6 @@ router.use(defaultLimiter, ghostRouter); // Default limit
 router.use(defaultLimiter, networkRouter); // Default limit
 router.use("/brain", defaultLimiter, brainProposalsRouter); // Default limit
 router.use("/brain", defaultLimiter, brainOntologyRouter); // Default limit
+router.use("/moderation", defaultLimiter, moderationRouter); // Default limit
 
 export default router;
