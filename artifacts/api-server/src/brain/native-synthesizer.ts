@@ -414,6 +414,9 @@ function getWebIntro(query: string, pointCount: number): string {
 // ──────────────────────────────────────────────────────────────────────────────
 // Synthesize response from retrieved knowledge nodes
 // ──────────────────────────────────────────────────────────────────────────────
+// NOTE: This function returns CONTENT ONLY (no opening/closing)
+// Opening/closing are added by wrapper functions (synthesizeFromNodesOnly, etc.)
+// ──────────────────────────────────────────────────────────────────────────────
 
 function synthesizeFromNodes(
   query: string,
@@ -424,26 +427,9 @@ function synthesizeFromNodes(
 ): string {
   // Sort by similarity (highest first)
   const sorted = [...nodes].sort((a, b) => b.similarity - a.similarity);
-  const topNode = sorted[0];
 
-  // Build response structure
-  const parts: string[] = [];
-
-  // Opening — acknowledge the query
-  const opening = buildOpening(query, queryType, character);
-  if (opening) parts.push(opening);
-
-  // Main content — synthesize from top nodes
-  const mainContent = synthesizeMainContent(sorted, voice);
-  parts.push(mainContent);
-
-  // Closing — invite further interaction if curious
-  if (character.curiosity > 50) {
-    const closing = buildClosing(query, character);
-    if (closing) parts.push(closing);
-  }
-
-  return parts.join("\n\n");
+  // Just return the main content (no opening/closing - added by wrappers)
+  return synthesizeMainContent(sorted, voice);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
