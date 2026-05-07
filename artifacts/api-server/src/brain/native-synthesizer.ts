@@ -187,7 +187,19 @@ function detectNeedForWebSearch(
   // STRATEGY: Check database first, search web only when needed
   // Priority: Knowledge Graph → Web Search (if insufficient)
 
-  // 1. ALWAYS search web for time-sensitive topics
+  // 1. NEVER search web for basic identity/self-knowledge questions
+  const identityTriggers = [
+    "what is your name", "who are you", "your name is",
+    "who created", "who built", "who made",
+    "what are you", "what is this",
+    "tell me about yourself", "introduce yourself",
+  ];
+  
+  if (identityTriggers.some(trigger => lower.includes(trigger))) {
+    return false; // Answer from knowledge graph, never web
+  }
+
+  // 2. ALWAYS search web for time-sensitive topics
   const timeTriggers = [
     "news", "current", "recent", "latest", "today", "yesterday", 
     "this week", "this month", "this year",
@@ -199,9 +211,10 @@ function detectNeedForWebSearch(
     return true; // These change frequently, always check web
   }
 
-  // 2. If NO knowledge nodes found, search web
+  // 3. If NO knowledge nodes found, DON'T search web by default
+  // Only search if query indicates time-sensitive or external info needed
   if (nodes.length === 0) {
-    return true; // Empty knowledge graph, need external info
+    return false; // Prefer knowledge graph, only search for time-sensitive topics
   }
 
   // 3. If knowledge exists but has LOW confidence/similarity, search web to supplement
