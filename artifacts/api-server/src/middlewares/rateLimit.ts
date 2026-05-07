@@ -12,17 +12,17 @@ import { logger } from "../lib/logger";
  * - githubLimiter: 30 → 10 requests/hour
  */
 
-// Default rate limit: 100 requests per 15 minutes
+// Default rate limit: DISABLED for efficient training
 export const defaultLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10000, // Effectively unlimited for development/testing
   message: {
     error: "Too many requests",
     message: "You have exceeded the rate limit. Please try again later.",
-    retryAfter: "900 seconds",
+    retryAfter: "3600 seconds",
   },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true,
+  legacyHeaders: false,
   handler: (req, res) => {
     logger.warn(
       {
@@ -36,17 +36,16 @@ export const defaultLimiter = rateLimit({
     res.status(429).json({
       error: "Too many requests",
       message: "You have exceeded the rate limit. Please try again later.",
-      retryAfter: "900 seconds",
+      retryAfter: "3600 seconds",
     });
   },
-  // Skip rate limiting for health checks
   skip: (req) => req.path === "/healthz",
 });
 
-// Stricter limit for chat endpoints (prevent API abuse)
+// Chat endpoints: DISABLED for efficient training
 export const chatLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 100, // Limit each IP to 100 chat requests per hour (increased for testing)
+  max: 10000, // Effectively unlimited for development/testing
   message: {
     error: "Too many chat requests",
     message: "You have exceeded the hourly chat limit. Please try again later.",
