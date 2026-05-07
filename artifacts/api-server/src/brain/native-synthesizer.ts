@@ -45,12 +45,12 @@ export interface NativeSynthesisResult {
 function buildFallbackResponse(query: string, character: CharacterState): string {
   const voice = getVoiceModifiers(character);
   
-  // Friendly, honest response when processing fails
+  // Friendly, honest response when processing fails - NO query echoing
   const responses = [
-    `I'm still learning about "${query}". Every conversation helps me grow! What would you like to teach me?`,
-    `That's an interesting topic - "${query}". I don't have much knowledge about it yet, but I'd love to learn from you!`,
-    `I haven't fully explored "${query}" yet. Feel free to share what you know - I'll remember it for next time!`,
-    `Great question about "${query}"! I'm still building my knowledge base. Can you tell me more about it?`,
+    `I'm still learning about this. Every conversation helps me grow! What would you like to teach me?`,
+    `That's an interesting topic! I don't have much knowledge about it yet, but I'd love to learn from you!`,
+    `I haven't fully explored this yet. Feel free to share what you know - I'll remember it for next time!`,
+    `Great question! I'm still building my knowledge base. Can you tell me more about it?`,
   ];
   
   const response = responses[Math.floor(Math.random() * responses.length)];
@@ -245,15 +245,15 @@ function buildUnknownResponse(
 ): string {
   const curiosityLevel = character.curiosity;
 
-  // High curiosity: eager to learn
+  // High curiosity: eager to learn (NO query echoing)
   if (curiosityLevel > 70) {
-    return `I don't have any knowledge about that yet — but I'm curious! 🌱\n\nTell me more about "${query}" and I'll add it to my knowledge base. The more you teach me, the smarter I become!`;
+    return `I don't have any knowledge about that yet — but I'm curious! 🌱\n\nTell me more and I'll add it to my knowledge base. The more you teach me, the smarter I become!`;
   } 
-  // Medium curiosity: friendly and open
+  // Medium curiosity: friendly and open (NO query echoing)
   else if (curiosityLevel > 40) {
-    return `I haven't learned about "${query}" yet.\n\n💡 Here's how you can teach me:\n• Share facts or information about it\n• Explain concepts in your own words\n• Tell me what you think about it\n\nI'll remember what you teach me for future conversations!`;
+    return `I haven't learned about this yet.\n\n💡 Here's how you can teach me:\n• Share facts or information\n• Explain concepts in your own words\n• Tell me what you think\n\nI'll remember what you teach me for future conversations!`;
   } 
-  // Low curiosity: straightforward but helpful
+  // Low curiosity: straightforward but helpful (NO query echoing)
   else {
     return `I don't have information about that in my knowledge base yet.\n\nThis means we haven't discussed it before. Feel free to teach me — I learn from every conversation we have!`;
   }
