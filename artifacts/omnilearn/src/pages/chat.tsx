@@ -272,7 +272,12 @@ export default function Chat() {
   const fetchConversations = async () => {
     try {
       const res = await fetch(`${BASE}/api/anthropic/conversations`);
-      if (res.ok) setConversations(await res.json());
+      if (res.ok) {
+        const all = await res.json();
+        // Filter conversations by current mode to prevent cross-mode leakage
+        const filtered = all.filter((c: Conversation) => c.mode === mode);
+        setConversations(filtered);
+      }
     } catch { /* offline */ }
   };
 
