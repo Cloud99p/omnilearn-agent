@@ -4,6 +4,12 @@ import { logger } from "../lib/logger";
 /**
  * Rate limiting configuration for API endpoints.
  * Prevents abuse and protects free-tier infrastructure.
+ * 
+ * NOTE: These limits are generous for development/testing.
+ * For production, consider reducing:
+ * - chatLimiter: 100 → 30 requests/hour
+ * - defaultLimiter: 100 → 60 requests/15min
+ * - githubLimiter: 30 → 10 requests/hour
  */
 
 // Default rate limit: 100 requests per 15 minutes
@@ -40,7 +46,7 @@ export const defaultLimiter = rateLimit({
 // Stricter limit for chat endpoints (prevent API abuse)
 export const chatLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 30, // Limit each IP to 30 chat requests per hour
+  max: 100, // Limit each IP to 100 chat requests per hour (increased for testing)
   message: {
     error: "Too many chat requests",
     message: "You have exceeded the hourly chat limit. Please try again later.",
@@ -98,7 +104,7 @@ export const skillCreateLimiter = rateLimit({
 // Strict limit for GitHub operations (API quota protection)
 export const githubLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // Limit each IP to 10 GitHub requests per hour
+  max: 30, // Limit each IP to 30 GitHub requests per hour (increased for testing)
   message: {
     error: "Too many GitHub requests",
     message: "You have exceeded the GitHub API rate limit. Please try again later.",
