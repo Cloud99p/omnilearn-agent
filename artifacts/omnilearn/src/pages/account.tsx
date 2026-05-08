@@ -141,7 +141,7 @@ function AccountContent() {
             provider="GitHub"
             connected={profile?.hasGitHub ?? false}
             detail={profile?.hasGitHub ? `@${profile.githubUsername ?? "connected"}` : undefined}
-            connectHref="https://dashboard.clerk.com/"}
+            connectHref="https://dashboard.clerk.com/"
             color="text-foreground"
             bg="bg-foreground/5"
           />
