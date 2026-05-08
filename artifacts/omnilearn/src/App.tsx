@@ -3,6 +3,8 @@ import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
 import { shadcn } from "@clerk/themes";
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -221,6 +223,9 @@ function ClerkProviderWithRoutes() {
             <Route component={Router} />
           </Switch>
           <Toaster />
+          <Analytics />
+          <SpeedInsights />
+        </TooltipProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </ClerkProvider>
