@@ -19,6 +19,7 @@ import { synthesizeNative } from "./native-synthesizer.js";
 import { SEED_KNOWLEDGE } from "./seed.js";
 import { moderateContent, logModerationAudit } from "../lib/moderation.js";
 import { logger } from "../lib/logger.js";
+import { hasKnowledgeQuality } from "./extractor.js";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Character state (per clerkId or global)
@@ -359,6 +360,13 @@ export async function trainOnText(
   const insertedNodes: KnowledgeNode[] = [];
 
   for (const fact of facts) {
+    // QUALITY CHECK: Skip low-quality facts
+    if (!hasKnowledgeQuality(fact.content)) {
+      logger.debug({ fact: fact.content.slice(0, 100) }, "Skipping low-quality fact from batch training");
+      skipped++;
+      continue;
+    }
+    
     const existing = await retrieveRelevantNodes(fact.content, clerkId, 1);
     if (existing.length > 0 && existing[0].similarity > 0.85) {
       skipped++;
@@ -369,13 +377,15 @@ export async function trainOnText(
     added++;
   }
 
-  // Also insert the raw text as a knowledge node if substantial
+  // Also insert the raw text as a knowledge node if substantial AND high-quality
   if (text.length > 60 && text.length < 500) {
     const existing = await retrieveRelevantNodes(text, clerkId, 1);
-    if (existing.length === 0 || existing[0].similarity < 0.7) {
+    if ((existing.length === 0 || existing[0].similarity < 0.7) && hasKnowledgeQuality(text)) {
       const node = await insertNode(text.trim(), "fact", extractKeyTerms(text), 0.8, source, clerkId);
       insertedNodes.push(node);
       added++;
+    } else if (!hasKnowledgeQuality(text)) {
+      logger.debug({ text: text.slice(0, 100) }, "Skipping low-quality raw text from batch training");
     }
   }
 

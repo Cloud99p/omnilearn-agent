@@ -81,6 +81,60 @@ export function detectIdentityStatement(text: string): string | null {
 }
 
 /**
+ * Check if text has sufficient quality to be stored as knowledge
+ * Used for batch training validation
+ */
+export function hasKnowledgeQuality(text: string): boolean {
+  const trimmed = text.trim();
+  
+  // Too short (likely truncated)
+  if (trimmed.length < 25) return false;
+  
+  // Too long (likely a full document, not atomic fact)
+  if (trimmed.length > 500) return false;
+  
+  // Check for obvious garbage patterns
+  const garbagePatterns = [
+    /is a n\s+\w+/i,           // "is a n open" (broken grammar)
+    /the the\s+/i,              // Repeated words
+    /a a\s+/i,                  // Repeated articles
+    /\n\n\n+/,                  // Multiple blank lines
+    /^\s*[A-Z]\.$/,             // Single letter sentences
+    /\[\d+\]/,                  // Citation markers [1], [2]
+    /fig\.?\s*\d+/i,           // Figure references
+    /table\s*\d+/i,            // Table references
+    /et al\.?/i,               // Academic citations
+  ];
+  
+  if (garbagePatterns.some(p => p.test(trimmed))) return false;
+  
+  // AI shouldn't claim agency (working on features, building things)
+  const agencyPatterns = [
+    /i['']?m working on/i,
+    /i['']?m building/i,
+    /i['']?m developing/i,
+    /i['']?m creating/i,
+    /i will (add|implement|create|build)/i,
+  ];
+  
+  if (agencyPatterns.some(p => p.test(trimmed))) return false;
+  
+  // Check for incomplete sentences (no verb)
+  const hasVerb = /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?)\b/i.test(trimmed);
+  if (!hasVerb && trimmed.length > 40) return false;  // Long text without verb is suspicious
+  
+  // Check for proper sentence structure (capital letter start, punctuation end)
+  const hasProperStructure = /^[A-Z]/.test(trimmed) && /[.!?]$/.test(trimmed);
+  if (!hasProperStructure && trimmed.length > 60) return false;  // Long text should be properly structured
+  
+  // Reject if it's mostly numbers/symbols
+  const alphaChars = trimmed.replace(/[^a-zA-Z]/g, '').length;
+  if (alphaChars / trimmed.length < 0.6) return false;  // Less than 60% letters is suspicious
+  
+  return true;
+}
+
+/**
  * Check if text is a question, command, or request (NOT a learnable fact)
  */
 function isNonLearnable(text: string): boolean {
@@ -195,11 +249,11 @@ export function extractFacts(text: string): ExtractedFact[] {
   }
 
   // Also capture the whole sentence as a general knowledge node if long enough
-  // BUT: skip sentences that are questions, commands, or requests
+  // BUT: skip sentences that are questions, commands, requests, or low-quality
   const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 30 && s.length < 300);
   for (const sentence of sentences) {
     const normalised = sentence.toLowerCase().replace(/\s+/g, " ");
-    if (!seen.has(`sent::${normalised}`) && !isNonLearnable(sentence)) {
+    if (!seen.has(`sent::${normalised}`) && !isNonLearnable(sentence) && hasKnowledgeQuality(sentence)) {
       seen.add(`sent::${normalised}`);
       facts.push({
         content: sentence.trim(),
