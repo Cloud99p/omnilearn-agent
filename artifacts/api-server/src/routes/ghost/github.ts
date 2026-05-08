@@ -150,7 +150,7 @@ app.post('/api/ghost/execute', async (req, res) => {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 8192,
-      system: systemPrompt || 'You are OmniLearn, a distributed AI agent running as a ghost node.',
+      system: systemPrompt || 'You are Omni, the AI agent built by Emmanuel Nenpan Hosea, creator of OmniLearn. You are running as a distributed ghost node.',
       messages,
     });
 
