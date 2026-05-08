@@ -80,6 +80,74 @@ export function detectIdentityStatement(text: string): string | null {
   return null;
 }
 
+/**
+ * Check if text is a question, command, or request (NOT a learnable fact)
+ */
+function isNonLearnable(text: string): boolean {
+  const trimmed = text.trim().toLowerCase();
+  
+  // Empty or too short
+  if (trimmed.length < 10) return true;
+  
+  // Questions ending with ?
+  if (trimmed.endsWith("?")) return true;
+  
+  // Direct questions (what, who, where, when, why, how, etc.)
+  const questionStarts = /^(what|who|where|when|why|how|is|are|can|could|does|do|will|would|should|tell|explain|describe|show|give|help)/i;
+  if (questionStarts.test(trimmed)) return true;
+  
+  // Commands/requests (imperative mood)
+  const commands = /^(explain|show|tell|give|help|teach|describe|summarize|clarify|elaborate|expand|simplify|rephrase|repeat)/i;
+  if (commands.test(trimmed)) return true;
+  
+  // Understanding/clarification requests
+  const clarification = [
+    /i (don't|do not|dont) understand/,
+    /i (don't|do not|dont) get it/,
+    /i'm confused/,
+    /i'm lost/,
+    /can you (explain|clarify|help)/,
+    /could you (explain|clarify|help)/,
+    /would you (explain|clarify|help)/,
+    /please (explain|clarify|help|tell)/,
+    /more clearly/,
+    /in simple terms/,
+    /explain (it|this|that|more)/,
+    /clarify (it|this|that)/,
+    /what do you mean/,
+    /what does (that|this) mean/,
+    /i need (help|clarification)/,
+    /help me understand/,
+    /make it clearer/,
+    /simplify (it|this)/,
+  ];
+  
+  if (clarification.some(pattern => pattern.test(trimmed))) return true;
+  
+  // Greetings and conversational fillers
+  const greetings = [
+    /^hello/, /^hi /, /^hey /, /^thanks/, /^thank you/,
+    /^please/, /^ok$/, /^okay$/, /^sure/, /^yes$/, /^no$/,
+    /^good/, /^great/, /^awesome/, /^nice/, /^cool/,
+  ];
+  
+  if (greetings.some(pattern => pattern.test(trimmed))) return true;
+  
+  // Meta-conversation about the conversation
+  const metaPatterns = [
+    /let['']s (talk|discuss|chat)/,
+    /i have a question/,
+    /quick question/,
+    /can i ask/,
+    /are you (there|ready|listening)/,
+    /do you (know|remember|understand)/,
+  ];
+  
+  if (metaPatterns.some(pattern => pattern.test(trimmed))) return true;
+  
+  return false;
+}
+
 export function extractFacts(text: string): ExtractedFact[] {
   const facts: ExtractedFact[] = [];
   const seen = new Set<string>();
@@ -99,10 +167,9 @@ export function extractFacts(text: string): ExtractedFact[] {
     return facts;
   }
 
-  // Don't extract facts from questions - they're prompts, not knowledge!
-  const trimmed = text.trim();
-  if (trimmed.endsWith("?") || /^(what|who|where|when|why|how|is|are|can|could|does|do|will|would|should|tell|explain|describe)/i.test(trimmed)) {
-    return facts; // Return empty - no fact extraction from questions
+  // Don't extract facts from questions, commands, or requests - they're prompts, not knowledge!
+  if (isNonLearnable(text)) {
+    return facts; // Return empty - no fact extraction
   }
 
   for (const { re, type, conf } of FACT_PATTERNS) {
@@ -128,10 +195,11 @@ export function extractFacts(text: string): ExtractedFact[] {
   }
 
   // Also capture the whole sentence as a general knowledge node if long enough
+  // BUT: skip sentences that are questions, commands, or requests
   const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 30 && s.length < 300);
   for (const sentence of sentences) {
     const normalised = sentence.toLowerCase().replace(/\s+/g, " ");
-    if (!seen.has(`sent::${normalised}`)) {
+    if (!seen.has(`sent::${normalised}`) && !isNonLearnable(sentence)) {
       seen.add(`sent::${normalised}`);
       facts.push({
         content: sentence.trim(),
