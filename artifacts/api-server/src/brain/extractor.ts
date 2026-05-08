@@ -1,8 +1,53 @@
 export interface ExtractedFact {
   content: string;
-  type: "fact" | "concept" | "opinion" | "rule";
+  type: "fact" | "concept" | "opinion" | "rule" | "identity";
   tags: string[];
   confidence: number;
+  userIdentity?: boolean; // True if this is a user identity statement ("I am...", "My name is...")
+}
+
+// Common words that should NOT be captured as names
+const NON_NAME_WORDS = new Set([
+  'learning', 'happy', 'sad', 'tired', 'excited', 'bored', 'confused',
+  'ai', 'bot', 'assistant', 'omni', 'omnilearn', 'robot', 'machine', 'system',
+  'a', 'an', 'the', 'this', 'that', 'one', 'someone', 'anyone',
+  'student', 'developer', 'programmer', 'engineer', 'user', 'person',
+  'here', 'there', 'ready', 'sure', 'okay', 'ok', 'yes', 'no',
+]);
+
+// Identity statement patterns - detect user self-identification
+const IDENTITY_PATTERNS: Array<{ re: RegExp; extractName: (m: RegExpMatchArray) => string }> = [
+  // "I am [Name]" or "I'm [Name]" - must be capitalized proper noun(s)
+  { re: /(i am|i'm)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i, extractName: (m) => m[2] },
+  // "My name is [Name]"
+  { re: /my name is\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i, extractName: (m) => m[1] },
+  // "Call me [Name]"
+  { re: /call me\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i, extractName: (m) => m[1] },
+  // "I go by [Name]"
+  { re: /i go by\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i, extractName: (m) => m[1] },
+];
+
+/**
+ * Check if extracted text is a valid name (not a common word or AI self-reference)
+ */
+function isValidName(name: string): boolean {
+  const lower = name.toLowerCase().trim();
+  
+  // Must start with capital letter and be 2-50 chars
+  if (!/^[A-Z][a-z]/.test(name)) return false;
+  if (name.length < 2 || name.length > 50) return false;
+  
+  // Reject if it's a common non-name word
+  if (NON_NAME_WORDS.has(lower)) return false;
+  
+  // Reject if it looks like an AI self-description or project name
+  if (/\b(ai|bot|assistant|omni|omnilearn|robot|machine|intelligence)\b/i.test(lower)) return false;
+  
+  // Reject if it's just a common noun pretending to be capitalized
+  const commonNouns = ['Learning', 'Happy', 'Sad', 'Tired', 'Ready', 'Sure', 'Here', 'There'];
+  if (commonNouns.includes(name)) return false;
+  
+  return true;
 }
 
 const FACT_PATTERNS: Array<{ re: RegExp; type: ExtractedFact["type"]; conf: number }> = [
@@ -18,9 +63,41 @@ const FACT_PATTERNS: Array<{ re: RegExp; type: ExtractedFact["type"]; conf: numb
   { re: /^(\w+\s+\w+\s+\w+)\s+(?:is|are|was|were)\s+(\w+)$/i, type: "fact", conf: 0.60 },
 ];
 
+/**
+ * Detect if text contains user identity statements ("I am X", "My name is X")
+ * Returns the extracted name if found, null otherwise
+ */
+export function detectIdentityStatement(text: string): string | null {
+  for (const { re, extractName } of IDENTITY_PATTERNS) {
+    const match = text.match(re);
+    if (match) {
+      const name = extractName(match);
+      if (name && isValidName(name)) {
+        return name.trim();
+      }
+    }
+  }
+  return null;
+}
+
 export function extractFacts(text: string): ExtractedFact[] {
   const facts: ExtractedFact[] = [];
   const seen = new Set<string>();
+
+  // Check for identity statements FIRST - these are handled specially
+  const identityName = detectIdentityStatement(text);
+  if (identityName) {
+    // Add identity fact with special type
+    facts.push({
+      content: text.trim(),
+      type: "identity",
+      tags: ["identity", "user", identityName.toLowerCase()],
+      confidence: 0.95,
+      userIdentity: true,
+    });
+    // Don't extract other facts from pure identity statements
+    return facts;
+  }
 
   // Don't extract facts from questions - they're prompts, not knowledge!
   const trimmed = text.trim();

@@ -7,7 +7,8 @@
     "dev": "export NODE_ENV=development && export PORT=${PORT:-8080} && tsx src/index.ts",
     "build": "echo build skipped",
     "start": "tsx src/index.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "cleanup:identity": "tsx scripts/cleanup-identity-facts.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
