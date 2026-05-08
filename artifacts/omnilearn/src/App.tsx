@@ -226,7 +226,6 @@ function ClerkProviderWithRoutes() {
           <Analytics />
           <SpeedInsights />
         </TooltipProvider>
-        </TooltipProvider>
       </QueryClientProvider>
     </ClerkProvider>
   );
