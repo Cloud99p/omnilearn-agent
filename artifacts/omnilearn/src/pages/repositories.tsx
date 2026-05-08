@@ -58,13 +58,18 @@ function ConnectGitHubPrompt() {
           Sign in with GitHub to browse, create, fork, and share repositories directly from OmniLearn.
         </p>
       </div>
-      <Link
-        href="/sign-in"
+      <a
+        href="https://dashboard.clerk.com/" 
+        target="_blank"
+        rel="noopener noreferrer"
         className="inline-flex items-center gap-2 font-mono text-sm bg-primary text-background px-5 py-2.5 rounded-lg hover:bg-primary/90 transition-colors font-semibold"
       >
         <Github className="w-4 h-4" />
-        Connect GitHub
-      </Link>
+        Connect via Clerk Dashboard
+      </a>
+      <p className="font-mono text-xs text-muted-foreground">
+        Open Clerk dashboard in new tab → Sign in → Connected Accounts → Add GitHub
+      </p>
     </div>
   );
 }

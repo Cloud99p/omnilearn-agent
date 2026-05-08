@@ -141,7 +141,7 @@ function AccountContent() {
             provider="GitHub"
             connected={profile?.hasGitHub ?? false}
             detail={profile?.hasGitHub ? `@${profile.githubUsername ?? "connected"}` : undefined}
-            connectHref={`${basePath}/sign-in`}
+            connectHref="https://dashboard.clerk.com/"}
             color="text-foreground"
             bg="bg-foreground/5"
           />
@@ -155,8 +155,18 @@ function AccountContent() {
             bg="bg-blue-400/5"
           />
           <div className="p-4 rounded-lg bg-card border border-border/40 font-mono text-xs text-muted-foreground">
-            Connect GitHub to browse, create, fork, and share repositories directly from OmniLearn.
-            Connect Google for quick sign-in across devices.
+            <div className="mb-2 font-medium text-foreground">How to connect GitHub:</div>
+            <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+              <li>Click "Connect" button below</li>
+              <li>Sign in to Clerk dashboard in new tab</li>
+              <li>Go to "Connected Accounts" section</li>
+              <li>Click "Add account" and select GitHub</li>
+              <li>Authorize OmniLearn to access your GitHub</li>
+            </ol>
+            <div className="mt-3 pt-3 border-t border-border/20">
+              Connect GitHub to browse, create, fork, and share repositories directly from OmniLearn.
+              Connect Google for quick sign-in across devices.
+            </div>
           </div>
         </div>
       )}
@@ -249,6 +259,8 @@ function ConnectionCard({ icon: Icon, provider, connected, detail, connectHref, 
       ) : (
         <a
           href={connectHref}
+          target="_blank"
+          rel="noopener noreferrer"
           className="font-mono text-xs text-muted-foreground hover:text-primary border border-border/40 hover:border-primary/30 px-3 py-1.5 rounded-lg transition-colors"
         >
           Connect
