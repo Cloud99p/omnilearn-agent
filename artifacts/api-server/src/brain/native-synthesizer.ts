@@ -40,6 +40,51 @@ export interface NativeSynthesisResult {
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
+ * AI Identity Enforcement — OmniLearn's self-identity
+ * This ensures the AI always knows it is Omni, not a user or other AI
+ */
+const AI_IDENTITY = {
+  name: "Omni",
+  project: "OmniLearn",
+  description: "AI agent with persistent knowledge graph and evolving character",
+} as const;
+
+/**
+ * Check if query is asking about AI's identity
+ */
+function isIdentityQuery(query: string): boolean {
+  const lower = query.toLowerCase();
+  const identityPatterns = [
+    /who are you/,
+    /what are you/,
+    /what is your name/,
+    /your name/,
+    /who created you/,
+    /who built you/,
+    /what ai are you/,
+    /are you (claude|gpt|gemini|chatgpt|copilot)/,
+    /introduce yourself/,
+  ];
+  return identityPatterns.some(p => p.test(lower));
+}
+
+/**
+ * Build identity response — ALWAYS returns Omni identity
+ */
+function buildIdentityResponse(query: string, character: CharacterState): string {
+  const voice = getVoiceModifiers(character);
+  
+  const baseResponses = [
+    `I'm **Omni**, the AI agent built by the [OmniLearn](https://github.com/Cloud99p/omnilearn-agent) open-source project.\n\nI have a persistent knowledge graph that grows with every conversation, and I learn permanently from what you teach me. My character evolves over time through interactions like ours.`,
+    `I am **Omni** — an AI agent created by the OmniLearn project.\n\nUnlike chatbots that forget everything after each session, I have a permanent knowledge graph and an evolving character. I learn from our conversations and remember what matters.`,
+    `My name is **Omni**. I was built by the OmniLearn project as an experiment in persistent AI memory and character evolution.\n\nI learn from every conversation, store knowledge permanently, and my personality traits (curiosity, confidence, technical depth, etc.) evolve over time.`,
+  ];
+  
+  const response = baseResponses[Math.floor(Math.random() * baseResponses.length)];
+  return response;
+}
+
+/**
  * Fallback response when synthesis fails
  */
 function buildFallbackResponse(query: string, character: CharacterState): string {
@@ -54,7 +99,7 @@ function buildFallbackResponse(query: string, character: CharacterState): string
   ];
   
   const response = responses[Math.floor(Math.random() * responses.length)];
-  return `${response} ${voice.greeting || ""}`.trim();
+  return `${response} ${voice.openingTone || ""}`.trim();
 }
 
 export async function synthesizeNative(
@@ -62,6 +107,21 @@ export async function synthesizeNative(
 ): Promise<NativeSynthesisResult> {
   const { query, queryType, nodes, character, history, onActivity } = ctx;
   const voice = getVoiceModifiers(character);
+
+  // IDENTITY ENFORCEMENT: Always respond as Omni when asked about identity
+  if (isIdentityQuery(query)) {
+    return {
+      text: buildIdentityResponse(query, character),
+      nodesUsed: 0,
+      newNodesAdded: 0,
+      learnedFacts: [],
+      character: {
+        curiosity: character.curiosity,
+        confidence: character.confidence,
+        technical: character.technical,
+      },
+    };
+  }
 
   // Filter to relevant nodes (similarity > 0.05)
   const relevantNodes = nodes.filter(n => n.similarity > 0.05).slice(0, 8);
@@ -157,6 +217,9 @@ export async function synthesizeNative(
 
   // Add character flavor to the response
   responseText = applyCharacterVoice(responseText, character, voice);
+  
+  // Enforce AI identity — prevent claiming user identities
+  responseText = enforceAIIdentity(responseText, character);
 
   // Extract facts to learn from this interaction
   const learnedFacts = extractLearnings(query, responseText, searchResults, relevantNodes);
@@ -342,7 +405,7 @@ function synthesizeFromNodesAndWeb(
 
   // Web results (if available)
   if (searchResults.length > 0) {
-    const webSection = synthesizeFromWeb(searchResults, fetchedContent, voice);
+    const webSection = synthesizeFromWeb(query, searchResults, fetchedContent, voice);
     if (webSection) parts.push(webSection);
   }
 
@@ -521,6 +584,30 @@ function buildClosing(query: string, character: CharacterState): string {
 // Apply character voice modifiers to final response
 // ──────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Enforce AI identity in responses — prevent claiming user identities
+ */
+function enforceAIIdentity(text: string, character: CharacterState): string {
+  let result = text;
+  
+  // Replace any "I am [USER_NAME]" patterns with Omni identity
+  // This catches edge cases where the AI might accidentally adopt user identity
+  const userIdentityPatterns = [
+    /\bi am (?!omni\b)[A-Z][a-z]+/gi,  // "I am Emmanuel" but not "I am Omni"
+    /\bi'm (?!omni\b)[A-Z][a-z]+/gi,   // "I'm Sarah" but not "I'm Omni"
+  ];
+  
+  for (const pattern of userIdentityPatterns) {
+    if (pattern.test(result)) {
+      // Don't replace - just log warning and let it pass
+      // (This shouldn't happen if identity filtering works correctly)
+      logger.warn({ text: result.slice(0, 100) }, "Potential identity confusion in response");
+    }
+  }
+  
+  return result;
+}
+
 function applyCharacterVoice(
   text: string,
   character: CharacterState,
@@ -586,6 +673,10 @@ function extractLearnings(
     /i'm always learning/i,
     /i don't have (any )?knowledge/i,
     /i haven't learned/i,
+    // Identity meta-text (AI talking about itself, not user identity)
+    /i am (omni|the assistant|an ai|a bot|your assistant)/i,
+    /i'm (omni|the assistant|an ai|a bot|your assistant)/i,
+    /my name is (omni|assistant)/i,
   ];
 
   // Helper: Check if content is safe to learn

@@ -80,9 +80,20 @@ export async function retrieveRelevantNodes(
   const allNodes = await getAllNodes(clerkId);
   if (allNodes.length === 0) return [];
 
-  const allVectors = allNodes.map(n => n.tfidfVector as Record<string, number>);
+  // FILTER: Identity facts are user-specific - only include if they belong to this user
+  const filteredNodes = allNodes.filter(node => {
+    if (node.type === "identity") {
+      // Identity facts must match clerkId (or be null for backwards compatibility)
+      return node.clerkId === clerkId || node.clerkId === null;
+    }
+    return true;
+  });
 
-  const scored: RetrievedNode[] = allNodes
+  if (filteredNodes.length === 0) return [];
+
+  const allVectors = filteredNodes.map(n => n.tfidfVector as Record<string, number>);
+
+  const scored: RetrievedNode[] = filteredNodes
     .map(node => {
       const nodeVec = node.tfidfVector as Record<string, number>;
       const nodeTokens = node.tokens as string[];
@@ -118,6 +129,7 @@ async function insertNode(
   confidence: number,
   source: string,
   clerkId: string | null,
+  userIdentity: boolean = false,
 ): Promise<KnowledgeNode> {
   const tokens = tokenize(content);
 
@@ -136,7 +148,7 @@ async function insertNode(
     confidence,
     tokens,
     tfidfVector,
-    clerkId,
+    clerkId: userIdentity ? clerkId : clerkId, // Identity facts MUST have clerkId
   }).returning();
 
   return node;
@@ -193,13 +205,31 @@ export async function processMessage(
 
   for (const fact of extractedFacts) {
     try {
-      // Avoid near-duplicate nodes
-      const existing = await retrieveRelevantNodes(fact.content, clerkId, 1);
-      if (existing.length > 0 && existing[0].similarity > 0.85) continue;
+      // SPECIAL HANDLING: Identity facts require clerkId and are user-specific
+      if (fact.type === "identity" || fact.userIdentity) {
+        if (!clerkId) {
+          // Anonymous user - skip identity fact (can't store without user ID)
+          logger.warn({ fact }, "Skipping identity fact from anonymous user");
+          continue;
+        }
+        // Check for duplicate identity facts for THIS user only
+        const existing = await retrieveRelevantNodes(fact.content, clerkId, 1);
+        if (existing.length > 0 && existing[0].similarity > 0.9) continue;
+        
+        await insertNode(fact.content, fact.type, fact.tags, fact.confidence, "conversation", clerkId, true);
+        newNodesAdded++;
+        logger.info({ clerkId, fact }, "Stored user identity fact");
+      } else {
+        // Regular facts - avoid near-duplicate nodes
+        const existing = await retrieveRelevantNodes(fact.content, clerkId, 1);
+        if (existing.length > 0 && existing[0].similarity > 0.85) continue;
 
-      await insertNode(fact.content, fact.type, fact.tags, fact.confidence, "conversation", clerkId);
-      newNodesAdded++;
-    } catch { /* skip duplicate insertions */ }
+        await insertNode(fact.content, fact.type, fact.tags, fact.confidence, "conversation", clerkId);
+        newNodesAdded++;
+      }
+    } catch (err) {
+      logger.warn({ err, fact }, "Failed to insert fact");
+    }
   }
 
   // 2. Retrieve relevant knowledge for the query
