@@ -955,9 +955,9 @@ cd omnilearn-ghost-node
 # 2. Create your config file from the template
 cp .env.example .env
 
-# 3. Open .env and set these two values:
+# 3. Open .env and set this value:
 #    GHOST_NODE_SECRET=choose-any-long-random-string
-#    ANTHROPIC_API_KEY=your-anthropic-api-key
+#    ANTHROPIC_API_KEY=not-required-for-ghost-nodes (can leave commented out)
 
 # 4. Install and start (pick one)
 npm install && npm start       # Simple start
