@@ -1294,39 +1294,40 @@ ingress:
                   </div>
                 </div>
               </div>
-              
-              <div className="grid sm:grid-cols-2 gap-3">
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border/40">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-foreground">The machine must be reachable</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">It needs a public URL or IP. For home use, try Cloudflare Tunnel or ngrok to get a public address without opening router ports.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border/40">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-foreground">Keep the secret key safe</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">The <code className="text-primary">GHOST_NODE_SECRET</code> you set is like a password — it proves the request came from you. Make it long and random.</p>
-                    </div>
-                  </div>
+            </div>
+            
+            {/* Additional info */}
+            <div className="grid sm:grid-cols-2 gap-3 mt-6">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border/40">
+                <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">The machine must be reachable</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">It needs a public URL or IP. For home use, try Cloudflare Tunnel or ngrok to get a public address without opening router ports.</p>
                 </div>
-                
-                {/* Troubleshooting */}
-                <div className="mt-4 p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
-                  <h5 className="font-bold text-xs text-foreground mb-2 flex items-center gap-2">
-                    <AlertCircle className="w-3.5 h-3.5 text-yellow-400" />
-                    Troubleshooting
-                  </h5>
-                  <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside">
-                    <li>If the tunnel won't start, make sure nothing else is using port 8080</li>
-                    <li>Keep both terminals open — one for the ghost node, one for the tunnel</li>
-                    <li>Test the URL in your browser first: you should see a health check response</li>
-                    <li>Firewall issues? Try disabling temporarily or allow Node.js through</li>
-                  </ul>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border/40">
+                <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">Keep the secret key safe</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">The <code className="text-primary">GHOST_NODE_SECRET</code> you set is like a password — it proves the request came from you. Make it long and random.</p>
                 </div>
               </div>
             </div>
+            
+            {/* Troubleshooting */}
+            <div className="mt-6 p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
+              <h5 className="font-bold text-xs text-foreground mb-2 flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 text-yellow-400" />
+                Troubleshooting
+              </h5>
+              <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside">
+                <li>If the tunnel won't start, make sure nothing else is using port 8080</li>
+                <li>Keep both terminals open — one for the ghost node, one for the tunnel</li>
+                <li>Test the URL in your browser first: you should see a health check response</li>
+                <li>Firewall issues? Try disabling temporarily or allow Node.js through</li>
+              </ul>
+            </div>
+          </div>
 
             {/* Connect Ghost Node */}
             <div className="mt-8 space-y-3">
