@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from "@clerk/react";
 import { shadcn } from "@clerk/themes";
+import { initSentry, setUser } from "@/lib/sentry";
+import * as Sentry from "@sentry/react";
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Analytics } from "@vercel/analytics/react";
@@ -116,6 +118,31 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
+function SentryUserTracker() {
+  const { user } = useUser();
+
+  useEffect(() => {
+    // Initialize Sentry on mount
+    initSentry();
+  }, []);
+
+  useEffect(() => {
+    // Set user context when logged in
+    if (user) {
+      setUser({
+        id: user.id,
+        email: user.primaryEmailAddress?.emailAddress,
+        username: user.username || user.firstName || undefined,
+      });
+    } else {
+      // Clear user context when logged out
+      Sentry.setUser(null);
+    }
+  }, [user]);
+
+  return null;
+}
+
 function AuthLoader() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
@@ -215,6 +242,7 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
+        <SentryUserTracker />
         <TooltipProvider>
           <Switch>
             <Route path="/sign-in/*?" component={WrappedSignIn} />
