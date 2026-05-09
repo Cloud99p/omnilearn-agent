@@ -838,7 +838,7 @@ function Roadmap() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type Mode = "local" | "ghost";
+type Mode = "local" | "ghost" | "roadmap";
 
 export default function Onboarding() {
   const [completed, setCompleted] = useState<Set<number>>(new Set());
@@ -892,6 +892,18 @@ export default function Onboarding() {
           <span className={cn("text-[10px] px-1.5 py-0.5 rounded-md border",
             mode === "ghost" ? "text-violet-400/60 border-violet-500/20" : "text-muted-foreground/50 border-border/40"
           )}>~30 min</span>
+        </button>
+        <button onClick={() => setMode("roadmap")}
+          className={cn("flex items-center gap-2.5 px-5 py-3 rounded-xl border text-sm transition-all",
+            mode === "roadmap"
+              ? "bg-cyan-500/10 border-cyan-500/40 text-cyan-300 font-bold"
+              : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/20"
+          )}>
+          <Rocket className="w-4 h-4" />
+          Roadmap
+          <span className={cn("text-[10px] px-1.5 py-0.5 rounded-md border",
+            mode === "roadmap" ? "text-cyan-400/60 border-cyan-500/20" : "text-muted-foreground/50 border-border/40"
+          )}>Vision</span>
         </button>
       </div>
 
@@ -1349,18 +1361,49 @@ ingress:
 
           </motion.div>
         )}
-      </AnimatePresence>
 
-      {/* ─── About Section (Shows for Everyone) ─────────────────────────────── */}
-      <div className="mt-16 border-t border-border/40 pt-10">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-foreground mb-2">About OmniLearn</h2>
-          <p className="text-muted-foreground text-sm max-w-2xl mx-auto">
-            More than just another chatbot. We're building AI that learns, remembers, and grows with you.
-          </p>
-        </div>
-        <Roadmap />
-      </div>
+        {/* ── Roadmap Tab ───────────────────────────────────────────────────── */}
+        {mode === "roadmap" && (
+          <motion.div key="roadmap" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <div className="max-w-3xl mx-auto">
+              {/* Header */}
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 mb-4">
+                  <Rocket className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Our Vision</span>
+                </div>
+                <h2 className="text-3xl font-bold text-foreground mb-3">Building AI for Everyone</h2>
+                <p className="text-muted-foreground text-lg">
+                  Everything you need to know, at your beck and call. A global brain — connected, distributed, owned by everyone.
+                </p>
+              </div>
+
+              {/* Roadmap Component */}
+              <Roadmap />
+
+              {/* Call to Action */}
+              <div className="mt-10 p-6 rounded-xl border border-border/40 bg-card/20 text-center">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Want to be part of this journey?
+                </p>
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  <Link href="/chat">
+                    <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors">
+                      <Zap className="w-4 h-4" />
+                      Start Using OmniLearn
+                    </button>
+                  </Link>
+                  <button onClick={() => setMode("ghost")}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border/60 text-foreground hover:border-primary/40 hover:text-primary text-sm transition-all">
+                    <Monitor className="w-4 h-4" />
+                    Self-Host
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
