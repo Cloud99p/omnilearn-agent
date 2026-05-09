@@ -5,7 +5,7 @@ import {
   Shield, Users, Plus, Trash2, RefreshCw,
   CheckCircle2, XCircle, Loader2, Link2, Eye, EyeOff,
   AlertCircle, ExternalLink, Github, ChevronDown, ChevronRight,
-  Zap, Monitor, Cloud,
+  Zap, Monitor, Cloud, Rocket, Target, History, Sparkles,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
@@ -685,6 +685,138 @@ function TechDetails() {
   );
 }
 
+// ─── Roadmap Component ───────────────────────────────────────────────────────
+
+function Roadmap() {
+  const [open, setOpen] = useState(false);
+
+  const timeline = [
+    {
+      period: "May 2026",
+      status: "completed" as const,
+      icon: History,
+      color: "text-emerald-400",
+      bg: "bg-emerald-500/10",
+      border: "border-emerald-500/20",
+      title: "Production Launch",
+      items: [
+        "Deployed to Vercel + Railway + Supabase",
+        "Google OAuth integration",
+        "Enhanced health monitoring & CI/CD",
+        "User identity isolation fix",
+        "Ghost Node distributed architecture",
+        "Cloudflare Tunnel integration",
+      ],
+    },
+    {
+      period: "Now",
+      status: "active" as const,
+      icon: Target,
+      color: "text-amber-400",
+      bg: "bg-amber-500/10",
+      border: "border-amber-500/20",
+      title: "Ghost Network Expansion",
+      items: [
+        "Multi-node load balancing",
+        "Permanent tunnel setup guides",
+        "Auto-refresh node status monitoring",
+        "Improved onboarding experience",
+        "Mobile hotspot optimization",
+      ],
+    },
+    {
+      period: "Q3 2026",
+      status: "planned" as const,
+      icon: Rocket,
+      color: "text-violet-400",
+      bg: "bg-violet-500/10",
+      border: "border-violet-500/20",
+      title: "Core Intelligence",
+      items: [
+        "Hebbian learning with crypto proofs",
+        "Ontology self-reflection (merge/split/demote)",
+        "7 evolving personality traits",
+        "TF-IDF semantic retrieval",
+        "Knowledge graph expansion",
+      ],
+    },
+    {
+      period: "Q4 2026",
+      status: "planned" as const,
+      icon: Sparkles,
+      color: "text-cyan-400",
+      bg: "bg-cyan-500/10",
+      border: "border-cyan-500/20",
+      title: "Scale & Polish",
+      items: [
+        "Error tracking (Sentry)",
+        "Uptime monitoring (UptimeRobot)",
+        "Rate limiting middleware",
+        "Advanced character evolution",
+        "Community plugin system",
+        "Mobile app (React Native)",
+      ],
+    },
+  ];
+
+  return (
+    <div className="rounded-xl border border-border/30 overflow-hidden mt-8">
+      <button onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-secondary/10 transition-colors">
+        <div className="flex items-center gap-2">
+          <Rocket className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium text-muted-foreground">Project Roadmap</span>
+        </div>
+        {open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }} className="overflow-hidden">
+            <div className="px-5 pb-5 space-y-4 border-t border-border/20 pt-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                Follow our journey from production launch to intelligent, evolving AI agents.
+              </p>
+              <div className="space-y-3">
+                {timeline.map((phase, i) => (
+                  <div key={phase.period} className={cn("rounded-lg border p-4", phase.border, phase.bg)}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={cn("p-2 rounded-lg", phase.bg)}>
+                        <phase.icon className={cn("w-4 h-4", phase.color)} />
+                      </div>
+                      <div>
+                        <p className={cn("font-mono text-xs font-bold", phase.color)}>{phase.period}</p>
+                        <p className="font-bold text-sm text-foreground">{phase.title}</p>
+                      </div>
+                      {phase.status === "completed" && (
+                        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">DONE</span>
+                      )}
+                      {phase.status === "active" && (
+                        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold animate-pulse">IN PROGRESS</span>
+                      )}
+                      {phase.status === "planned" && (
+                        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-bold">PLANNED</span>
+                      )}
+                    </div>
+                    <ul className="space-y-1.5">
+                      {phase.items.map((item, j) => (
+                        <li key={j} className="text-xs text-muted-foreground flex items-start gap-2">
+                          <span className={cn("w-1 h-1 rounded-full mt-1 shrink-0", phase.color.replace("text-", "bg-"))} />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type Mode = "local" | "ghost";
@@ -1138,6 +1270,9 @@ ingress:
 
             {/* Technical details (collapsed) */}
             <TechDetails />
+
+            {/* Roadmap */}
+            <Roadmap />
 
           </motion.div>
         )}
