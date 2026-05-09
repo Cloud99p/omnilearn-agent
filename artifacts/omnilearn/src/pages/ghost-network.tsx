@@ -229,11 +229,11 @@ function NodeCard({ node, onPing, onDelete }: {
             <div className="p-4 space-y-3">
               <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">Node deploy commands</p>
               <CodeBlock
-                code={`# 1. Clone the ghost node repo\ngit clone <your-ghost-node-repo-url>\ncd omnilearn-ghost-node\n\n# 2. Configure environment\ncp .env.example .env\n# Edit .env and set your GHOST_NODE_SECRET and ANTHROPIC_API_KEY\n\n# 3. Start with Docker\ndocker compose up -d\n\n# 4. Verify it's alive\ncurl ${node.endpoint}/api/ghost/health`}
+                code={`# 1. Clone the ghost node repo\ngit clone <your-ghost-node-repo-url>\ncd omnilearn-ghost-node\n\n# 2. Configure environment\ncp .env.example .env\n# Edit .env and set your GHOST_NODE_SECRET (AI runs locally with synthesizer)\n\n# 3. Start with Docker\ndocker compose up -d\n\n# 4. Verify it's alive\ncurl ${node.endpoint}/api/ghost/health`}
               />
               <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mt-2">Or run directly</p>
               <CodeBlock
-                code={`GHOST_NODE_SECRET=<your-secret> \\\nANTHROPIC_API_KEY=<your-key> \\\nGHOST_NODE_NAME="${node.name}" \\\nPORT=8080 \\\nnode ghost-server.js`}
+                code={`GHOST_NODE_SECRET=<your-secret> \\\nGHOST_NODE_NAME="${node.name}" \\\nPORT=8080 \\\nnode ghost-server.js`}
               />
             </div>
           </motion.div>
@@ -689,7 +689,7 @@ export default function GhostNetworkPage() {
 
                 <div>
                   <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-2">Quick deploy — Node.js (no Docker)</p>
-                  <CodeBlock code={`npm install\ncp .env.example .env\n# Fill in GHOST_NODE_SECRET and ANTHROPIC_API_KEY in .env\nnpm start`} />
+                  <CodeBlock code={`npm install\ncp .env.example .env\n# Fill in GHOST_NODE_SECRET in .env (AI runs locally)\nnpm start`} />
                 </div>
 
                 <div>
@@ -772,13 +772,13 @@ export default function GhostNetworkPage() {
             >
               <div className="px-5 pb-5 border-t border-border/30 space-y-5">
                   <p className="font-mono text-xs text-muted-foreground leading-relaxed mt-4">
-                    Share an invite link with any device. When it opens, the browser joins the ghost network and processes AI tasks using its own Anthropic API key — no server required. That device becomes part of the same connected web.
+                    Share an invite link with any device. When it opens, the browser joins the ghost network and processes AI tasks using its local synthesizer — no server required. That device becomes part of the same connected web.
                   </p>
 
                 <div className="grid md:grid-cols-3 gap-3">
                   {[
                     { step: "1", title: "Create an invite link", desc: "Generate a shareable token below. Anyone with the link can join." },
-                    { step: "2", title: "Contributor opens it", desc: "They enter a name + their Anthropic key. Their browser becomes a worker." },
+                    { step: "2", title: "Contributor opens it", desc: "They enter a name. Their browser becomes a worker with local AI processing." },
                     { step: "3", title: "Tasks distribute automatically", desc: "Ghost Mode routes tasks to online browser workers alongside server nodes." },
                   ].map(({ step, title, desc }) => (
                     <div key={step} className="rounded-lg border border-violet-500/10 bg-violet-500/5 p-3">
