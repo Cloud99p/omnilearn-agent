@@ -863,7 +863,7 @@ export default function Onboarding() {
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
         <h1 className="text-4xl font-bold tracking-tight mb-2">Get Started</h1>
         <p className="text-muted-foreground">
-          Choose how you want to run OmniLearn. Either way takes less than 30 minutes.
+          Choose your path. Use OmniLearn now, or set up your own instance.
         </p>
       </motion.div>
 
@@ -872,14 +872,14 @@ export default function Onboarding() {
         <button onClick={() => setMode("local")}
           className={cn("flex items-center gap-2.5 px-5 py-3 rounded-xl border text-sm transition-all",
             mode === "local"
-              ? "bg-primary/10 border-primary/40 text-primary font-bold"
+              ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold"
               : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/20"
           )}>
-          <Monitor className="w-4 h-4" />
-          Single Machine
+          <Zap className="w-4 h-4" />
+          Use OmniLearn
           <span className={cn("text-[10px] px-1.5 py-0.5 rounded-md border",
-            mode === "local" ? "text-primary/70 border-primary/20" : "text-muted-foreground/50 border-border/40"
-          )}>~20 min</span>
+            mode === "local" ? "text-emerald-400/60 border-emerald-500/20" : "text-muted-foreground/50 border-border/40"
+          )}>~2 min</span>
         </button>
         <button onClick={() => setMode("ghost")}
           className={cn("flex items-center gap-2.5 px-5 py-3 rounded-xl border text-sm transition-all",
@@ -887,61 +887,105 @@ export default function Onboarding() {
               ? "bg-violet-500/10 border-violet-500/40 text-violet-300 font-bold"
               : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/20"
           )}>
-          <Ghost className="w-4 h-4" />
-          Ghost Deployment
+          <Monitor className="w-4 h-4" />
+          Self-Host
           <span className={cn("text-[10px] px-1.5 py-0.5 rounded-md border",
             mode === "ghost" ? "text-violet-400/60 border-violet-500/20" : "text-muted-foreground/50 border-border/40"
-          )}>use any machine</span>
+          )}>~30 min</span>
         </button>
       </div>
 
       <AnimatePresence mode="wait">
 
-        {/* ── Single Machine ─────────────────────────────────────────────────── */}
+        {/* ── Use OmniLearn ─────────────────────────────────────────────────── */}
         {mode === "local" && (
           <motion.div key="local" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
 
             {/* Plain-English callout */}
-            <div className="mb-8 p-5 rounded-xl border border-primary/15 bg-primary/5 flex items-start gap-4">
-              <Monitor className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+            <div className="mb-8 p-5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-start gap-4">
+              <Zap className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
               <div>
-                <p className="font-bold text-foreground mb-1">What this does</p>
+                <p className="font-bold text-foreground mb-1">You're all set!</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  OmniLearn runs entirely on <strong className="text-foreground">your own computer</strong>. Your data stays local, your conversations are private. 
-                  <strong className="text-foreground">AI runs locally too</strong> — no API costs, no cloud dependencies, nothing sent to OpenAI/Anthropic. 
-                  Perfect for development, testing, or personal use on a modern laptop.
+                  OmniLearn is already running. Just sign in and start chatting. 
+                  <strong className="text-foreground"> No setup needed</strong> — everything is configured and ready to go.
                 </p>
               </div>
             </div>
 
-            {/* Progress bar */}
-            {completed.size > 0 && (
-              <div className="mb-6 p-4 rounded-xl border border-border/40 bg-card/20">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">{completed.size} of {LOCAL_STEPS.length} steps done</span>
-                  <span className="font-mono text-sm font-bold text-primary">{progress}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-                  <motion.div className="h-full bg-primary rounded-full" animate={{ width: `${progress}%` }} transition={{ duration: 0.4 }} />
-                </div>
-                {completed.size === LOCAL_STEPS.length && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 flex flex-wrap items-center gap-3">
-                    <p className="text-xs text-primary flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> All steps complete — your system is running.
-                    </p>
-                    <Link href="/chat">
-                      <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-mono text-xs font-semibold hover:bg-primary/90 transition-colors">
-                        Start chatting <ChevronRight className="w-3 h-3" />
-                      </button>
-                    </Link>
-                  </motion.div>
-                )}
-              </div>
-            )}
+            {/* Quick Start Steps */}
+            <div className="max-w-2xl space-y-4">
+              {[
+                {
+                  num: 1,
+                  title: "Sign in",
+                  desc: "Use your Google account — takes 10 seconds",
+                  icon: CheckCircle2,
+                  color: "text-emerald-400",
+                },
+                {
+                  num: 2,
+                  title: "Start chatting",
+                  desc: "Ask questions, learn things, have conversations",
+                  icon: Zap,
+                  color: "text-amber-400",
+                },
+                {
+                  num: 3,
+                  title: "(Optional) Connect your own machine",
+                  desc: "Run AI processing on your own hardware instead of our servers",
+                  icon: Ghost,
+                  color: "text-violet-400",
+                },
+              ].map(step => (
+                <motion.div
+                  key={step.num}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: step.num * 0.1 }}
+                  className="flex items-start gap-4 p-5 rounded-xl border border-border/40 bg-card/40"
+                >
+                  <div className={cn("p-2 rounded-lg bg-background", step.color)}>
+                    <step.icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-foreground">{step.title}</p>
+                    <p className="text-muted-foreground text-sm mt-0.5">{step.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
 
-            <div className="grid lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-3">
-                {LOCAL_STEPS.map((step, i) => {
+            {/* CTA Button */}
+            <div className="mt-8 flex items-center gap-4">
+              <Link href="/chat">
+                <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-colors">
+                  <Zap className="w-4 h-4" />
+                  Start Using OmniLearn
+                </button>
+              </Link>
+              <p className="text-xs text-muted-foreground">
+                Already have an account? Just sign in and go.
+              </p>
+            </div>
+
+            {/* Optional: Ghost Node Teaser */}
+            <div className="mt-10 p-5 rounded-xl border border-violet-500/20 bg-violet-500/5">
+              <div className="flex items-start gap-3">
+                <Ghost className="w-5 h-5 text-violet-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-bold text-sm text-foreground">Want more control?</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Connect your own computer as a Ghost Node to run AI processing locally. 
+                    Great for privacy, custom setups, or if you have a powerful home server.
+                  </p>
+                  <button onClick={() => setMode("ghost")}
+                    className="mt-3 text-xs text-violet-400 hover:text-violet-300 font-medium flex items-center gap-1">
+                    See how to self-host or connect a Ghost Node <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
                   const done = completed.has(step.id);
                   return (
                     <motion.div key={step.id}
@@ -1037,42 +1081,64 @@ export default function Onboarding() {
           <motion.div key="ghost" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
 
             {/* Plain-English intro */}
-            <div className="p-5 rounded-xl border border-violet-500/20 bg-violet-500/5 flex items-start gap-4">
-              <Ghost className="w-5 h-5 text-violet-400 mt-0.5 shrink-0" />
+            <div className="mb-8 p-5 rounded-xl border border-violet-500/20 bg-violet-500/5 flex items-start gap-4">
+              <Monitor className="w-5 h-5 text-violet-400 mt-0.5 shrink-0" />
               <div>
-                <p className="font-bold text-foreground mb-1">What this does</p>
+                <p className="font-bold text-foreground mb-1">Self-Host OmniLearn</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Ghost mode lets OmniLearn use <strong className="text-foreground">other computers you control</strong> — a home server, an old laptop, a cheap cloud VM — to handle your chat requests.
-                  When you chat in Ghost mode, your message is sent to one of your registered machines, processed there, and the answer comes back here.
-                  It's like having a remote worker you trust, rather than running everything on your current machine.
+                  Run your own instance of OmniLearn on your computer or server. 
+                  Full control, complete privacy, no dependencies on our infrastructure. 
+                  Takes about 30 minutes to set up.
                 </p>
               </div>
             </div>
 
-            {/* Visual 3-step flow */}
+            {/* Two paths callout */}
+            <div className="mb-8 grid md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl border border-violet-500/20 bg-violet-500/5">
+                <h3 className="font-bold text-sm text-foreground mb-2 flex items-center gap-2">
+                  <Monitor className="w-4 h-4 text-violet-400" />
+                  Option A: Full Self-Host
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Run everything yourself — frontend, backend, database. Complete control, maximum privacy. For developers who want full ownership.
+                </p>
+              </div>
+              <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                <h3 className="font-bold text-sm text-foreground mb-2 flex items-center gap-2">
+                  <Ghost className="w-4 h-4 text-emerald-400" />
+                  Option B: Ghost Node Only
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Use our hosted app but run AI processing on your own machine. Best of both worlds — easy setup + local AI.
+                </p>
+              </div>
+            </div>
+
+            {/* Visual 3-step flow for Full Self-Host */}
             <div>
-              <h2 className="font-mono text-xs text-primary uppercase tracking-wider mb-4">How to get set up — 3 steps</h2>
+              <h2 className="font-mono text-xs text-violet-400 uppercase tracking-wider mb-4">Full Self-Host Setup</h2>
               <div className="grid sm:grid-cols-3 gap-4">
                 {[
                   {
                     num: "1",
-                    icon: Github,
-                    color: "text-foreground",
-                    bg: "bg-secondary/30",
-                    border: "border-border/40",
-                    title: "Get the node code",
-                    desc: "Create a GitHub repo with the ghost node server included — ready to run, with a full setup guide inside.",
-                    action: "Use the button below ↓",
-                  },
-                  {
-                    num: "2",
-                    icon: Cloud,
+                    icon: GitBranch,
                     color: "text-violet-400",
                     bg: "bg-violet-500/10",
                     border: "border-violet-500/20",
-                    title: "Run it on another machine",
-                    desc: "Clone the repo on any computer you want to use. Set two values in a config file, then run one command to start.",
-                    action: "See the deploy commands ↓",
+                    title: "Clone the repo",
+                    desc: "Download the code from GitHub and install dependencies with pnpm.",
+                    action: "git clone + pnpm install",
+                  },
+                  {
+                    num: "2",
+                    icon: File,
+                    color: "text-amber-400",
+                    bg: "bg-amber-500/10",
+                    border: "border-amber-500/20",
+                    title: "Configure",
+                    desc: "Set up Clerk (auth), Supabase (database), and optional Ghost Node.",
+                    action: ".env file + db push",
                   },
                   {
                     num: "3",
@@ -1080,9 +1146,9 @@ export default function Onboarding() {
                     color: "text-emerald-400",
                     bg: "bg-emerald-500/10",
                     border: "border-emerald-500/20",
-                    title: "Connect it here",
-                    desc: "Paste the machine's address and secret key into the form below. Done — switch to Ghost mode in Chat to use it.",
-                    action: "Use the form below ↓",
+                    title: "Run it",
+                    desc: "Start the dev server and access OmniLearn at localhost:5173.",
+                    action: "pnpm dev",
                   },
                 ].map((s, i) => (
                   <div key={s.num} className={cn("rounded-xl border p-5 space-y-3", s.border, s.bg)}>
@@ -1102,44 +1168,125 @@ export default function Onboarding() {
               </div>
             </div>
 
-            {/* Step 1: GitHub repo */}
+            {/* Step 1: Clone repo */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-primary font-bold bg-primary/10 px-2 py-0.5 rounded">STEP 1</span>
-                <h3 className="font-bold text-foreground">Get the ghost node code</h3>
-              </div>
-              <GitHubRepoSection />
-            </div>
-
-            {/* Step 2: Deploy commands */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded">STEP 2</span>
-                <h3 className="font-bold text-foreground">Run it on the other machine</h3>
+                <span className="font-mono text-xs text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded">STEP 1</span>
+                <h3 className="font-bold text-foreground">Clone the repository</h3>
               </div>
               <div className="rounded-xl border border-border/40 bg-card/20 p-5 space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Open a terminal on the machine you want to use as a node (your home server, another laptop, a cloud VM, etc.) and run these commands:
+                  Download the OmniLearn code to your computer:
                 </p>
                 <pre className="bg-black/40 rounded-xl border border-border/30 p-4 font-mono text-sm text-primary/90 overflow-x-auto leading-7">
-                  <code>{`# 1. Download the code (replace YOUR_USERNAME with your GitHub username)
-git clone https://github.com/YOUR_USERNAME/omnilearn-ghost-node.git
-cd omnilearn-ghost-node
+                  <code>{`# Clone the repo
+git clone https://github.com/Cloud99p/omnilearn-agent.git
+cd omnilearn-agent
 
-# 2. Create your config file from the template
+# Install pnpm if you don't have it
+npm install -g pnpm
+
+# Install all dependencies
+pnpm install`}</code>
+                </pre>
+                <p className="text-xs text-muted-foreground">
+                  Takes 2-5 minutes depending on your internet speed.
+                </p>
+              </div>
+            </div>
+
+            {/* Step 2: Configure */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded">STEP 2</span>
+                <h3 className="font-bold text-foreground">Configure environment variables</h3>
+              </div>
+              <div className="rounded-xl border border-border/40 bg-card/20 p-5 space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Set up authentication, database, and optional Ghost Node:
+                </p>
+                <pre className="bg-black/40 rounded-xl border border-border/30 p-4 font-mono text-sm text-primary/90 overflow-x-auto leading-7">
+                  <code>{`# Copy the environment template
 cp .env.example .env
 
-# 3. Open .env and set these values:
-GHOST_NODE_SECRET=ghost_sk_$(openssl rand -hex 16)
-# ANTHROPIC_API_KEY= (leave empty if using local synthesizer)
+# Edit .env and add your keys:
+CLERK_SECRET_KEY=sk_test_xxx         # From clerk.com
+CLERK_PUBLISHABLE_KEY=pk_test_xxx    # From clerk.com
+DATABASE_URL=postgresql://xxx         # From Supabase
 
-# 4. Install and start (pick one)
-npm install && npm start       # Simple start
-docker compose up -d           # Or run with Docker (recommended)`}</code>
+# Optional: Ghost Node (run AI on your own hardware)
+GHOST_NODE_SECRET=ghost_sk_xxx        # Generate random string`}</code>
                 </pre>
-                
-                {/* Expose to Internet Section */}
-                <div className="mt-6 p-4 rounded-xl border border-violet-500/20 bg-violet-500/5">
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <div className="p-3 rounded-lg bg-background border border-border/40">
+                    <p className="text-xs font-bold text-foreground mb-1">Clerk</p>
+                    <a href="https://clerk.com" target="_blank" className="text-xs text-primary hover:underline">clerk.com →</a>
+                    <p className="text-[10px] text-muted-foreground mt-1">Free tier: 10K users/month</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background border border-border/40">
+                    <p className="text-xs font-bold text-foreground mb-1">Supabase</p>
+                    <a href="https://supabase.com" target="_blank" className="text-xs text-primary hover:underline">supabase.com →</a>
+                    <p className="text-[10px] text-muted-foreground mt-1">Free tier: 500MB database</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background border border-border/40">
+                    <p className="text-xs font-bold text-foreground mb-1">Ghost Node</p>
+                    <p className="text-xs text-muted-foreground">Optional — for local AI</p>
+                  </div>
+                </div>
+                <pre className="bg-black/40 rounded-xl border border-border/30 p-4 font-mono text-sm text-primary/90 overflow-x-auto leading-7">
+                  <code>{`# Push database schema to Supabase
+pnpm --filter @workspace/db run push
+
+# Takes ~30 seconds. Creates all tables.`}</code>
+                </pre>
+              </div>
+            </div>
+
+            {/* Step 3: Run */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">STEP 3</span>
+                <h3 className="font-bold text-foreground">Run OmniLearn</h3>
+              </div>
+              <div className="rounded-xl border border-border/40 bg-card/20 p-5 space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Start the development server:
+                </p>
+                <pre className="bg-black/40 rounded-xl border border-border/30 p-4 font-mono text-sm text-primary/90 overflow-x-auto leading-7">
+                  <code>{`# Start frontend + backend
+pnpm dev
+
+# Or separately:
+# Terminal 1: pnpm --filter api-server run dev
+# Terminal 2: pnpm --filter omnilearn run dev`}</code>
+                </pre>
+                <div className="flex items-start gap-3 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+                  <Zap className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm text-foreground font-bold">Access OmniLearn:</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Frontend: <code className="text-emerald-400 bg-emerald-500/10 px-1 rounded">http://localhost:5173</code>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Backend: <code className="text-emerald-400 bg-emerald-500/10 px-1 rounded">http://localhost:3001</code>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Ghost Node Setup (separate section) */}
+            <div className="mt-8 space-y-4">
+              <div className="flex items-center gap-2">
+                <Ghost className="w-4 h-4 text-violet-400" />
+                <h3 className="font-bold text-foreground">Optional: Set up Ghost Node</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Want to run AI processing on your own hardware instead of the server? Set up a Ghost Node:
+              </p>
+              
+              {/* Expose to Internet Section */}
+              <div className="p-4 rounded-xl border border-violet-500/20 bg-violet-500/5">
                   <h4 className="font-bold text-sm text-foreground mb-3 flex items-center gap-2">
                     <Cloud className="w-4 h-4 text-violet-400" />
                     Expose your node to the internet
@@ -1267,18 +1414,20 @@ ingress:
               </div>
             </div>
 
-            {/* Step 3: Connect nodes */}
-            <div className="space-y-3">
+            {/* Connect Ghost Node */}
+            <div className="mt-8 space-y-3">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">STEP 3</span>
-                <h3 className="font-bold text-foreground">Connect the node to this app</h3>
+                <span className="font-mono text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">STEP 4</span>
+                <h3 className="font-bold text-foreground">Connect Ghost Node (Optional)</h3>
               </div>
               <div className="rounded-xl border border-border/40 bg-card/20 p-5 space-y-5">
                 <p className="text-sm text-muted-foreground">
-                  Once your machine is running, paste its URL and secret key below. The app will check connectivity automatically.
-                  After that, go to <strong className="text-foreground">Chat → Ghost mode</strong> to start using it.
+                  If you set up a Ghost Node (running AI on your own hardware), connect it here:
                 </p>
                 <LiveNodeManager />
+                <p className="text-xs text-muted-foreground">
+                  After connecting, go to <strong className="text-foreground">Chat → Ghost mode</strong> to use your node for AI processing.
+                </p>
               </div>
             </div>
 
