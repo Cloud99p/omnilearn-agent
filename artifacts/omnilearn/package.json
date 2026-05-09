@@ -1,5 +1,5 @@
 {
-  "name": "@omnilearn/frontend",
+  "name": "@workspace/omnilearn",
   "version": "1.0.0",
   "private": true,
   "type": "module",
