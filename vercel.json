@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm -r --filter @workspace/omnilearn run build",
+  "buildCommand": "pnpm -r --filter @omnilearn/frontend run build",
   "outputDirectory": "artifacts/omnilearn/dist/public",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "rewrites": [
