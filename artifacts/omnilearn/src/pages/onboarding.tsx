@@ -54,7 +54,7 @@ const LOCAL_STEPS = [
             { label: "10 GB free disk", note: "For the app, dependencies, and local data", required: true },
             { label: "Git", note: "To download the code from GitHub", required: true },
             { label: "pnpm", note: "Package manager (we'll show you how to install)", required: true },
-            { label: "GPU / CUDA", note: "Not needed — AI runs in the cloud via Claude API", required: false },
+            { label: "GPU / CUDA", note: "Not needed — AI runs locally with our synthesizer", required: false },
           ].map(r => (
             <div key={r.label} className="flex items-start gap-3 p-3 bg-background border border-border rounded-lg">
               <CheckCircle className={cn("w-4 h-4 mt-0.5 shrink-0", r.required ? "text-primary" : "text-muted-foreground/40")} />
@@ -105,7 +105,7 @@ pnpm install
         <div className="flex items-start gap-3 p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg">
           <Info className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
           <p className="text-sm text-muted-foreground">
-            <strong className="text-foreground">No Python needed!</strong> OmniLearn is built with Node.js + TypeScript. The AI runs via Claude API (cloud), so no heavy local models.
+            <strong className="text-foreground">No Python needed!</strong> OmniLearn is built with Node.js + TypeScript. The AI runs locally with our synthesizer, so no heavy models or API costs.
           </p>
         </div>
       </div>
