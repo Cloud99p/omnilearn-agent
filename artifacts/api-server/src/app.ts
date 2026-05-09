@@ -17,11 +17,14 @@ initSentry();
 
 const app: Express = express();
 
-// ── Background ontology reflection — DISABLED TEMPORARILY ──────────────────
-// Enable after pushing database schema to Supabase
-// const ONTOLOGY_INTERVAL_MS = 10 * 60 * 1000;
-// function scheduleOntologyReflection() { ... }
-// logger.info("Ontology reflection enabled");
+// ── Background ontology reflection — ENABLED ───────────────────────────────
+const ONTOLOGY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+function scheduleOntologyReflection() {
+  runOntologyReflection().catch(err => logger.error(err, "Ontology reflection failed"));
+  setTimeout(scheduleOntologyReflection, ONTOLOGY_INTERVAL_MS);
+}
+scheduleOntologyReflection();
+logger.info("Ontology reflection enabled (10min interval)");
 
 // Sentry request handler (must be before other middleware)
 app.use(sentryRequestHandler());
