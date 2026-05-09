@@ -1434,12 +1434,20 @@ ingress:
             {/* Technical details (collapsed) */}
             <TechDetails />
 
-            {/* Roadmap */}
-            <Roadmap />
-
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ─── About Section (Shows for Everyone) ─────────────────────────────── */}
+      <div className="mt-16 border-t border-border/40 pt-10">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-foreground mb-2">About OmniLearn</h2>
+          <p className="text-muted-foreground text-sm max-w-2xl mx-auto">
+            More than just another chatbot. We're building AI that learns, remembers, and grows with you.
+          </p>
+        </div>
+        <Roadmap />
+      </div>
     </div>
   );
 }
