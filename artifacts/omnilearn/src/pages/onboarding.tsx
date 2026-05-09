@@ -5,7 +5,7 @@ import {
   Shield, Users, Plus, Trash2, RefreshCw,
   CheckCircle2, XCircle, Loader2, Link2, Eye, EyeOff,
   AlertCircle, ExternalLink, Github, ChevronDown, ChevronRight,
-  Zap, Monitor, Cloud, Rocket, Target, History, Sparkles,
+  Zap, Monitor, Cloud, Rocket, Target, History, Sparkles, Info,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
@@ -49,12 +49,12 @@ const LOCAL_STEPS = [
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
-            { label: "Python 3.10+", note: "The main programming language OmniLearn is written in", required: true },
-            { label: "Docker 24+", note: "Runs all the services together as a package", required: true },
-            { label: "16 GB RAM", note: "Minimum — 32 GB recommended for comfortable use", required: true },
-            { label: "100 GB free disk", note: "For storing AI models and the knowledge index", required: true },
-            { label: "Git 2.40+", note: "For downloading the code from GitHub", required: true },
-            { label: "CUDA / GPU", note: "Optional — speeds things up a lot if you have an Nvidia GPU", required: false },
+            { label: "Node.js 18+", note: "Runs the frontend and backend (we'll install it with you)", required: true },
+            { label: "4 GB RAM", note: "Minimum — 8 GB recommended for smooth multitasking", required: true },
+            { label: "10 GB free disk", note: "For the app, dependencies, and local data", required: true },
+            { label: "Git", note: "To download the code from GitHub", required: true },
+            { label: "pnpm", note: "Package manager (we'll show you how to install)", required: true },
+            { label: "GPU / CUDA", note: "Not needed — AI runs in the cloud via Claude API", required: false },
           ].map(r => (
             <div key={r.label} className="flex items-start gap-3 p-3 bg-background border border-border rounded-lg">
               <CheckCircle className={cn("w-4 h-4 mt-0.5 shrink-0", r.required ? "text-primary" : "text-muted-foreground/40")} />
@@ -67,12 +67,13 @@ const LOCAL_STEPS = [
           ))}
         </div>
         <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
-          <p className="text-xs text-muted-foreground mb-2">Open a terminal and run these to check what you already have:</p>
+          <p className="text-xs text-muted-foreground mb-2">Quick check — run these in your terminal:</p>
           <pre className="text-xs font-mono text-primary/80 leading-6">
-            <code>{`python --version    # Should say 3.10 or higher
-docker --version   # Should say 24.x or higher
-df -h              # Check free disk space`}</code>
+            <code>{`node --version      # Should say v18.x or higher
+git --version       # Should say 2.x or higher
+pnpm --version      # If installed, shows version number`}</code>
           </pre>
+          <p className="text-xs text-muted-foreground mt-2">Don't have Node.js or pnpm? We'll install them together in the next step.</p>
         </div>
       </div>
     ),
@@ -82,105 +83,116 @@ df -h              # Check free disk space`}</code>
     title: "Download the code",
     desc: "Copy the OmniLearn project to your computer and install its dependencies. This takes a few minutes.",
     content: (
-      <pre className="bg-background border border-border rounded-lg p-4 text-xs font-mono text-muted-foreground leading-6">
-        <code>{`# Download the project (paste these into your terminal one at a time)
-git clone https://github.com/omnilearn-ai/omnilearn.git
-cd omnilearn
+      <div className="space-y-4">
+        <pre className="bg-background border border-border rounded-lg p-4 text-xs font-mono text-muted-foreground leading-6">
+          <code>{`# Download the project
+git clone https://github.com/Cloud99p/omnilearn-agent.git
+cd omnilearn-agent
 
-# Create an isolated environment so OmniLearn doesn't conflict with other Python software
-python -m venv .venv
-source .venv/bin/activate     # On Windows: .venv\\Scripts\\activate
+# Install pnpm if you don't have it
+npm install -g pnpm
 
-# Install everything OmniLearn needs
-pip install -r requirements.txt
+# Install all dependencies (frontend + backend)
+pnpm install
 
-# Confirm it worked — you should see a version number
-python -c "import omnilearn; print(omnilearn.__version__)"
-# → 1.0.0-rc.4`}</code>
-      </pre>
+# That's it! Ready to configure.`}</code>
+        </pre>
+        <div className="flex items-start gap-3 p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+          <Info className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+          <p className="text-sm text-muted-foreground">
+            <strong className="text-foreground">No Python needed!</strong> OmniLearn is built with Node.js + TypeScript. The AI runs via Claude API (cloud), so no heavy local models.
+          </p>
+        </div>
+      </div>
     ),
   },
   {
     id: 3,
-    title: "Create a basic config file",
-    desc: "Tell OmniLearn where to get its first bit of data and which AI model to use. Start small — you can add more later.",
+    title: "Set up environment variables",
+    desc: "OmniLearn needs a few keys to connect to external services (auth, AI, database).",
     content: (
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">Create a file called <code className="text-primary bg-primary/10 px-1 rounded">omni_config.yaml</code> in the project folder with this content:</p>
+        <p className="text-sm text-muted-foreground">Copy the example env file and fill in your keys:</p>
         <pre className="bg-background border border-border rounded-lg p-4 text-xs font-mono text-muted-foreground leading-6">
-          <code>{`# omni_config.yaml — a simple starting point
-data_sources:
-  - name: hacker_news          # Pull tech news as test data
-    type: api
-    endpoint: https://hacker-news.firebaseio.com/v0
-    fetch_top_n: 10
-    poll_interval_seconds: 3600  # Check for new articles every hour
+          <code>{`# Copy the template
+cp .env.example .env
 
-model:
-  name: mistralai/Mistral-7B-v0.1  # A free, capable AI model
-  endpoint: local                   # Run it on your own computer
-  quantization: q4_k_m              # Compressed to fit in ~6 GB of RAM
-
-learning:
-  mode: passive    # Just index data for now — no active learning yet
-
-ethics:
-  robots_txt_respect: true    # Always respect website rules
-  rate_limit_rps: 1           # Be polite — max 1 request per second
-
-hardware:
-  max_ram_gb: 16
-  gpu_enabled: false          # Set to true if you have an Nvidia GPU`}</code>
+# Edit .env and add your keys:
+CLERK_SECRET_KEY=sk_test_xxx
+CLERK_PUBLISHABLE_KEY=pk_test_xxx
+ANTHROPIC_API_KEY=sk-ant-xxx
+DATABASE_URL=postgresql://xxx`}</code>
         </pre>
+        <div className="flex items-start gap-3 p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+          <Info className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Where to get keys:</strong>
+            </p>
+            <ul className="text-xs text-muted-foreground mt-1 space-y-1">
+              <li>• Clerk (auth): <a href="https://clerk.com" target="_blank" className="text-primary hover:underline">clerk.com</a></li>
+              <li>• Anthropic (AI): <a href="https://console.anthropic.com" target="_blank" className="text-primary hover:underline">console.anthropic.com</a></li>
+              <li>• Supabase (database): <a href="https://supabase.com" target="_blank" className="text-primary hover:underline">supabase.com</a></li>
+            </ul>
+          </div>
+        </div>
       </div>
     ),
   },
   {
     id: 4,
-    title: "Download the AI model",
-    desc: "OmniLearn needs an AI model file on your computer. This download is about 4 GB — it only happens once.",
+    title: "Push database schema",
+    desc: "Set up your database tables for the first time. This only happens once.",
     content: (
-      <pre className="bg-background border border-border rounded-lg p-4 text-xs font-mono text-muted-foreground leading-6">
-        <code>{`# Download the model (takes 5–15 minutes depending on your internet)
-python -m omnilearn.cli model pull mistralai/Mistral-7B-v0.1
+      <div className="space-y-4">
+        <pre className="bg-background border border-border rounded-lg p-4 text-xs font-mono text-muted-foreground leading-6">
+          <code>{`# From the project root:
+pnpm --filter @workspace/db run push
 
-# Alternatively, using the HuggingFace tool directly:
-pip install huggingface_hub
-huggingface-cli download mistralai/Mistral-7B-v0.1 --local-dir ./models/mistral-7b
-
-# Check the files arrived
-ls ./models/mistral-7b/
-# You should see: config.json, tokenizer.json, model-*.safetensors`}</code>
-      </pre>
+# This creates all the tables in your Supabase database.
+# Takes about 30 seconds.`}</code>
+        </pre>
+        <div className="flex items-start gap-3 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+          <p className="text-sm text-muted-foreground">
+            <strong className="text-foreground">Done?</strong> Your database is ready. You only do this once unless you change the schema.
+          </p>
+        </div>
+      </div>
     ),
   },
   {
     id: 5,
-    title: "Start everything up",
-    desc: "One command launches all the services. The first start takes a few minutes while the AI model loads into memory.",
+    title: "Start OmniLearn",
+    desc: "Launch the frontend and backend. You'll be up and running in seconds.",
     content: (
       <div className="space-y-4">
         <pre className="bg-background border border-border rounded-lg p-4 text-xs font-mono text-muted-foreground leading-6">
-          <code>{`# Start all services at once
-docker compose up -d
+          <code>{`# Start everything (frontend + backend)
+pnpm dev
 
-# Watch the startup logs (Ctrl+C to stop watching, services keep running)
-docker compose logs -f
-
-# Test that it's working — ask it a question:
-curl http://localhost:8000/query \\
-  -H "Content-Type: application/json" \\
-  -d '{"text": "What is the latest in AI research?"}'
-
-# Open the monitoring dashboard in your browser:
-# http://localhost:3000  — Grafana (charts and metrics)
-# http://localhost:5000  — MLflow (experiment tracking)`}</code>
+# Or start them separately:
+# Terminal 1: pnpm --filter api-server run dev
+# Terminal 2: pnpm --filter omnilearn run dev`}</code>
         </pre>
+        <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+          <Zap className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Open in your browser:</strong>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Frontend: <code className="text-primary bg-primary/10 px-1 rounded">http://localhost:5173</code>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Backend API: <code className="text-primary bg-primary/10 px-1 rounded">http://localhost:3001</code>
+            </p>
+          </div>
+        </div>
         <div className="flex items-start gap-3 p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
-          <Terminal className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
+          <AlertCircle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
           <p className="text-sm text-muted-foreground">
-            The first startup can take <strong className="text-foreground">3–10 minutes</strong> while the knowledge store builds and the model loads.
-            If nothing responds after 10 minutes, run <code className="text-primary">docker compose logs</code> to see what's happening.
+            First build takes <strong className="text-foreground">1–2 minutes</strong>. If something fails, check that all env vars are set correctly in <code className="text-primary">.env</code>.
           </p>
         </div>
       </div>
@@ -189,24 +201,20 @@ curl http://localhost:8000/query \\
 ];
 
 const FILE_TREE = [
-  { name: "omnilearn/", type: "folder", depth: 0 },
-  { name: "ingestion/", type: "folder", depth: 1 },
-  { name: "connectors/", type: "folder", depth: 2 },
-  { name: "crawler.py", type: "file", depth: 3 },
-  { name: "knowledge/", type: "folder", depth: 1 },
-  { name: "store.py", type: "file", depth: 2 },
-  { name: "embedder.py", type: "file", depth: 2 },
-  { name: "learning/", type: "folder", depth: 1 },
-  { name: "engine.py", type: "file", depth: 2 },
-  { name: "character/", type: "folder", depth: 1 },
-  { name: "persona.py", type: "file", depth: 2 },
-  { name: "ghost/", type: "folder", depth: 1 },
-  { name: "node.py", type: "file", depth: 2 },
-  { name: "api/", type: "folder", depth: 1 },
-  { name: "routes.py", type: "file", depth: 2 },
-  { name: "docker-compose.yml", type: "file", depth: 0 },
-  { name: "omni_config.yaml", type: "file", depth: 0 },
-  { name: "requirements.txt", type: "file", depth: 0 },
+  { name: "omnilearn-agent/", type: "root", depth: 0 },
+  { name: "artifacts/", type: "folder", depth: 1 },
+  { name: "omnilearn/", type: "folder", depth: 2 },
+  { name: "src/pages/", type: "folder", depth: 3 },
+  { name: "chat.tsx", type: "file", depth: 4 },
+  { name: "api-server/", type: "folder", depth: 2 },
+  { name: "src/brain/", type: "folder", depth: 3 },
+  { name: "routes/", type: "folder", depth: 3 },
+  { name: "lib/", type: "folder", depth: 1 },
+  { name: "db/", type: "folder", depth: 2 },
+  { name: "api-client/", type: "folder", depth: 2 },
+  { name: ".env.example", type: "file", depth: 0 },
+  { name: "package.json", type: "file", depth: 0 },
+  { name: "pnpm-workspace.yaml", type: "file", depth: 0 },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -888,9 +896,9 @@ export default function Onboarding() {
               <div>
                 <p className="font-bold text-foreground mb-1">What this does</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  OmniLearn runs entirely on <strong className="text-foreground">your own computer</strong>. No cloud subscription, no data leaving your machine. 
-                  You'll install a few tools, download an AI model, and start the system with one command. 
-                  Good starting point if you have a reasonably modern laptop or desktop.
+                  OmniLearn runs on <strong className="text-foreground">your own computer</strong>. Your data stays local, your conversations are private. 
+                  The AI runs via Claude API (cloud), so no heavy models to download. 
+                  Perfect for development, testing, or personal use on a modern laptop.
                 </p>
               </div>
             </div>
@@ -971,40 +979,35 @@ export default function Onboarding() {
                 </div>
 
                 <div>
-                  <h3 className="font-mono text-xs text-primary uppercase tracking-wider mb-3">Plugin system</h3>
+                  <h3 className="font-mono text-xs text-primary uppercase tracking-wider mb-3">Extending OmniLearn</h3>
                   <div className="bg-background border border-border rounded-xl p-4 space-y-3">
-                    <p className="text-xs text-muted-foreground">Drop a Python file into <code className="text-cyan-400">plugins/</code> and it's automatically loaded on next start.</p>
-                    <pre className="text-xs font-mono text-muted-foreground leading-5 bg-black/20 rounded-lg p-3">
-                      <code>{`class MyPlugin:
-    name = "my-source"
-    version = "1.0.0"
-
-    async def stream(self):
-        yield {"text": "..."}
-
-    def validate_config(self, cfg):
-        pass  # raise ValueError if bad`}</code>
-                    </pre>
+                    <p className="text-xs text-muted-foreground">
+                      Build custom features on top of the core platform. The codebase is yours to modify.
+                    </p>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Package className="w-3 h-3 text-primary" />
-                        <span>Community plugins: <code className="text-cyan-400">plugins/</code></span>
+                        <Cpu className="w-3 h-3 text-primary" />
+                        <span>Add new AI synthesizers in <code className="text-cyan-400">src/brain/</code></span>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <GitBranch className="w-3 h-3 text-primary" />
-                        <span>Submit via PR to <code className="text-cyan-400">main</code></span>
+                        <Globe className="w-3 h-3 text-primary" />
+                        <span>Custom data sources in <code className="text-cyan-400">src/routes/</code></span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Shield className="w-3 h-3 text-primary" />
+                        <span>Modify moderation in <code className="text-cyan-400">lib/moderation.ts</code></span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="font-mono text-xs text-primary uppercase tracking-wider mb-3">Testing</h3>
+                  <h3 className="font-mono text-xs text-primary uppercase tracking-wider mb-3">Development</h3>
                   <div className="space-y-2">
                     {[
-                      { type: "Unit", cmd: "pytest tests/unit/ -v" },
-                      { type: "Integration", cmd: "pytest tests/integration/" },
-                      { type: "Quality", cmd: "python -m omnilearn.eval quality" },
+                      { type: "Install", cmd: "pnpm install" },
+                      { type: "Dev mode", cmd: "pnpm dev" },
+                      { type: "Type check", cmd: "pnpm typecheck" },
                     ].map(t => (
                       <div key={t.type} className="bg-background border border-border rounded-lg p-3">
                         <div className="font-mono text-xs font-bold text-foreground mb-1.5">{t.type}</div>
