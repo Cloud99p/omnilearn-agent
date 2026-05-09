@@ -955,14 +955,69 @@ cd omnilearn-ghost-node
 # 2. Create your config file from the template
 cp .env.example .env
 
-# 3. Open .env and set this value:
-#    GHOST_NODE_SECRET=choose-any-long-random-string
-#    ANTHROPIC_API_KEY=not-required-for-ghost-nodes (can leave commented out)
+# 3. Open .env and set these values:
+GHOST_NODE_SECRET=ghost_sk_$(openssl rand -hex 16)
+# ANTHROPIC_API_KEY= (leave empty if using local synthesizer)
 
 # 4. Install and start (pick one)
 npm install && npm start       # Simple start
 docker compose up -d           # Or run with Docker (recommended)`}</code>
                 </pre>
+                
+                {/* Expose to Internet Section */}
+                <div className="mt-6 p-4 rounded-xl border border-violet-500/20 bg-violet-500/5">
+                  <h4 className="font-bold text-sm text-foreground mb-3 flex items-center gap-2">
+                    <Cloud className="w-4 h-4 text-violet-400" />
+                    Expose your node to the internet
+                  </h4>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Your Ghost Node needs a public URL so OmniLearn can reach it. Use one of these methods (no router configuration needed):
+                  </p>
+                  
+                  {/* Option A: Cloudflare Tunnel */}
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded">OPTION A</span>
+                      <span className="text-sm font-bold text-foreground">Cloudflare Tunnel (Recommended — Free, No Account)</span>
+                    </div>
+                    <pre className="bg-black/40 rounded-lg border border-border/30 p-3 font-mono text-xs text-primary/90 overflow-x-auto leading-6">
+                      <code>{`# Install cloudflared (one-time)
+# Windows (PowerShell as Admin):
+winget install cloudflare.cloudflared
+
+# macOS:
+brew install cloudflared
+
+# Linux:
+# See: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads
+
+# Start the tunnel (run in a NEW terminal, keep ghost node running)
+cloudflared tunnel --url http://localhost:8080`}</code>
+                    </pre>
+                    <p className="text-xs text-muted-foreground">
+                      You'll see output like: <code className="text-violet-400 bg-violet-500/10 px-1 rounded">https://abc123-xyz456.trycloudflare.com</code> — copy that URL!
+                    </p>
+                  </div>
+                  
+                  {/* Option B: ngrok */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded">OPTION B</span>
+                      <span className="text-sm font-bold text-foreground">ngrok (Free tier — Requires Account)</span>
+                    </div>
+                    <pre className="bg-black/40 rounded-lg border border-border/30 p-3 font-mono text-xs text-primary/90 overflow-x-auto leading-6">
+                      <code>{`# Install ngrok (one-time)
+# See: https://ngrok.com/download
+
+# Start the tunnel (run in a NEW terminal)
+ngrok http 8080`}</code>
+                    </pre>
+                    <p className="text-xs text-muted-foreground">
+                      You'll see a URL like: <code className="text-violet-400 bg-violet-500/10 px-1 rounded">https://abc123.ngrok.io</code> — copy that URL!
+                    </p>
+                  </div>
+                </div>
+                
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border/40">
                     <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
@@ -978,6 +1033,20 @@ docker compose up -d           # Or run with Docker (recommended)`}</code>
                       <p className="text-xs text-muted-foreground mt-0.5">The <code className="text-primary">GHOST_NODE_SECRET</code> you set is like a password — it proves the request came from you. Make it long and random.</p>
                     </div>
                   </div>
+                </div>
+                
+                {/* Troubleshooting */}
+                <div className="mt-4 p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
+                  <h5 className="font-bold text-xs text-foreground mb-2 flex items-center gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-yellow-400" />
+                    Troubleshooting
+                  </h5>
+                  <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside">
+                    <li>If the tunnel won't start, make sure nothing else is using port 8080</li>
+                    <li>Keep both terminals open — one for the ghost node, one for the tunnel</li>
+                    <li>Test the URL in your browser first: you should see a health check response</li>
+                    <li>Firewall issues? Try disabling temporarily or allow Node.js through</li>
+                  </ul>
                 </div>
               </div>
             </div>
