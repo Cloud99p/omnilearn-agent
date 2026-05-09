@@ -61,7 +61,7 @@ export default function Home() {
           className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary font-mono text-sm mb-8"
         >
           <Terminal className="w-4 h-4" />
-          <span>v1.0.0-rc.4 / Project Hub</span>
+          <span>v1.0.0 / Stable Release</span>
         </motion.div>
 
         <motion.h1
