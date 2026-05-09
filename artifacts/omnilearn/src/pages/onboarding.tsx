@@ -1293,8 +1293,9 @@ ingress:
                     </div>
                   </div>
                 </div>
-                
-                <div className="grid sm:grid-cols-2 gap-3">
+              </div>
+              
+              <div className="grid sm:grid-cols-2 gap-3">
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border/40">
                     <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                     <div>
