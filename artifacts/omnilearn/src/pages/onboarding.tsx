@@ -1294,10 +1294,9 @@ ingress:
                   </div>
                 </div>
               </div>
-            </div>
-            
-            {/* Additional info */}
-            <div className="grid sm:grid-cols-2 gap-3 mt-6">
+              
+              {/* Additional info */}
+              <div className="grid sm:grid-cols-2 gap-3 mt-6">
               <div className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border/40">
                 <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                 <div>
@@ -1327,6 +1326,7 @@ ingress:
                 <li>Firewall issues? Try disabling temporarily or allow Node.js through</li>
               </ul>
             </div>
+          </div>
 
             {/* Connect Ghost Node */}
             <div className="mt-8 space-y-3">
