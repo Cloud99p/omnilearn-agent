@@ -1,5 +1,46 @@
 # Deployment Guide for OmniLearn
 
+## 🌐 Hierarchical Network Deployment
+
+OmniLearn uses a **7-tier self-organizing mesh network** architecture:
+
+```
+Tier 7: Planetary Intelligence (emergent)
+    ↑
+Tier 6: Global Mesh (200K+ nodes, 4 continents)
+    ↑
+Tier 5: Continental Backbone (50K nodes, 20 regions)
+    ↑
+Tier 4: Regional Network (2.5K nodes, 10 metros)
+    ↑
+Tier 3: Metro Network (250 nodes, 5 clusters)
+    ↑
+Tier 2: Local Cluster (50 nodes, 50km radius)
+    ↑
+Tier 1: Individual Node (1 agent)
+```
+
+### Network Infrastructure Package
+
+The `@omnilearn/network-hierarchy` package provides:
+- **Auto-clustering**: Nodes form clusters by geographic proximity
+- **Self-fusion**: Clusters merge into higher tiers when thresholds met
+- **Hierarchical routing**: Queries routed through appropriate tier
+- **Self-healing**: Network routes around failures
+- **Knowledge aggregation**: Insights flow up the hierarchy
+
+### Deploying Network Hierarchy
+
+```bash
+# Build the network hierarchy package
+pnpm --filter @omnilearn/network-hierarchy run build
+
+# The package exports:
+# - ClusterManager: Handles cluster formation and fusion
+# - DiscoveryService: Node discovery and heartbeats
+# - RoutingManager: Hierarchical query routing
+```
+
 ## Quick Deploy Checklist
 
 ### 1. Push Changes to GitHub

@@ -40,7 +40,55 @@
 
 ---
 
-## Q3 2026 (May - July) — **Stability & Observability**
+## Q3-Q4 2026 (May - October) — **Hierarchical Network Architecture**
+
+### 🔴 CRITICAL (Month 1-2)
+
+| Task | Why | Effort | Impact |
+|------|-----|--------|--------|
+| **7-tier mesh network** | Self-organizing distributed AI | 40h | High |
+| **Auto-clustering** | Nodes form clusters by proximity | 20h | High |
+| **Hierarchical routing** | Queries routed through tiers | 24h | High |
+| **Knowledge aggregation** | Insights flow up hierarchy | 16h | High |
+
+**Implementation:**
+
+```bash
+# Network hierarchy package
+pnpm --filter @omnilearn/network-hierarchy run build
+
+# 7-tier architecture:
+# Tier 1: Individual Node (1 agent)
+# Tier 2: Local Cluster (50 nodes, 50km) - City-wide
+# Tier 3: Metro Network (5 clusters, 200km) - Metro area
+# Tier 4: Regional Network (10 metros, 1000km) - State/National
+# Tier 5: Continental Backbone (20 regions, 5000km) - Continent
+# Tier 6: Global Mesh (4 continents, 20000km) - Planetary
+# Tier 7: Planetary Intelligence (emergent) - Consciousness
+
+# Key features:
+# - Auto-clustering by geographic proximity
+# - Self-healing routing around failures
+# - Knowledge aggregation up the hierarchy
+# - Scalable from 1 to 1M+ nodes
+```
+
+**Files created:**
+- `packages/network-hierarchy/` - Complete infrastructure
+- `packages/network-hierarchy/src/types.ts` - Network tiers, clusters, nodes
+- `packages/network-hierarchy/src/cluster-manager.ts` - Cluster formation & fusion
+- `packages/network-hierarchy/src/discovery.ts` - Node discovery & heartbeats
+- `packages/network-hierarchy/src/routing.ts` - Hierarchical query routing
+
+**Deliverables:**
+- ✅ Hierarchical network infrastructure complete
+- ✅ Roadmap updated with network architecture
+- ✅ Onboarding page shows 7-tier vision
+- ✅ Ghost Node supports cluster formation
+
+---
+
+## Q3 2026 (May - July) — **Stability & Observability** (Secondary)
 
 ### 🔴 CRITICAL (Week 1-2)
 

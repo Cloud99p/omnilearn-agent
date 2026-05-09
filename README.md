@@ -39,6 +39,8 @@ omnilearn-agent/
 │   ├── omnilearn/        # React + Vite frontend
 │   ├── api-server/       # Express 5 API server
 │   └── mockup-sandbox/   # Component preview server
+├── packages/
+│   └── network-hierarchy/ # 7-tier mesh network infrastructure
 ├── lib/
 │   ├── db/               # Drizzle ORM schema
 │   ├── api-spec/         # OpenAPI specification
@@ -64,6 +66,19 @@ omnilearn-agent/
 - Multi-agent knowledge sharing
 - Synaptic decay and reinforcement
 - Core neuron emergence
+
+### 🌐 Hierarchical Network Architecture (Q3-Q4 2026)
+- **7-tier self-organizing mesh network**
+- **Tier 1**: Individual Node (1 agent)
+- **Tier 2**: Local Cluster (50 nodes in 50km - city-wide)
+- **Tier 3**: Metro Network (5 clusters in 200km - metro area)
+- **Tier 4**: Regional Network (10 metros in 1000km - state/national)
+- **Tier 5**: Continental Backbone (20 regions in 5000km - continent)
+- **Tier 6**: Global Mesh (4 continents in 20000km - planetary)
+- **Tier 7**: Planetary Intelligence (emergent consciousness)
+- Auto-clustering by geographic proximity
+- Self-healing routing around failures
+- Knowledge aggregation up the hierarchy
 
 ### Real-time Web Access
 - DuckDuckGo web search
