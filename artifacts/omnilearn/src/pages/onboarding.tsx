@@ -1326,7 +1326,6 @@ ingress:
                 <li>Firewall issues? Try disabling temporarily or allow Node.js through</li>
               </ul>
             </div>
-          </div>
 
             {/* Connect Ghost Node */}
             <div className="mt-8 space-y-3">
