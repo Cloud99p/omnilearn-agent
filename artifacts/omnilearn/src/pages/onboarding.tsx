@@ -1016,6 +1016,48 @@ ngrok http 8080`}</code>
                       You'll see a URL like: <code className="text-violet-400 bg-violet-500/10 px-1 rounded">https://abc123.ngrok.io</code> — copy that URL!
                     </p>
                   </div>
+                  
+                  {/* Option C: Cloudflare Permanent Tunnel */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">OPTION C</span>
+                      <span className="text-sm font-bold text-foreground">Cloudflare Permanent Tunnel (Free — Requires Cloudflare Account)</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      This gives you a permanent URL that never changes, even after restarts.
+                    </p>
+                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 space-y-2">
+                      <div className="text-xs font-bold text-emerald-400 mb-2">Step 1: Login</div>
+                      <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90"><code>{`cloudflared tunnel login`}</code></pre>
+                      
+                      <div className="text-xs font-bold text-emerald-400 mb-2">Step 2: Create tunnel</div>
+                      <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90"><code>{`cloudflared tunnel create omnilearn-ghost`}</code></pre>
+                      <p className="text-[10px] text-muted-foreground">Note the tunnel ID it gives you!</p>
+                      
+                      <div className="text-xs font-bold text-emerald-400 mb-2">Step 3: Create config (Windows)</div>
+                      <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90"><code>{`@"tunnel: omnilearn-ghost
+credentials-file: C:\Users\<YourUser>\.cloudflared\<TUNNEL_ID>.json
+ingress:
+  - hostname: ghost.omnilearn.dpdns.org
+    service: http://localhost:8080
+  - service: http_status:404
+"@ | Out-File $env:USERPROFILE\.cloudflared\config.yml`}</code></pre>
+                      
+                      <div className="text-xs font-bold text-emerald-400 mb-2">Step 4: Route hostname</div>
+                      <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90"><code>{`cloudflared tunnel route dns omnilearn-ghost ghost.omnilearn.dpdns.org`}</code></pre>
+                      
+                      <div className="text-xs font-bold text-emerald-400 mb-2">Step 5: Run tunnel</div>
+                      <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90"><code>{`cloudflared tunnel run omnilearn-ghost`}</code></pre>
+                      
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Your permanent URL: <code className="text-emerald-400 bg-emerald-500/10 px-1 rounded">https://ghost.omnilearn.dpdns.org</code>
+                      </p>
+                      
+                      <p className="text-[10px] text-muted-foreground">
+                        <strong>Survive reboots:</strong> <code className="text-primary">cloudflared service install omnilearn-ghost</code>
+                      </p>
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="grid sm:grid-cols-2 gap-3">
