@@ -442,21 +442,44 @@ function LiveNodeManager() {
   const [pingingAll, setPingingAll] = useState(false);
   const [pingingId, setPingingId] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (pingFirst = false) => {
     try {
+      if (pingFirst) {
+        await fetch(`${BASE}/api/ghost/nodes/ping-all`, { method: "POST" });
+      }
       const [nr, sr] = await Promise.all([
         fetch(`${BASE}/api/ghost/nodes`),
         fetch(`${BASE}/api/ghost/status`),
       ]);
-      if (nr.ok) setNodes(await nr.json());
-      if (sr.ok) setStatus(await sr.json());
+      if (nr.ok) {
+        const nodesData = await nr.json();
+        setNodes(nodesData);
+        // Calculate online count from actual node statuses (fallback)
+        const onlineCount = nodesData.filter((n: GhostNode) => n.status === "online").length;
+        if (sr.ok) {
+          const statusData = await sr.json();
+          // Use the higher of the two counts (API vs calculated)
+          setStatus({ ...statusData, online: Math.max(statusData.online, onlineCount) });
+        } else {
+          setStatus({ total: nodesData.length, online: onlineCount, offline: nodesData.length - onlineCount, totalTasksProcessed: 0, selfEndpoint: "" });
+        }
+      } else if (sr.ok) {
+        setStatus(await sr.json());
+      }
+      setLastRefresh(new Date());
     } catch { /* offline */ } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => fetchData(false), 30000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
   const pingAll = async () => {
     setPingingAll(true);
@@ -496,12 +519,17 @@ function LiveNodeManager() {
           <p className="text-xs text-muted-foreground mt-0.5">
             Each node is a machine that can handle chat requests in Ghost mode.
           </p>
+          {lastRefresh && (
+            <p className="text-[10px] text-muted-foreground/50 mt-1 flex items-center gap-1">
+              <RefreshCw className="w-2.5 h-2.5" /> Auto-refreshing every 30s • Last updated {lastRefresh.toLocaleTimeString()}
+            </p>
+          )}
         </div>
         {nodes.length > 0 && (
-          <button onClick={pingAll} disabled={pingingAll}
+          <button onClick={() => fetchData(true)} disabled={pingingAll || loading}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground text-xs transition-all disabled:opacity-50">
-            {pingingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-            Check all
+            {pingingAll || loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            Refresh now
           </button>
         )}
       </div>
