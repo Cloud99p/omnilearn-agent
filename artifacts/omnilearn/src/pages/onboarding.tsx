@@ -75,6 +75,11 @@ pnpm --version      # If installed, shows version number`}</code>
           </pre>
           <p className="text-xs text-muted-foreground mt-2">Don't have Node.js or pnpm? We'll install them together in the next step.</p>
         </div>
+        <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+          <p className="text-xs text-muted-foreground">
+            <strong className="text-foreground">Good news:</strong> OmniLearn uses a <strong className="text-emerald-400">local AI synthesizer</strong> — no API keys, no cloud costs, no data leaving your machine. Your conversations stay private, forever.
+          </p>
+        </div>
       </div>
     ),
   },
@@ -109,7 +114,7 @@ pnpm install
   {
     id: 3,
     title: "Set up environment variables",
-    desc: "OmniLearn needs a few keys to connect to external services (auth, AI, database).",
+    desc: "OmniLearn needs auth and database setup. The AI runs locally — no API keys needed!",
     content: (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">Copy the example env file and fill in your keys:</p>
@@ -120,8 +125,9 @@ cp .env.example .env
 # Edit .env and add your keys:
 CLERK_SECRET_KEY=sk_test_xxx
 CLERK_PUBLISHABLE_KEY=pk_test_xxx
-ANTHROPIC_API_KEY=sk-ant-xxx
-DATABASE_URL=postgresql://xxx`}</code>
+DATABASE_URL=postgresql://xxx
+
+# That's it! No AI API keys needed — runs locally.`}</code>
         </pre>
         <div className="flex items-start gap-3 p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg">
           <Info className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
@@ -131,10 +137,15 @@ DATABASE_URL=postgresql://xxx`}</code>
             </p>
             <ul className="text-xs text-muted-foreground mt-1 space-y-1">
               <li>• Clerk (auth): <a href="https://clerk.com" target="_blank" className="text-primary hover:underline">clerk.com</a></li>
-              <li>• Anthropic (AI): <a href="https://console.anthropic.com" target="_blank" className="text-primary hover:underline">console.anthropic.com</a></li>
               <li>• Supabase (database): <a href="https://supabase.com" target="_blank" className="text-primary hover:underline">supabase.com</a></li>
             </ul>
           </div>
+        </div>
+        <div className="flex items-start gap-3 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+          <p className="text-sm text-muted-foreground">
+            <strong className="text-foreground">No AI costs!</strong> OmniLearn uses a local synthesizer. No API bills, no rate limits, no data sent to OpenAI/Anthropic.
+          </p>
         </div>
       </div>
     ),
@@ -896,8 +907,8 @@ export default function Onboarding() {
               <div>
                 <p className="font-bold text-foreground mb-1">What this does</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  OmniLearn runs on <strong className="text-foreground">your own computer</strong>. Your data stays local, your conversations are private. 
-                  The AI runs via Claude API (cloud), so no heavy models to download. 
+                  OmniLearn runs entirely on <strong className="text-foreground">your own computer</strong>. Your data stays local, your conversations are private. 
+                  <strong className="text-foreground">AI runs locally too</strong> — no API costs, no cloud dependencies, nothing sent to OpenAI/Anthropic. 
                   Perfect for development, testing, or personal use on a modern laptop.
                 </p>
               </div>
