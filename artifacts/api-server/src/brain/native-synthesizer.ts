@@ -522,6 +522,7 @@ export async function synthesizeNative(
         character,
         voice,
         queryType,
+        history,
       );
     }
     // Case 3: Only have knowledge graph (no web search needed)
@@ -532,6 +533,7 @@ export async function synthesizeNative(
         character,
         voice,
         queryType,
+        history,
       );
     }
     // Case 4: Only have web results (empty knowledge graph)
@@ -683,16 +685,20 @@ function synthesizeFromNodesOnly(
   character: CharacterState,
   voice: ReturnType<typeof getVoiceModifiers>,
   queryType: string,
+  history: Array<{ role: string; content: string }>,
 ): string {
   const parts: string[] = [];
 
-  const opening = buildOpening(query, queryType, character);
+  // Add conversational bridge if coming from casual chat
+  const opening = buildConversationalOpening(query, queryType, character, history);
   if (opening) parts.push(opening);
 
-  const knowledgeSection = synthesizeFromNodes(query, nodes, character, voice, queryType);
+  // Main knowledge content
+  const knowledgeSection = synthesizeFromNodes(query, nodes, character, voice, queryType, history);
   if (knowledgeSection) parts.push(knowledgeSection);
 
-  const closing = buildClosing(query, character);
+  // Optional: Add conversational closer to invite follow-up
+  const closing = buildConversationalCloser(query, character);
   if (closing) parts.push(closing);
 
   return parts.join("\n\n");
@@ -734,11 +740,12 @@ function synthesizeFromNodesAndWeb(
   character: CharacterState,
   voice: ReturnType<typeof getVoiceModifiers>,
   queryType: string,
+  history: Array<{ role: string; content: string }>,
 ): string {
   const parts: string[] = [];
 
-  // Opening
-  const opening = buildOpening(query, queryType, character);
+  // Conversational opening
+  const opening = buildConversationalOpening(query, queryType, character, history);
   if (opening) parts.push(opening);
 
   // Web results (if available)
@@ -749,11 +756,13 @@ function synthesizeFromNodesAndWeb(
 
   // Knowledge nodes (if available)
   if (nodes.length > 0) {
-    const knowledgeSection = synthesizeFromNodes(query, nodes, character, voice, queryType);
+    const knowledgeSection = synthesizeFromNodes(query, nodes, character, voice, queryType, history);
     if (knowledgeSection) parts.push(knowledgeSection);
   }
 
-  // No repetitive closing - keep responses clean
+  // Conversational closer
+  const closing = buildConversationalCloser(query, character);
+  if (closing) parts.push(closing);
 
   return parts.join("\n\n");
 }
@@ -833,12 +842,13 @@ function synthesizeFromNodes(
   character: CharacterState,
   voice: ReturnType<typeof getVoiceModifiers>,
   queryType: string,
+  history: Array<{ role: string; content: string }>,
 ): string {
   // Sort by similarity (highest first)
   const sorted = [...nodes].sort((a, b) => b.similarity - a.similarity);
 
-  // Just return the main content (no opening/closing - added by wrappers)
-  return synthesizeMainContent(sorted, voice);
+  // Build natural, conversational response with context awareness
+  return synthesizeMainContent(sorted, voice, query, history);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -855,12 +865,69 @@ function buildOpening(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Build conversational opening (when switching from casual to factual)
+// ──────────────────────────────────────────────────────────────────────────────
+
+function buildConversationalOpening(
+  query: string,
+  queryType: string,
+  character: CharacterState,
+  history: Array<{ role: string; content: string }>,
+): string {
+  // Check if we were in casual mode (recent greetings/small talk)
+  const recentUserMessages = history.filter(m => m.role === 'user').slice(-3);
+  const wasCasual = recentUserMessages.some(m => {
+    const content = m.content.toLowerCase();
+    return isGreeting(content) || isSmallTalk(content) || isCasualStatement(content);
+  });
+  
+  if (!wasCasual) return ""; // No bridge needed if already in factual mode
+  
+  // We're switching from casual to factual - add a natural bridge
+  const bridges = [
+    `Good question!`,
+    `Great question!`,
+    `I can help with that!`,
+    `Let me share what I know!`,
+    `Here's what I've learned:`,
+  ];
+  
+  return bridges[Math.floor(Math.random() * bridges.length)];
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Build conversational closer to invite follow-up
+// ──────────────────────────────────────────────────────────────────────────────
+
+function buildConversationalCloser(
+  query: string,
+  character: CharacterState,
+): string {
+  // Only add closer if character is curious/engaging
+  if (character.curiosity < 40) return "";
+  
+  const closers = [
+    `Want to know more?`,
+    `Anything else you're curious about?`,
+    `What else would you like to know?`,
+    `Feel free to ask if you want more details!`,
+  ];
+  
+  // Don't always add a closer - keep it natural (70% of the time)
+  if (Math.random() > 0.7) return "";
+  
+  return closers[Math.floor(Math.random() * closers.length)];
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Synthesize main content from knowledge nodes
 // ──────────────────────────────────────────────────────────────────────────────
 
 function synthesizeMainContent(
   nodes: RetrievedNode[],
   voice: ReturnType<typeof getVoiceModifiers>,
+  query: string,
+  history: Array<{ role: string; content: string }>,
 ): string {
   if (nodes.length === 0) return "";
 
@@ -909,7 +976,7 @@ function synthesizeMainContent(
 
   // SYNTHESIZE: Combine multiple facts into coherent response
   // Group related facts and build flowing paragraphs
-  const synthesized = synthesizeFactsIntoProse(cleanContents);
+  const synthesized = synthesizeFactsIntoProse(cleanContents, query, history);
   
   return synthesized;
 }
@@ -918,7 +985,7 @@ function synthesizeMainContent(
 // Synthesize multiple facts into natural, flowing prose
 // ──────────────────────────────────────────────────────────────────────────────
 
-function synthesizeFactsIntoProse(facts: string[]): string {
+function synthesizeFactsIntoProse(facts: string[], query?: string, history?: Array<{ role: string; content: string }>): string {
   if (facts.length === 0) return "";
   if (facts.length === 1) return facts[0];
 
@@ -942,11 +1009,11 @@ function synthesizeFactsIntoProse(facts: string[]): string {
     }
   }
 
-  // Step 3: Build flowing response
+  // Step 3: Build flowing response with context awareness
   const paragraphs: string[] = [];
   
-  // Opening: State the main concept clearly
-  const opening = craftOpening(mainTopic, primaryFacts[0]);
+  // Opening: State the main concept clearly, with conversational lead-in
+  const opening = craftOpening(mainTopic, primaryFacts[0], query, history);
   if (opening) paragraphs.push(opening);
   
   // Middle: Weave supporting facts naturally
@@ -1000,7 +1067,39 @@ function sharesKeyTerms(factA: string, factB: string, minShared: number = 2): bo
   return false;
 }
 
-function craftOpening(topic: string, fact: string): string {
+function craftOpening(topic: string, fact: string, query?: string, history?: Array<{ role: string; content: string }>): string {
+  // Check if we were just in casual conversation (look at recent history)
+  const wasCasual = history && history.slice(-3).some(m => 
+    m.role === 'user' && 
+    (m.content.toLowerCase().includes('hey') || 
+     m.content.toLowerCase().includes('hello') ||
+     m.content.toLowerCase().includes('hi') ||
+     m.content.toLowerCase().includes('how are'))
+  );
+  
+  // If coming from casual chat, add a conversational bridge
+  if (wasCasual && query) {
+    const bridges = [
+      `Good question! `, 
+      `Great question! `, 
+      `Let me tell you about ${topic}: `,
+      `Here's what I know: `,
+      `I can help with that! `,
+    ];
+    const bridge = bridges[Math.floor(Math.random() * bridges.length)];
+    
+    // If fact is already a good opening, prepend bridge
+    if (fact.length < 150) {
+      return bridge + fact.charAt(0).toLowerCase() + fact.slice(1);
+    }
+    
+    // For longer facts, extract the core statement
+    const sentences = fact.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    if (sentences.length > 0) {
+      return bridge + sentences[0].trim().charAt(0).toLowerCase() + sentences[0].trim().slice(1) + ".";
+    }
+  }
+  
   // If fact is already a good opening, use it as-is
   if (fact.length < 150) return fact;
   
