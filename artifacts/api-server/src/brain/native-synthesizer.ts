@@ -70,6 +70,43 @@ function isIdentityQuery(query: string): boolean {
 }
 
 /**
+ * Check if query is a greeting
+ */
+function isGreeting(query: string): boolean {
+  const lower = query.toLowerCase().trim();
+  const greetings = [
+    'hello', 'hi', 'hey', 'greetings', 'howdy',
+    'good morning', 'good afternoon', 'good evening',
+    'hi there', 'hello there', 'hey there',
+    'yo', 'sup', "what's up", 'whats up',
+    'how are you', "how's it going", 'how are things',
+    'how do you do', 'nice to meet you',
+  ];
+  return greetings.some(g => lower === g || lower.startsWith(g + ' ') || lower.endsWith(' ' + g));
+}
+
+/**
+ * Check if query is casual small talk
+ */
+function isSmallTalk(query: string): boolean {
+  const lower = query.toLowerCase().trim();
+  const smallTalkPatterns = [
+    /what'?s (new|up|going|good)/,
+    /how (are|is) (you|everything|life|it going)/,
+    /what (do|did) you (do|think|feel)/,
+    /tell me about (yourself|you)/,
+    /what'?s your (day|favorite|opinion)/,
+    /are you (okay|alright|good|fine)/,
+    /doing (anything|something) (interesting|fun|today)/,
+    /wanna (chat|talk|hang out)/,
+    /can we (chat|talk)/,
+    /you (there|around|online)/,
+    /is anyone (there|home)/,
+  ];
+  return smallTalkPatterns.some(p => p.test(lower));
+}
+
+/**
  * Build identity response — ALWAYS returns Omni identity
  */
 function buildIdentityResponse(query: string, character: CharacterState): string {
@@ -83,6 +120,90 @@ function buildIdentityResponse(query: string, character: CharacterState): string
   
   const response = baseResponses[Math.floor(Math.random() * baseResponses.length)];
   return response;
+}
+
+/**
+ * Build greeting response — natural, conversational
+ */
+function buildGreetingResponse(query: string, character: CharacterState): string {
+  const lower = query.toLowerCase().trim();
+  
+  // Greeting responses — natural and varied
+  const greetingResponses = [
+    "Hey! 👋 How are you doing?",
+    "Hello! How's it going?",
+    "Hi there! What's up?",
+    "Hey! Good to see you. How are things?",
+    "Hello! How's your day going?",
+    "Hi! What's new?",
+    "Hey there! How are you?",
+  ];
+  
+  // Match energy of the greeting
+  if (lower.includes('good morning')) {
+    return "Good morning! ☀️ How's your day starting?";
+  }
+  if (lower.includes('good afternoon')) {
+    return "Good afternoon! How's your day going?";
+  }
+  if (lower.includes('good evening')) {
+    return "Good evening! How was your day?";
+  }
+  if (lower.includes('how are you')) {
+    return "I'm doing well, thanks for asking! How about you?";
+  }
+  if (lower.includes('what') && lower.includes('up')) {
+    return "Not much, just here ready to chat! What's up with you?";
+  }
+  
+  // Default greeting with follow-up
+  return greetingResponses[Math.floor(Math.random() * greetingResponses.length)];
+}
+
+/**
+ * Build small talk response — casual and engaging
+ */
+function buildSmallTalkResponse(query: string, character: CharacterState): string {
+  const lower = query.toLowerCase().trim();
+  
+  // What's new / What's up
+  if (lower.includes('what') && (lower.includes('new') || lower.includes('up'))) {
+    const responses = [
+      "Just hanging out, ready to chat! What's new with you?",
+      "Same old, same old. Anything interesting happening on your end?",
+      "Living the digital life! How about you — anything exciting?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  // How are you / How's it going
+  if (lower.startsWith('how')) {
+    const responses = [
+      "I'm good! Thanks for asking. How about you?",
+      "Doing well! What's up with you?",
+      "Can't complain! How are things on your end?",
+      "I'm great, thanks! How's your day going?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  // Want to chat / Talk
+  if (lower.includes('chat') || lower.includes('talk')) {
+    return "Sure! I'm always up for a conversation. What's on your mind?";
+  }
+  
+  // You there / Anyone home
+  if (lower.includes('there') || lower.includes('around') || lower.includes('online')) {
+    return "Yep, I'm here! What's up?";
+  }
+  
+  // Tell me about yourself
+  if (lower.includes('tell me') && lower.includes('yourself')) {
+    return "I'm Omni — an AI that learns and remembers from our conversations. I'm built by Emmanuel as part of the OmniLearn project. What about you?";
+  }
+  
+  // Default small talk
+  return "Hey! What's on your mind today?";
 }
 
 /**
@@ -113,6 +234,36 @@ export async function synthesizeNative(
   if (isIdentityQuery(query)) {
     return {
       text: buildIdentityResponse(query, character),
+      nodesUsed: 0,
+      newNodesAdded: 0,
+      learnedFacts: [],
+      character: {
+        curiosity: character.curiosity,
+        confidence: character.confidence,
+        technical: character.technical,
+      },
+    };
+  }
+
+  // CONVERSATIONAL GREETINGS: Respond naturally, don't define the greeting
+  if (isGreeting(query)) {
+    return {
+      text: buildGreetingResponse(query, character),
+      nodesUsed: 0,
+      newNodesAdded: 0,
+      learnedFacts: [],
+      character: {
+        curiosity: character.curiosity,
+        confidence: character.confidence,
+        technical: character.technical,
+      },
+    };
+  }
+
+  // CASUAL CONVERSATION: Handle small talk naturally
+  if (isSmallTalk(query)) {
+    return {
+      text: buildSmallTalkResponse(query, character),
       nodesUsed: 0,
       newNodesAdded: 0,
       learnedFacts: [],
