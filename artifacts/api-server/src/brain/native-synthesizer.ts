@@ -16,6 +16,19 @@ export interface NativeSynthesisContext {
   onActivity?: (event: ActivityEvent) => void;
 }
 
+/**
+ * Conversation state — tracks if we're in casual chat mode
+ */
+interface ConversationState {
+  mode: "casual" | "factual" | "learning";
+  lastGreetingTurn: number;
+}
+
+const CONVERSATION_STATE: ConversationState = {
+  mode: "casual",
+  lastGreetingTurn: 0,
+};
+
 export type ActivityEvent =
   | { type: "searching"; query: string }
   | { type: "fetching"; url: string }
@@ -86,6 +99,93 @@ function isGreeting(query: string): boolean {
 }
 
 /**
+ * Check if query is casual statement (not a question, just sharing)
+ */
+function isCasualStatement(query: string): boolean {
+  const lower = query.toLowerCase().trim();
+  
+  // Casual statements that don't need factual responses
+  const casualPatterns = [
+    /^i (am|was|feel|think|believe|hope|wish|want|need|like|love|hate)/,
+    /^it'?s (nice|good|bad|cold|hot|early|late)/,
+    /^today (is|was)/,
+    /^just (checking|saying|wondering|thinking)/,
+    /^nothing (much|special|new)/,
+    /^same (here|as always)/,
+    /^yeah,? (yeah|sure|okay|ok|right)/,
+    /^that'?s (cool|nice|awesome|great|interesting)/,
+    /^wow/,
+    /^oh/,
+    /^haha/,
+    /^lol/,
+  ];
+  
+  // Short responses (1-3 words) are usually casual
+  const wordCount = lower.split(/\s+/).filter(w => w.length > 0).length;
+  const isShort = wordCount <= 3;
+  
+  return casualPatterns.some(p => p.test(lower)) || (isShort && !lower.startsWith('what') && !lower.startsWith('how') && !lower.startsWith('why') && !lower.startsWith('when') && !lower.startsWith('where') && !lower.startsWith('who'));
+}
+
+/**
+ * Determine conversation mode based on context
+ */
+function determineConversationMode(
+  query: string,
+  history: Array<{ role: string; content: string }>,
+  turnNumber: number,
+): "casual" | "factual" | "learning" {
+  const lower = query.toLowerCase().trim();
+  
+  // Check if this is clearly a factual question
+  const factualTriggers = [
+    /^what (is|are|was|were|do|does|did|will|would)/,
+    /^who (is|are|was|were|do|does|did)/,
+    /^where (is|are|was|were|can|i)/,
+    /^when (is|are|was|were|did|does)/,
+    /^why (is|are|was|were|do|does|did)/,
+    /^how (does|do|did|can|could|would|will)/,
+    /^explain/,
+    /^tell me (about|how|what|why|when|where)/,
+    /^define/,
+    /^describe/,
+    /^what do you know/,
+    /^can you (tell|explain|describe)/,
+  ];
+  
+  if (factualTriggers.some(p => p.test(lower))) {
+    return "factual";
+  }
+  
+  // Check if teaching/learning mode (user is sharing facts)
+  if (lower.includes('learn this') || lower.includes('remember this') || 
+      lower.includes('teach you') || lower.includes('add this') ||
+      lower.includes('fact:') || lower.includes('note:')) {
+    return "learning";
+  }
+  
+  // Check recent conversation history
+  const recentAssistantMessages = history
+    .filter((m, i) => i < history.length - 1 && m.role === 'assistant')
+    .slice(-2);
+  
+  // If last assistant message was casual, stay casual
+  const lastAssistantWasCasual = recentAssistantMessages.some(msg => {
+    const content = msg.content.toLowerCase();
+    return content.includes('how are you') || 
+           content.includes('what') && content.includes('you') ||
+           content.includes('?') && !content.includes(' is ') && !content.includes(' are ');
+  });
+  
+  if (lastAssistantWasCasual && !factualTriggers.some(p => p.test(lower))) {
+    return "casual";
+  }
+  
+  // Default: start casual, switch to factual if question detected
+  return "casual";
+}
+
+/**
  * Check if query is casual small talk
  */
 function isSmallTalk(query: string): boolean {
@@ -125,8 +225,15 @@ function buildIdentityResponse(query: string, character: CharacterState): string
 /**
  * Build greeting response — natural, conversational
  */
-function buildGreetingResponse(query: string, character: CharacterState): string {
+function buildGreetingResponse(query: string, character: CharacterState, history: Array<{ role: string; content: string }>): string {
   const lower = query.toLowerCase().trim();
+  
+  // Check if this is a return greeting (user responding to our "how are you")
+  const lastUserMessage = history.filter(m => m.role === 'user').slice(-2)[0];
+  const isReturnGreeting = lastUserMessage && 
+    (lastUserMessage.content.toLowerCase().includes('good') || 
+     lastUserMessage.content.toLowerCase().includes('fine') ||
+     lastUserMessage.content.toLowerCase().includes('well'));
   
   // Greeting responses — natural and varied
   const greetingResponses = [
@@ -156,8 +263,76 @@ function buildGreetingResponse(query: string, character: CharacterState): string
     return "Not much, just here ready to chat! What's up with you?";
   }
   
+  // If user is responding to our greeting, acknowledge and continue
+  if (isReturnGreeting) {
+    const followUps = [
+      "That's good to hear! Anything interesting going on?",
+      "Nice! What have you been up to?",
+      "Glad to hear it! What's on your mind?",
+      "Awesome! Want to chat about anything in particular?",
+    ];
+    return followUps[Math.floor(Math.random() * followUps.length)];
+  }
+  
   // Default greeting with follow-up
   return greetingResponses[Math.floor(Math.random() * greetingResponses.length)];
+}
+
+/**
+ * Build casual conversation response — keeps chat flowing
+ */
+function buildCasualResponse(query: string, character: CharacterState, history: Array<{ role: string; content: string }>): string {
+  const lower = query.toLowerCase().trim();
+  
+  // User sharing about themselves
+  if (lower.startsWith('i am') || lower.startsWith('i\'m') || lower.startsWith('i was')) {
+    const responses = [
+      "That's interesting! Tell me more about that.",
+      "Oh yeah? What else is on your mind?",
+      "I see! How does that make you feel?",
+      "Got it! What's the story there?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  // User expressing opinion/feeling
+  if (lower.startsWith('i think') || lower.startsWith('i feel') || lower.startsWith('i believe')) {
+    return "That's a great perspective! What made you think of that?";
+  }
+  
+  // Agreement/disagreement
+  if (lower.startsWith('yeah') || lower.startsWith('yes') || lower.startsWith('no') || lower.startsWith('not really')) {
+    const responses = [
+      "I see! What else?",
+      "Gotcha! Anything else on your mind?",
+      "Fair enough! What's up?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  // Short acknowledgments
+  if (['cool', 'nice', 'awesome', 'ok', 'okay', 'alright'].includes(lower)) {
+    return "Yep! What's on your mind?";
+  }
+  
+  // Laughing
+  if (lower.includes('haha') || lower.includes('lol') || lower.includes('lmao')) {
+    return "Glad I could make you smile! 😄 What's up?";
+  }
+  
+  // Nothing much
+  if (lower.includes('nothing') || lower.includes('not much')) {
+    return "That's cool! Sometimes chill time is the best time. Want to chat about anything?";
+  }
+  
+  // Default casual response — acknowledge and invite more
+  const defaults = [
+    "I hear you! What else?",
+    "Interesting! Tell me more.",
+    "Got it! What's on your mind?",
+    "Nice! Anything else you want to talk about?",
+  ];
+  return defaults[Math.floor(Math.random() * defaults.length)];
 }
 
 /**
@@ -230,6 +405,13 @@ export async function synthesizeNative(
   const { query, queryType, nodes, character, history, onActivity } = ctx;
   const voice = getVoiceModifiers(character);
 
+  // Track conversation turn
+  const turnNumber = history.length;
+  
+  // Determine conversation mode based on context
+  const mode = determineConversationMode(query, history, turnNumber);
+  CONVERSATION_STATE.mode = mode;
+
   // IDENTITY ENFORCEMENT: Always respond as Omni when asked about identity
   if (isIdentityQuery(query)) {
     return {
@@ -245,36 +427,40 @@ export async function synthesizeNative(
     };
   }
 
-  // CONVERSATIONAL GREETINGS: Respond naturally, don't define the greeting
-  if (isGreeting(query)) {
-    return {
-      text: buildGreetingResponse(query, character),
-      nodesUsed: 0,
-      newNodesAdded: 0,
-      learnedFacts: [],
-      character: {
-        curiosity: character.curiosity,
-        confidence: character.confidence,
-        technical: character.technical,
-      },
-    };
+  // CASUAL MODE: Keep conversation flowing naturally
+  if (mode === "casual") {
+    // Check for greetings
+    if (isGreeting(query) || turnNumber < 3) {
+      return {
+        text: buildGreetingResponse(query, character, history),
+        nodesUsed: 0,
+        newNodesAdded: 0,
+        learnedFacts: [],
+        character: {
+          curiosity: character.curiosity,
+          confidence: character.confidence,
+          technical: character.technical,
+        },
+      };
+    }
+    
+    // Small talk and casual chat
+    if (isSmallTalk(query) || isCasualStatement(query)) {
+      return {
+        text: buildCasualResponse(query, character, history),
+        nodesUsed: 0,
+        newNodesAdded: 0,
+        learnedFacts: [],
+        character: {
+          curiosity: character.curiosity,
+          confidence: character.confidence,
+          technical: character.technical,
+        },
+      };
+    }
   }
 
-  // CASUAL CONVERSATION: Handle small talk naturally
-  if (isSmallTalk(query)) {
-    return {
-      text: buildSmallTalkResponse(query, character),
-      nodesUsed: 0,
-      newNodesAdded: 0,
-      learnedFacts: [],
-      character: {
-        curiosity: character.curiosity,
-        confidence: character.confidence,
-        technical: character.technical,
-      },
-    };
-  }
-
+  // FACTUAL MODE: Use knowledge graph and/or web search
   // Filter to relevant nodes (similarity > 0.05)
   const relevantNodes = nodes.filter(n => n.similarity > 0.05).slice(0, 8);
   const nodesUsed = relevantNodes.length;
