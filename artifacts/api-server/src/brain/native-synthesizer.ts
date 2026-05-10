@@ -527,11 +527,8 @@ function synthesizeMainContent(
 ): string {
   if (nodes.length === 0) return "";
 
-  // Take top 3 nodes only
-  const topNodes = nodes.slice(0, 3);
-
-  // Build coherent response from nodes
-  const contentParts: string[] = [];
+  // Take top 5 nodes for richer context
+  const topNodes = nodes.slice(0, 5);
 
   // Aggressive meta-text filtering
   const metaPatterns = [
@@ -547,6 +544,8 @@ function synthesizeMainContent(
     /i'll help with/i,
   ];
 
+  // Extract clean content from nodes
+  const cleanContents: string[] = [];
   for (const node of topNodes) {
     let content = node.content.trim();
     
@@ -565,11 +564,160 @@ function synthesizeMainContent(
     // Skip if nothing left after cleanup
     if (content.length < 10) continue;
     
-    contentParts.push(content);
+    cleanContents.push(content);
   }
 
-  // Join with newlines
-  return contentParts.join("\n\n");
+  if (cleanContents.length === 0) return "";
+  if (cleanContents.length === 1) return cleanContents[0];
+
+  // SYNTHESIZE: Combine multiple facts into coherent response
+  // Group related facts and build flowing paragraphs
+  const synthesized = synthesizeFactsIntoProse(cleanContents);
+  
+  return synthesized;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Synthesize multiple facts into natural, flowing prose
+// ──────────────────────────────────────────────────────────────────────────────
+
+function synthesizeFactsIntoProse(facts: string[]): string {
+  if (facts.length === 0) return "";
+  if (facts.length === 1) return facts[0];
+
+  // STRATEGY: Don't just concatenate — weave facts into coherent narrative
+  
+  // Step 1: Identify the main topic (from first fact)
+  const firstFact = facts[0];
+  const mainTopic = extractMainTopic(firstFact);
+  
+  // Step 2: Group facts by relevance to main topic
+  const primaryFacts = [firstFact];
+  const supportingFacts: string[] = [];
+  
+  for (let i = 1; i < facts.length; i++) {
+    const fact = facts[i];
+    // If fact shares key terms with first fact, it's supporting
+    if (sharesKeyTerms(firstFact, fact, 2)) {
+      supportingFacts.push(fact);
+    } else {
+      primaryFacts.push(fact);
+    }
+  }
+
+  // Step 3: Build flowing response
+  const paragraphs: string[] = [];
+  
+  // Opening: State the main concept clearly
+  const opening = craftOpening(mainTopic, primaryFacts[0]);
+  if (opening) paragraphs.push(opening);
+  
+  // Middle: Weave supporting facts naturally
+  if (supportingFacts.length > 0) {
+    const middle = weaveSupportingFacts(supportingFacts);
+    if (middle) paragraphs.push(middle);
+  }
+  
+  // Additional primary facts as separate points
+  for (let i = 1; i < primaryFacts.length && i < 3; i++) {
+    const connected = findConnectedFacts(primaryFacts[i], supportingFacts);
+    if (connected.length > 0) {
+      const combined = combineRelatedFacts(primaryFacts[i], connected);
+      if (combined) paragraphs.push(combined);
+    } else {
+      paragraphs.push(primaryFacts[i]);
+    }
+  }
+  
+  return paragraphs.join("\n\n");
+}
+
+function extractMainTopic(fact: string): string {
+  // Extract subject from fact (first noun phrase)
+  const match = fact.match(/^([A-Z][^.]*?)(?:\s+(?:is|are|was|were|has|have|can|will))/?i);
+  if (match) {
+    return match[1].trim();
+  }
+  // Fallback: first 5-7 words
+  const words = fact.split(/\s+/).slice(0, 6);
+  return words.join(" ") + "...";
+}
+
+function sharesKeyTerms(factA: string, factB: string, minShared: number = 2): boolean {
+  const termsA = new Set(
+    factA.toLowerCase()
+      .split(/\W+/)
+      .filter(w => w.length > 4 && !['that', 'which', 'this', 'these', 'those', 'about', 'with'].includes(w))
+  );
+  const termsB = new Set(
+    factB.toLowerCase()
+      .split(/\W+/)
+      .filter(w => w.length > 4 && !['that', 'which', 'this', 'these', 'those', 'about', 'with'].includes(w))
+  );
+  
+  let shared = 0;
+  for (const term of termsA) {
+    if (termsB.has(term)) shared++;
+    if (shared >= minShared) return true;
+  }
+  return false;
+}
+
+function craftOpening(topic: string, fact: string): string {
+  // If fact is already a good opening, use it as-is
+  if (fact.length < 150) return fact;
+  
+  // For longer facts, extract the core statement
+  const sentences = fact.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  if (sentences.length > 0) {
+    return sentences[0].trim() + ".";
+  }
+  return fact;
+}
+
+function weaveSupportingFacts(facts: string[]): string {
+  if (facts.length === 0) return "";
+  if (facts.length === 1) return facts[0];
+  
+  // Use connectors to weave facts together
+  const connectors = [
+    " Additionally, ",
+    " This means that ",
+    " In practice, ",
+    " More specifically, ",
+    " For example, ",
+    " This includes ",
+  ];
+  
+  let woven = facts[0];
+  for (let i = 1; i < Math.min(facts.length, 4); i++) {
+    const connector = connectors[(i - 1) % connectors.length];
+    woven += connector + facts[i].toLowerCase().replace(/^./, c => c.toUpperCase());
+  }
+  
+  return woven;
+}
+
+function findConnectedFacts(fact: string, candidates: string[]): string[] {
+  return candidates.filter(c => sharesKeyTerms(fact, c, 1)).slice(0, 2);
+}
+
+function combineRelatedFacts(primary: string, supporting: string[]): string {
+  if (supporting.length === 0) return primary;
+  
+  const combined = [primary, ...supporting].join(" ");
+  
+  // Keep it concise (under 200 chars)
+  if (combined.length <= 200) return combined;
+  
+  // Truncate gracefully
+  const sentences = combined.split(/[.!?]+/);
+  let result = sentences[0];
+  for (let i = 1; i < sentences.length; i++) {
+    if ((result + sentences[i]).length > 200) break;
+    result += ". " + sentences[i];
+  }
+  return result.trim() + ".";
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

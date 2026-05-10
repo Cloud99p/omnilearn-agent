@@ -11,6 +11,7 @@ import { logger } from "./logger";
  * - SENTRY_DSN: Sentry Data Source Name (from sentry.io)
  * - SENTRY_ENVIRONMENT: Environment name (production, development, etc.)
  * - SENTRY_TRACES_SAMPLE_RATE: Sample rate for traces (0.0-1.0, default 0.1)
+ * - SENTRY_RELEASE: Release version (optional, defaults to package.json version or git SHA)
  */
 export function initSentry(): void {
   const dsn = process.env.SENTRY_DSN;
@@ -44,8 +45,8 @@ export function initSentry(): void {
     // Profiling
     profilesSampleRate: 1.0, // Profile every trace
 
-    // Release tracking
-    release: process.env.npm_package_version || "unknown",
+    // Release tracking (uses git commit SHA or version from package.json)
+    release: process.env.SENTRY_RELEASE || process.env.npm_package_version || "unknown",
 
     // Before sending event, filter out sensitive data
     beforeSend(event, hint) {

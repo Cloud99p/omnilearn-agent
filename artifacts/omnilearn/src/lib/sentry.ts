@@ -8,6 +8,7 @@ import * as Sentry from "@sentry/react";
  * - VITE_SENTRY_DSN: Sentry Data Source Name (from sentry.io)
  * - VITE_SENTRY_ENVIRONMENT: Environment name (production, development, etc.)
  * - VITE_SENTRY_TRACES_SAMPLE_RATE: Sample rate for traces (0.0-1.0, default 0.1)
+ * - VITE_SENTRY_RELEASE: Release version (optional, defaults to package.json version or git SHA)
  */
 export function initSentry(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN;
@@ -43,8 +44,8 @@ export function initSentry(): void {
     // Performance monitoring
     enableTracing: true,
 
-    // Release tracking
-    release: import.meta.env.npm_package_version || "unknown",
+    // Release tracking (uses git commit SHA or version from package.json)
+    release: import.meta.env.VITE_SENTRY_RELEASE || import.meta.env.npm_package_version || "unknown",
 
     // Filter out noisy errors
     beforeSend(event, hint) {

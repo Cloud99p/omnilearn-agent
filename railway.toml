@@ -16,3 +16,4 @@ restartPolicyMaxRetries = 3
 # CLERK_PUBLISHABLE_KEY - from Clerk dashboard
 # ANTHROPIC_API_KEY - from https://console.anthropic.com
 # PORT=3000
+# SENTRY_RELEASE=1.0.0 (optional, for release tracking)
