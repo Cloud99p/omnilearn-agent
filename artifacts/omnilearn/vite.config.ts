@@ -18,6 +18,9 @@ const effectiveBasePath = basePath || "/";
 
 export default defineConfig({
   base: effectiveBasePath,
+  define: {
+    'import.meta.env.npm_package_version': JSON.stringify(process.env.npm_package_version || process.env.VITE_SENTRY_RELEASE || '1.0.0'),
+  },
   plugins: [
     react(),
     tailwindcss({ optimize: false }),
