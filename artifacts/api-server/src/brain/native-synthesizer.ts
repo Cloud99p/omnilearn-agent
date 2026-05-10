@@ -1038,7 +1038,7 @@ function synthesizeFactsIntoProse(facts: string[], query?: string, history?: Arr
 
 function extractMainTopic(fact: string): string {
   // Extract subject from fact (first noun phrase)
-  const match = fact.match(/^([A-Z][^.]*?)(?:\s+(?:is|are|was|were|has|have|can|will))/?i);
+  const match = fact.match(/^([A-Z][^.]*?)(?:\s+(?:is|are|was|were|has|have|can|will))/i);
   if (match) {
     return match[1].trim();
   }
