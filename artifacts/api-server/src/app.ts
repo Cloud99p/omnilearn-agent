@@ -9,7 +9,7 @@ import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
 } from "./middlewares/clerkProxyMiddleware";
-import { runOntologyReflection } from "./brain/ontology.js";
+// import { runOntologyReflection } from "./brain/ontology.js"; // DISABLED — DB tables not created yet
 import { initSentry, sentryRequestHandler, sentryErrorHandler } from "./lib/sentry";
 
 // Initialize Sentry (must be first, before any other imports)
@@ -17,14 +17,14 @@ initSentry();
 
 const app: Express = express();
 
-// ── Background ontology reflection — ENABLED ───────────────────────────────
-const ONTOLOGY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
-function scheduleOntologyReflection() {
-  runOntologyReflection().catch(err => logger.error(err, "Ontology reflection failed"));
-  setTimeout(scheduleOntologyReflection, ONTOLOGY_INTERVAL_MS);
-}
-scheduleOntologyReflection();
-logger.info("Ontology reflection enabled (10min interval)");
+// ── Background ontology reflection — DISABLED TEMPORARILY ───────────────────────────────
+// const ONTOLOGY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+// function scheduleOntologyReflection() {
+//   runOntologyReflection().catch(err => logger.error(err, "Ontology reflection failed"));
+//   setTimeout(scheduleOntologyReflection, ONTOLOGY_INTERVAL_MS);
+// }
+// scheduleOntologyReflection();
+// logger.info("Ontology reflection enabled (10min interval)");
 
 // Sentry request handler (must be before other middleware)
 app.use(sentryRequestHandler());
