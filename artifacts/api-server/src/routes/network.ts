@@ -78,13 +78,23 @@ router.get("/network/pulses", async (req, res) => {
   }
 });
 
-// DISABLED: Network contributions are disabled. Each agent is isolated.
 router.post("/network/contribute", async (req, res) => {
-  res.status(501).json({ 
-    error: "Network contributions are disabled. This agent operates independently.",
-    disabled: true,
-    reason: "Knowledge sharing is disabled by configuration. Each agent maintains its own knowledge graph.",
-  });
+  const { neurons, agentName = "self", agentEndpoint } = req.body as {
+    neurons: Array<{ content: string; type?: string; tags?: string[] }>;
+    agentName?: string;
+    agentEndpoint?: string;
+  };
+  if (!Array.isArray(neurons) || !neurons.length) {
+    res.status(400).json({ error: "neurons array is required" });
+    return;
+  }
+  try {
+    const result = await contributeNeurons(neurons, agentName ?? "self", agentEndpoint);
+    res.json(result);
+  } catch (err) {
+    req.log.error(err, "network contribute error");
+    res.status(500).json({ error: "Failed to contribute" });
+  }
 });
 
 router.post("/network/query", async (req, res) => {
@@ -132,29 +142,117 @@ router.post("/network/decay", async (req, res) => {
   }
 });
 
-// DISABLED: Network sync is disabled. Each agent is isolated.
 router.post("/network/sync", async (req, res) => {
-  res.status(501).json({ 
-    error: "Network sync is disabled. This agent operates independently.",
-    disabled: true,
-    reason: "Knowledge sharing is disabled by configuration. Each agent maintains its own knowledge graph.",
-  });
+  const GHOST_SECRET = process.env.GHOST_SECRET;
+  
+  // SECURITY: Require ghost secret header for sync operations
+  const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
+  if (GHOST_SECRET && providedSecret !== GHOST_SECRET) {
+    req.log.warn(
+      { agentName: req.body.agentName, agentEndpoint: req.body.agentEndpoint },
+      "Unauthorized network sync attempt - invalid or missing ghost secret"
+    );
+    res.status(401).json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
+    return;
+  }
+  
+  const { knowledge, agentName, agentEndpoint } = req.body as {
+    knowledge: Array<{ content: string; type?: string; tags?: string[] }>;
+    agentName: string;
+    agentEndpoint?: string;
+  };
+  if (!Array.isArray(knowledge) || !agentName) {
+    res.status(400).json({ error: "knowledge array and agentName are required" });
+    return;
+  }
+  try {
+    const result = await contributeNeurons(knowledge, agentName, agentEndpoint);
+    await db.insert(networkPulses).values({
+      agentName,
+      eventType: "sync",
+      neuronsAffected: result.added + result.reinforced,
+      synapsesAffected: result.synapses,
+      details: `Ghost sync: +${result.added} new, ${result.reinforced} reinforced`,
+    });
+    res.json(result);
+  } catch (err) {
+    req.log.error(err, "network sync error");
+    res.status(500).json({ error: "Failed to sync" });
+  }
 });
 
-// DISABLED: Voting is disabled (no shared network)
+// POST /api/network/vote/:id — vote on a neuron (requires GHOST_SECRET)
 router.post("/network/vote/:id", async (req, res) => {
-  res.status(501).json({ 
-    error: "Voting is disabled. This agent operates independently.",
-    disabled: true,
-  });
+  const GHOST_SECRET = process.env.GHOST_SECRET;
+  const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
+  
+  if (GHOST_SECRET && providedSecret !== GHOST_SECRET) {
+    res.status(401).json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
+    return;
+  }
+  
+  const id = Number(req.params.id);
+  const { vote } = req.body as { vote: "up" | "down" };
+  
+  if (!vote || (vote !== "up" && vote !== "down")) {
+    res.status(400).json({ error: "vote must be 'up' or 'down'" });
+    return;
+  }
+  
+  try {
+    const [neuron] = await db.select().from(networkNeurons).where(eq(networkNeurons.id, id));
+    if (!neuron) {
+      res.status(404).json({ error: "Neuron not found" });
+      return;
+    }
+    
+    // Apply vote (no probation check - all neurons are from trusted sources)
+    await db.update(networkNeurons).set({
+      positiveVotes: vote === "up" ? sql`positive_votes + 1` : networkNeurons.positiveVotes,
+      negativeVotes: vote === "down" ? sql`negative_votes + 1` : networkNeurons.negativeVotes,
+      voteScore: sql`vote_score + ${vote === "up" ? 1 : -1}`,
+      weight: vote === "up" 
+        ? sql`LEAST(10.0, weight + 0.1)` 
+        : sql`GREATEST(0.1, weight - 0.1)`,
+      updatedAt: new Date(),
+    }).where(eq(networkNeurons.id, id));
+    
+    res.json({ success: true, neuronId: id, vote });
+  } catch (err) {
+    req.log.error(err, "network vote error");
+    res.status(500).json({ error: "Failed to vote" });
+  }
 });
 
-// DISABLED: Probation list is disabled (no shared network)
+// GET /api/network/probation — list neurons currently in probation
 router.get("/network/probation", async (req, res) => {
-  res.status(501).json({ 
-    error: "Probation tracking is disabled. This agent operates independently.",
-    disabled: true,
-  });
+  try {
+    const now = new Date();
+    const probationNeurons = await db.select({
+      id: networkNeurons.id,
+      content: networkNeurons.content,
+      sourceAgent: networkNeurons.sourceAgent,
+      probationUntil: networkNeurons.probationUntil,
+      createdAt: networkNeurons.createdAt,
+    }).from(networkNeurons)
+      .where(eq(networkNeurons.isProbation, true))
+      .orderBy(networkNeurons.probationUntil);
+    
+    // Filter client-side to only show not-yet-expired
+    const active = probationNeurons.filter(n => n.probationUntil && new Date(n.probationUntil) > now);
+    
+    res.json(active.map(n => ({
+      id: n.id,
+      content: n.content,
+      sourceAgent: n.sourceAgent,
+      probationUntil: n.probationUntil,
+      createdAt: n.createdAt,
+      daysRemaining: Math.ceil((new Date(n.probationUntil!).getTime() - now.getTime()) / (24 * 60 * 60 * 1000)),
+    })));
+  } catch (err) {
+    req.log.error(err, "network probation list error");
+    res.status(500).json({ error: "Failed to list probation neurons" });
+  }
 });
 
 export default router;
