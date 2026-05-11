@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, BookOpen, Activity, Zap, Plus, Trash2, Search,
   RefreshCw, Database, GitBranch, Loader2,
-  CheckCircle, AlertCircle, Shield,
+  CheckCircle, AlertCircle, Shield, ExternalLink,
   Lightbulb, BarChart3, Clock, Network, Users, Wifi,
   TrendingUp, Cpu, Radio, Lock, CheckCircle2, XCircle, ArrowRight, FlaskConical,
   Layers, SplitSquareHorizontal, Merge, ArrowDown, BookMarked, Play, RotateCcw,
@@ -365,6 +365,46 @@ function TraitBar({ label, value, color = "bg-primary" }: { label: string; value
 function NodeCard({ node, onDelete }: { node: KnowledgeNode; onDelete?: (id: number) => void }) {
   const Icon = TYPE_ICONS[node.type] ?? BookOpen;
   const colorClass = TYPE_COLORS[node.type] ?? TYPE_COLORS.fact;
+  
+  // Parse source and make it interactive
+  const renderSource = () => {
+    const source = node.source || "unknown";
+    
+    // URL source - make clickable
+    if (source.startsWith("url:")) {
+      const url = source.replace("url:", "");
+      return (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-[10px] text-primary/80 hover:text-primary hover:underline flex items-center gap-1"
+        >
+          <ExternalLink className="w-2.5 h-2.5" />
+          {url.length > 40 ? url.slice(0, 40) + "..." : url}
+        </a>
+      );
+    }
+    
+    // Document source - show document icon
+    if (source.startsWith("document:")) {
+      const docName = source.replace("document:", "");
+      return (
+        <span className="font-mono text-[10px] text-emerald-400/80 flex items-center gap-1">
+          <FileText className="w-2.5 h-2.5" />
+          {docName}
+        </span>
+      );
+    }
+    
+    // Manual or other source
+    return (
+      <span className="font-mono text-[10px] text-muted-foreground/60">
+        {source}
+      </span>
+    );
+  };
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
@@ -379,7 +419,8 @@ function NodeCard({ node, onDelete }: { node: KnowledgeNode; onDelete?: (id: num
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-mono border", colorClass)}>{node.type}</span>
             <span className="font-mono text-[10px] text-muted-foreground/60">conf: {(node.confidence * 100).toFixed(0)}%</span>
-            <span className="font-mono text-[10px] text-muted-foreground/40">src: {node.source}</span>
+            <span className="font-mono text-[10px] text-muted-foreground/40">src:</span>
+            {renderSource()}
             {node.similarity !== undefined && (
               <span className="font-mono text-[10px] text-primary/60">match: {(node.similarity * 100).toFixed(0)}%</span>
             )}
