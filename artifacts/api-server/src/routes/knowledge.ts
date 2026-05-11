@@ -77,10 +77,47 @@ router.post("/nodes", async (req, res) => {
       return;
     }
     
-    const tokens = content.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(t => t.length > 3);
+    const contentTrimmed = content.trim();
+    const tokens = contentTrimmed.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(t => t.length > 3);
+    
+    // DUPLICATE DETECTION: Check for similar existing nodes
+    const existingNodes = await db.select({
+      id: knowledgeNodes.id,
+      content: knowledgeNodes.content,
+      confidence: knowledgeNodes.confidence,
+    }).from(knowledgeNodes)
+      .limit(100);
+    
+    // Simple Jaccard similarity check
+    const contentTokens = new Set(tokens);
+    const duplicate = existingNodes.find(node => {
+      const nodeTokens = new Set(
+        node.content.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(t => t.length > 3)
+      );
+      
+      // Calculate Jaccard similarity
+      const intersection = [...contentTokens].filter(t => nodeTokens.has(t)).length;
+      const union = new Set([...contentTokens, ...nodeTokens]).size;
+      const similarity = union > 0 ? intersection / union : 0;
+      
+      return similarity > 0.7; // 70% similarity = duplicate
+    });
+    
+    if (duplicate) {
+      res.status(409).json({
+        error: "Duplicate knowledge detected",
+        existingNode: {
+          id: duplicate.id,
+          content: duplicate.content.slice(0, 100) + "...",
+          confidence: duplicate.confidence,
+        },
+        message: "This knowledge already exists. Consider reinforcing the existing node instead.",
+      });
+      return;
+    }
     
     const [node] = await db.insert(knowledgeNodes).values({
-      content: content.trim(),
+      content: contentTrimmed,
       type,
       tags,
       source,
