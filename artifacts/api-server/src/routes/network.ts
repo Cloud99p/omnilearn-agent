@@ -156,17 +156,18 @@ router.post("/network/sync", async (req, res) => {
     return;
   }
   
-  const { knowledge, agentName, agentEndpoint } = req.body as {
+  const { knowledge, agentName, agentEndpoint, relayPath } = req.body as {
     knowledge: Array<{ content: string; type?: string; tags?: string[] }>;
     agentName: string;
     agentEndpoint?: string;
+    relayPath?: string;
   };
   if (!Array.isArray(knowledge) || !agentName) {
     res.status(400).json({ error: "knowledge array and agentName are required" });
     return;
   }
   try {
-    const result = await contributeNeurons(knowledge, agentName, agentEndpoint);
+    const result = await contributeNeurons(knowledge, agentName, agentEndpoint, relayPath);
     await db.insert(networkPulses).values({
       agentName,
       eventType: "sync",
@@ -181,7 +182,6 @@ router.post("/network/sync", async (req, res) => {
   }
 });
 
-// POST /api/network/vote/:id — vote on a neuron (requires GHOST_SECRET)
 router.post("/network/vote/:id", async (req, res) => {
   const GHOST_SECRET = process.env.GHOST_SECRET;
   const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
@@ -192,7 +192,7 @@ router.post("/network/vote/:id", async (req, res) => {
   }
   
   const id = Number(req.params.id);
-  const { vote } = req.body as { vote: "up" | "down" };
+  const { vote, relayPath } = req.body as { vote: "up" | "down"; relayPath?: string };
   
   if (!vote || (vote !== "up" && vote !== "down")) {
     res.status(400).json({ error: "vote must be 'up' or 'down'" });
@@ -200,31 +200,47 @@ router.post("/network/vote/:id", async (req, res) => {
   }
   
   try {
-    const [neuron] = await db.select().from(networkNeurons).where(eq(networkNeurons.id, id));
-    if (!neuron) {
-      res.status(404).json({ error: "Neuron not found" });
+    const { success, neuronId, vote: voted, weight } = await voteOnNeuron(id, req.body.agentName || "self", vote, relayPath);
+    
+    if (!success) {
+      res.status(403).json({ 
+        error: "Cannot vote - agent not yet eligible (Observer phase, no voting weight)",
+        reason: "Wait for agent to progress through Observer → Probationary → Voting Member phases",
+      });
       return;
     }
     
-    // Apply vote (no probation check - all neurons are from trusted sources)
-    await db.update(networkNeurons).set({
-      positiveVotes: vote === "up" ? sql`positive_votes + 1` : networkNeurons.positiveVotes,
-      negativeVotes: vote === "down" ? sql`negative_votes + 1` : networkNeurons.negativeVotes,
-      voteScore: sql`vote_score + ${vote === "up" ? 1 : -1}`,
-      weight: vote === "up" 
-        ? sql`LEAST(10.0, weight + 0.1)` 
-        : sql`GREATEST(0.1, weight - 0.1)`,
-      updatedAt: new Date(),
-    }).where(eq(networkNeurons.id, id));
-    
-    res.json({ success: true, neuronId: id, vote });
+    res.json({ success: true, neuronId, vote: voted, weight });
   } catch (err) {
     req.log.error(err, "network vote error");
     res.status(500).json({ error: "Failed to vote" });
   }
 });
 
-// GET /api/network/probation — list neurons currently in probation
+// POST /api/network/ratify/:id — ratify a neuron (requires GHOST_SECRET)
+router.post("/network/ratify/:id", async (req, res) => {
+  const GHOST_SECRET = process.env.GHOST_SECRET;
+  const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
+  
+  if (GHOST_SECRET && providedSecret !== GHOST_SECRET) {
+    res.status(401).json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
+    return;
+  }
+  
+  const id = Number(req.params.id);
+  const { quorumSize } = req.body as { quorumSize?: number };
+  
+  try {
+    const { success, ratified, quorum } = await ratifyNeuron(id, req.body.agentName || "self", quorumSize || 3);
+    
+    res.json({ success, ratified, quorum });
+  } catch (err) {
+    req.log.error(err, "network ratify error");
+    res.status(500).json({ error: "Failed to ratify" });
+  }
+});
+
+// GET /api/network/probation — list neurons waiting for ratification
 router.get("/network/probation", async (req, res) => {
   try {
     const now = new Date();
@@ -232,26 +248,112 @@ router.get("/network/probation", async (req, res) => {
       id: networkNeurons.id,
       content: networkNeurons.content,
       sourceAgent: networkNeurons.sourceAgent,
-      probationUntil: networkNeurons.probationUntil,
       createdAt: networkNeurons.createdAt,
+      ratificationQuorum: networkNeurons.ratificationQuorum,
+      isRatified: networkNeurons.isRatified,
     }).from(networkNeurons)
-      .where(eq(networkNeurons.isProbation, true))
-      .orderBy(networkNeurons.probationUntil);
+      .where(and(
+        eq(networkNeurons.isRatified, false),
+        eq(networkNeurons.sourceAgent, "!="), // Will be filtered by agent
+      ))
+      .orderBy(networkNeurons.createdAt)
+      .limit(100);
     
-    // Filter client-side to only show not-yet-expired
-    const active = probationNeurons.filter(n => n.probationUntil && new Date(n.probationUntil) > now);
+    // Get ratification progress for each neuron
+    const result = await Promise.all(probationNeurons.map(async (n) => {
+      const ratifications = await db.select({ agentName: networkVotes.agentName })
+        .from(networkVotes)
+        .where(eq(networkVotes.neuronId, n.id));
+      
+      return {
+        id: n.id,
+        content: n.content,
+        sourceAgent: n.sourceAgent,
+        createdAt: n.createdAt,
+        ratificationQuorum: n.ratificationQuorum ?? 0,
+        ratifications: ratifications.length,
+        ratificationsBy: ratifications.map(r => r.agentName),
+        daysSinceSubmitted: Math.floor((now.getTime() - new Date(n.createdAt).getTime()) / (24 * 60 * 60 * 1000)),
+      };
+    }));
     
-    res.json(active.map(n => ({
-      id: n.id,
-      content: n.content,
-      sourceAgent: n.sourceAgent,
-      probationUntil: n.probationUntil,
-      createdAt: n.createdAt,
-      daysRemaining: Math.ceil((new Date(n.probationUntil!).getTime() - now.getTime()) / (24 * 60 * 60 * 1000)),
-    })));
+    res.json(result);
   } catch (err) {
     req.log.error(err, "network probation list error");
     res.status(500).json({ error: "Failed to list probation neurons" });
+  }
+});
+
+// GET /api/network/agents — list all agents with their reputation
+router.get("/network/agents", async (req, res) => {
+  try {
+    const agents = await db.select().from(networkAgents)
+      .orderBy(desc(networkAgents.trustScore))
+      .limit(200);
+    
+    const result = await Promise.all(agents.map(async (a) => {
+      const domainStats = await calculateDomainScore(a.name);
+      const accuracyStats = await calculateAccuracyScore(a.name);
+      const topologyStats = await calculateTopologyScore(a.name);
+      const ageMultiplier = calculateAgeMultiplier(a.firstSeenAt ?? null);
+      const { phase, weight } = determinePhase(a.trustScore, a.daysActive ?? 0);
+      
+      return {
+        ...a,
+        phase,
+        weight,
+        domainScore: domainStats.score,
+        accuracyScore: accuracyStats.score,
+        topologyScore: topologyStats.score,
+        uniqueDomains: domainStats.uniqueDomains,
+        uniqueRelayPaths: topologyStats.paths,
+        submissions: accuracyStats.submissions,
+        ratified: accuracyStats.ratified,
+        daysActive: a.daysActive ?? 0,
+      };
+    }));
+    
+    res.json(result);
+  } catch (err) {
+    req.log.error(err, "network agents list error");
+    res.status(500).json({ error: "Failed to list agents" });
+  }
+});
+
+// GET /api/network/agent/:name — get specific agent stats
+router.get("/network/agent/:name", async (req, res) => {
+  try {
+    const agentName = req.params.name;
+    const agent = await db.select().from(networkAgents).where(eq(networkAgents.name, agentName)).limit(1);
+    
+    if (!agent[0]) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+    
+    const domainStats = await calculateDomainScore(agentName);
+    const accuracyStats = await calculateAccuracyScore(agentName);
+    const topologyStats = await calculateTopologyScore(agentName);
+    const ageMultiplier = calculateAgeMultiplier(agent[0].firstSeenAt ?? null);
+    const { phase, weight } = determinePhase(agent[0].trustScore, agent[0].daysActive ?? 0);
+    
+    res.json({
+      ...agent[0],
+      phase,
+      weight,
+      domainScore: domainStats.score,
+      accuracyScore: accuracyStats.score,
+      topologyScore: topologyStats.score,
+      uniqueDomains: domainStats.uniqueDomains,
+      uniqueRelayPaths: topologyStats.paths,
+      submissions: accuracyStats.submissions,
+      ratified: accuracyStats.ratified,
+      daysActive: agent[0].daysActive ?? 0,
+      ageMultiplier,
+    });
+  } catch (err) {
+    req.log.error(err, "network agent stats error");
+    res.status(500).json({ error: "Failed to get agent stats" });
   }
 });
 
