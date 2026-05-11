@@ -10,7 +10,10 @@ router.post("/run", async (req, res) => {
   try {
     const { question } = req.body as { question: string };
     
+    req.log.info({ question }, "Running benchmark");
+    
     if (!question?.trim()) {
+      req.log.error("No question provided");
       res.status(400).json({ error: "question is required" });
       return;
     }
@@ -98,8 +101,12 @@ router.post("/run", async (req, res) => {
     
     res.json(results);
   } catch (err) {
-    req.log.error(err, "Failed to run benchmark");
-    res.status(500).json({ error: "benchmark failed", details: String(err) });
+    req.log.error({ err }, "Failed to run benchmark");
+    res.status(500).json({ 
+      error: "benchmark failed", 
+      details: String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
   }
 });
 
