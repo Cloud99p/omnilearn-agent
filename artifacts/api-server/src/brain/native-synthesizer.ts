@@ -170,24 +170,29 @@ function determineConversationMode(
 ): "casual" | "factual" | "learning" {
   const lower = query.toLowerCase().trim();
   
-  // Check if this is clearly a factual question
+  // CRITICAL: Direct questions ALWAYS trigger factual mode
   const factualTriggers = [
     /^what (is|are|was|were|do|does|did|will|would)/,
     /^who (is|are|was|were|do|does|did)/,
     /^where (is|are|was|were|can|i)/,
     /^when (is|are|was|were|did|does)/,
     /^why (is|are|was|were|do|does|did)/,
-    /^how (does|do|did|can|could|would|will)/,
+    /^how (does|do|did|can|could|would|will|are|is)/,
     /^explain/,
     /^tell me (about|how|what|why|when|where)/,
     /^define/,
     /^describe/,
     /^what do you know/,
     /^can you (tell|explain|describe)/,
+    /^are you/,  // "Are you..." questions
+    /^is (it|this|that|the)/,  // "Is it..." questions
+    /^do (you|they|we)/,  // "Do you..." questions
+    /^does (it|this|that)/,  // "Does it..." questions
+    /\?$/,  // Ends with question mark
   ];
   
   if (factualTriggers.some(p => p.test(lower))) {
-    return "factual";
+    return "factual";  // ALWAYS answer questions!
   }
   
   // Check if teaching/learning mode (user is sharing facts)
@@ -197,25 +202,27 @@ function determineConversationMode(
     return "learning";
   }
   
-  // Check recent conversation history
-  const recentAssistantMessages = history
-    .filter((m, i) => i < history.length - 1 && m.role === 'assistant')
-    .slice(-2);
-  
-  // If last assistant message was casual, stay casual
-  const lastAssistantWasCasual = recentAssistantMessages.some(msg => {
-    const content = msg.content.toLowerCase();
-    return content.includes('how are you') || 
-           content.includes('what') && content.includes('you') ||
-           content.includes('?') && !content.includes(' is ') && !content.includes(' are ');
-  });
-  
-  if (lastAssistantWasCasual && !factualTriggers.some(p => p.test(lower))) {
+  // ONLY use casual mode for first 2 turns AND no questions asked
+  if (turnNumber < 2) {
     return "casual";
   }
   
-  // Default: start casual, switch to factual if question detected
-  return "casual";
+  // After turn 2, default to factual unless it's clearly small talk
+  const smallTalkPatterns = [
+    /^how are you/,
+    /^what'?s up/,
+    /^how'?s it going/,
+    /^what'?s new/,
+    /^nothing much/,
+    /^same here/,
+  ];
+  
+  if (smallTalkPatterns.some(p => p.test(lower))) {
+    return "casual";
+  }
+  
+  // Default: factual mode (ready to answer questions)
+  return "factual";
 }
 
 /**
@@ -583,8 +590,8 @@ export async function synthesizeNative(
 
   // CASUAL MODE: Keep conversation flowing naturally
   if (mode === "casual") {
-    // Check for greetings
-    if (isGreeting(query) || turnNumber < 3) {
+    // Check for greetings - ONLY on first turn
+    if (isGreeting(query) && turnNumber < 2) {
       return {
         text: buildGreetingResponse(query, character, history),
         nodesUsed: 0,
@@ -602,6 +609,22 @@ export async function synthesizeNative(
     if (isSeriousStatement(query)) {
       return {
         text: buildSeriousResponse(query, character),
+        nodesUsed: 0,
+        newNodesAdded: 0,
+        learnedFacts: [],
+        character: {
+          curiosity: character.curiosity,
+          confidence: character.confidence,
+          technical: character.technical,
+        },
+      };
+    }
+    
+    // Check for name introduction ("I'm Danny", "My name is...")
+    const nameIntro = detectIdentityStatement(query);
+    if (nameIntro) {
+      return {
+        text: `Nice to meet you, ${nameIntro}! I'm **Omni**. How can I help you today?`,
         nodesUsed: 0,
         newNodesAdded: 0,
         learnedFacts: [],
