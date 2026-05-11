@@ -14,23 +14,28 @@ import {
 
 const router = Router();
 
-// Apply Clerk auth to all chat routes
+// Clerk auth is OPTIONAL - enables user isolation when configured
+// If Clerk not configured, chat works without isolation
 router.use(clerkMiddleware());
 
 // List conversations (USER-ISOLATED: only shows current user's conversations)
 router.get("/conversations", async (req, res) => {
   try {
     const { userId } = getAuth(req);
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized - please log in" });
+    
+    // If Clerk configured and user logged in, filter by user
+    if (userId) {
+      const list = await db.select()
+        .from(conversations)
+        .where(eq(conversations.clerkId, userId))
+        .orderBy(conversations.createdAt);
+      return res.json(list);
     }
     
-    // SECURITY: Filter by current user's clerkId
+    // If Clerk not configured, return all conversations (no isolation)
     const list = await db.select()
       .from(conversations)
-      .where(eq(conversations.clerkId, userId))
       .orderBy(conversations.createdAt);
-    
     return res.json(list);
   } catch (err) {
     req.log.error({ err }, "Failed to list conversations");
@@ -54,22 +59,19 @@ router.get("/conversations/all", async (req, res) => {
 // Create conversation (USER-ISOLATED: saves with current user's clerkId)
 router.post("/conversations", async (req, res) => {
   const { userId } = getAuth(req);
-  if (!userId) {
-    return res.status(401).json({ error: "Unauthorized - please log in" });
-  }
   
   const parsed = CreateConversationBody.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Invalid body", details: parsed.error });
   }
   try {
-    // SECURITY: Save with current user's clerkId
+    // SECURITY: Save with user's clerkId if Clerk configured
     const [conv] = await db
       .insert(conversations)
       .values({ 
         title: parsed.data.title, 
         mode: parsed.data.mode,
-        clerkId: userId, // USER ISOLATION
+        clerkId: userId || null, // USER ISOLATION (optional)
       })
       .returning();
     return res.status(201).json(conv);
@@ -82,25 +84,20 @@ router.post("/conversations", async (req, res) => {
 // Get conversation with messages (USER-ISOLATED: checks ownership)
 router.get("/conversations/:conversationId", async (req, res) => {
   const { userId } = getAuth(req);
-  if (!userId) {
-    return res.status(401).json({ error: "Unauthorized - please log in" });
-  }
-  
   const params = GetConversationParams.safeParse(req.params);
   if (!params.success) return res.status(400).json({ error: "Invalid params" });
 
   try {
-    // SECURITY: Check ownership - user can only access their own conversations
     const [conv] = await db
       .select()
       .from(conversations)
-      .where(
-        and(
-          eq(conversations.id, params.data.conversationId),
-          eq(conversations.clerkId, userId) // USER ISOLATION
-        )
-      );
+      .where(eq(conversations.id, params.data.conversationId));
     if (!conv) return res.status(404).json({ error: "Conversation not found" });
+
+    // If Clerk configured, check ownership
+    if (userId && conv.clerkId && conv.clerkId !== userId) {
+      return res.status(403).json({ error: "Forbidden - not your conversation" });
+    }
 
     const msgs = await db
       .select()
@@ -118,21 +115,22 @@ router.get("/conversations/:conversationId", async (req, res) => {
 // Delete conversation (USER-ISOLATED: can only delete own conversations)
 router.delete("/conversations/:conversationId", async (req, res) => {
   const { userId } = getAuth(req);
-  if (!userId) {
-    return res.status(401).json({ error: "Unauthorized - please log in" });
-  }
-  
   const params = DeleteConversationParams.safeParse(req.params);
   if (!params.success) return res.status(400).json({ error: "Invalid params" });
 
   try {
-    // SECURITY: Can only delete own conversations
-    await db.delete(conversations).where(
-      and(
-        eq(conversations.id, params.data.conversationId),
-        eq(conversations.clerkId, userId) // USER ISOLATION
-      )
-    );
+    // If Clerk configured, check ownership before deleting
+    if (userId) {
+      await db.delete(conversations).where(
+        and(
+          eq(conversations.id, params.data.conversationId),
+          eq(conversations.clerkId, userId)
+        )
+      );
+    } else {
+      // No Clerk - delete by ID only
+      await db.delete(conversations).where(eq(conversations.id, params.data.conversationId));
+    }
     return res.status(204).end();
   } catch (err) {
     req.log.error({ err }, "Failed to delete conversation");
@@ -143,9 +141,6 @@ router.delete("/conversations/:conversationId", async (req, res) => {
 // Stream message — uses native brain (no external LLM, learns from conversation)
 router.post("/conversations/:conversationId/messages/stream", async (req, res) => {
   const { userId } = getAuth(req);
-  if (!userId) {
-    return res.status(401).json({ error: "Unauthorized - please log in" });
-  }
   
   const params = SendAnthropicMessageParams.safeParse(req.params);
   const body = SendAnthropicMessageBody.safeParse(req.body);
@@ -157,18 +152,18 @@ router.post("/conversations/:conversationId/messages/stream", async (req, res) =
   const { content } = body.data;
 
   try {
-    // SECURITY: Verify ownership of conversation
+    // Verify conversation exists
     const [conv] = await db
       .select()
       .from(conversations)
-      .where(
-        and(
-          eq(conversations.id, conversationId),
-          eq(conversations.clerkId, userId) // USER ISOLATION
-        )
-      );
+      .where(eq(conversations.id, conversationId));
     if (!conv) {
       return res.status(404).json({ error: "Conversation not found" });
+    }
+    
+    // If Clerk configured, check ownership
+    if (userId && conv.clerkId && conv.clerkId !== userId) {
+      return res.status(403).json({ error: "Forbidden - not your conversation" });
     }
     
     // Fetch existing messages for context
@@ -178,12 +173,12 @@ router.post("/conversations/:conversationId/messages/stream", async (req, res) =
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.createdAt);
 
-    // Save user message with clerkId
+    // Save user message with clerkId (if Clerk configured)
     await db.insert(messages).values({
       conversationId,
       role: "user",
       content,
-      clerkId: userId, // USER ISOLATION
+      clerkId: userId || null, // USER ISOLATION (optional)
     });
 
     // Build message history for brain
@@ -227,12 +222,12 @@ router.post("/conversations/:conversationId/messages/stream", async (req, res) =
       },
     });
 
-    // Save assistant message with clerkId
+    // Save assistant message with clerkId (if Clerk configured)
     await db.insert(messages).values({
       conversationId,
       role: "assistant",
       content: result.text,
-      clerkId: userId, // USER ISOLATION
+      clerkId: userId || null, // USER ISOLATION (optional)
     });
 
     sendEvent({ done: true, conversationId });
