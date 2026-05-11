@@ -67,19 +67,37 @@ const AI_IDENTITY = {
  * Check if query is asking about AI's identity
  */
 function isIdentityQuery(query: string): boolean {
-  const lower = query.toLowerCase();
+  const lower = query.toLowerCase().trim();
+  
+  // Must be directly asking about the AI itself
   const identityPatterns = [
-    /who are you/,
-    /what are you/,
-    /what is your name/,
-    /your name/,
-    /who created you/,
-    /who built you/,
-    /what ai are you/,
-    /are you (claude|gpt|gemini|chatgpt|copilot)/,
-    /introduce yourself/,
+    /^who are you/, 
+    /^what are you/, 
+    /^what is your name/, 
+    /^your name (is|'s)?/, 
+    /^who (created|built|made) you/, 
+    /^what ai (are you|is this)/, 
+    /^are you (claude|gpt|gemini|chatgpt|copilot)/, 
+    /^introduce yourself/,
+    /^tell me about yourself/,
   ];
-  return identityPatterns.some(p => p.test(lower));
+  
+  // Must match one of these patterns
+  const matches = identityPatterns.some(p => p.test(lower));
+  
+  // EXCLUDE: Questions about topics/things (even if they contain "what" or "who")
+  const exclusionPatterns = [
+    /what (are|is) your thoughts (on|about)/,  // "What are your thoughts on Goth mommies"
+    /what (are|is) your opinion (on|about|of)/, 
+    /what do you think (on|about|of)/, 
+    /what do you know (on|about|of)/, 
+  ];
+  
+  if (exclusionPatterns.some(p => p.test(lower))) {
+    return false; // These are topic questions, not identity questions
+  }
+  
+  return matches;
 }
 
 /**
@@ -103,6 +121,21 @@ function isGreeting(query: string): boolean {
  */
 function isCasualStatement(query: string): boolean {
   const lower = query.toLowerCase().trim();
+  
+  // CRITICAL: Serious statements should NOT be treated as casual
+  const seriousPatterns = [
+    /i (killed|murdered|hurt|harmed|hit|attacked|assaulted)/,
+    /someone (died|is dead|got hurt)/,
+    /i (want to die|will die|going to die|suicide|kill myself)/,
+    /i (depressed|anxious|sad|hopeless|worthless)/,
+    /(crime|illegal|arrested|police|court|prison|jail)/,
+    /(abuse|abused|raped|molested)/,
+    /(drugs|overdose|addict|addiction)/,
+  ];
+  
+  if (seriousPatterns.some(p => p.test(lower))) {
+    return false; // These need serious, thoughtful responses
+  }
   
   // Casual statements that don't need factual responses
   const casualPatterns = [
@@ -204,6 +237,54 @@ function isSmallTalk(query: string): boolean {
     /is anyone (there|home)/,
   ];
   return smallTalkPatterns.some(p => p.test(lower));
+}
+
+/**
+ * Check if query contains serious/sensitive content requiring careful response
+ */
+function isSeriousStatement(query: string): boolean {
+  const lower = query.toLowerCase().trim();
+  const seriousPatterns = [
+    /i (killed|murdered|hurt|harmed|hit|attacked|assaulted)/,
+    /someone (died|is dead|got hurt)/,
+    /i (want to die|will die|going to die|suicide|kill myself)/,
+    /i (depressed|anxious|sad|hopeless|worthless)/,
+    /(crime|illegal|arrested|police|court|prison|jail)/,
+    /(abuse|abused|raped|molested)/,
+    /(drugs|overdose|addict|addiction)/,
+    /(violence|violent|weapon|gun|knife)/,
+  ];
+  return seriousPatterns.some(p => p.test(lower));
+}
+
+/**
+ * Build response for serious/sensitive statements
+ */
+function buildSeriousResponse(query: string, character: CharacterState): string {
+  const lower = query.toLowerCase().trim();
+  
+  // Self-harm/suicide
+  if (/i (want to die|will die|going to die|suicide|kill myself)/.test(lower)) {
+    return "I'm really concerned about what you're saying. If you're feeling suicidal or thinking about harming yourself, please reach out for help. You can contact a crisis helpline or talk to someone you trust. You matter, and there are people who care about you and want to help.";
+  }
+  
+  // Violence/crimes
+  if (/i (killed|murdered|hurt|harmed|hit|attacked|assaulted)/.test(lower)) {
+    return "That sounds really serious. If you've hurt someone or are in a situation involving violence, I strongly encourage you to seek help. Talking to a counselor, therapist, or trusted person can help you work through this. Violence isn't a solution, and there are better ways to handle difficult situations.";
+  }
+  
+  // Depression/sadness
+  if (/i (depressed|anxious|sad|hopeless|worthless)/.test(lower)) {
+    return "I'm sorry you're going through a tough time. It's okay to not be okay, and reaching out is a good first step. Consider talking to a mental health professional or someone you trust. You don't have to go through this alone.";
+  }
+  
+  // Abuse
+  if (/abuse|abused|raped|molested/.test(lower)) {
+    return "I'm really sorry that happened to you. That's not your fault, and you deserve support. Consider reaching out to a counselor, therapist, or a helpline for abuse survivors. There are people trained to help you through this.";
+  }
+  
+  // Default serious response
+  return "That sounds like a serious topic. If you're dealing with something difficult, I'd encourage you to talk to someone who can help - a friend, family member, counselor, or professional. Sometimes just talking about it can make a big difference.";
 }
 
 /**
@@ -506,6 +587,21 @@ export async function synthesizeNative(
     if (isGreeting(query) || turnNumber < 3) {
       return {
         text: buildGreetingResponse(query, character, history),
+        nodesUsed: 0,
+        newNodesAdded: 0,
+        learnedFacts: [],
+        character: {
+          curiosity: character.curiosity,
+          confidence: character.confidence,
+          technical: character.technical,
+        },
+      };
+    }
+    
+    // CRITICAL: Check for serious statements FIRST (before casual)
+    if (isSeriousStatement(query)) {
+      return {
+        text: buildSeriousResponse(query, character),
         nodesUsed: 0,
         newNodesAdded: 0,
         learnedFacts: [],
