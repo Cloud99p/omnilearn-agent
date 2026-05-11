@@ -534,8 +534,8 @@ export async function synthesizeNative(
   }
 
   // FACTUAL MODE: Use knowledge graph and/or web search
-  // Filter to relevant nodes (similarity > 0.05)
-  const relevantNodes = nodes.filter(n => n.similarity > 0.05).slice(0, 8);
+  // Filter to relevant nodes (similarity > 0.02 - more lenient)
+  const relevantNodes = nodes.filter(n => n.similarity > 0.02).slice(0, 8);
   const nodesUsed = relevantNodes.length;
 
   // Detect if web search is needed (current events, news, recent facts)
