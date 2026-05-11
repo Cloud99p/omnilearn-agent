@@ -1279,8 +1279,14 @@ function synthesizeMainContent(
           content.includes('this application') ||
           content.includes('the system uses') ||
           content.includes('particles') ||
-          content.includes('pids')) {
-        return false; // Skip irrelevant technical nodes
+          content.includes('pids') ||
+          // Skip greeting/conversation rule nodes for factual questions
+          content.includes('when someone says') ||
+          content.includes('common greetings') ||
+          content.includes('natural conversation') ||
+          content.includes('don\'t over-explain') ||
+          content.includes('conversation starters')) {
+        return false; // Skip irrelevant nodes
       }
     }
     
