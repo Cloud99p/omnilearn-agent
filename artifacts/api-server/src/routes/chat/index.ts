@@ -199,8 +199,7 @@ router.post("/conversations/:conversationId/messages/stream", async (req, res) =
     };
 
     // Process through native brain (learns from conversation)
-    const clerkId = null;
-    const result = await processMessage(content, clerkId, history);
+    const result = await processMessage(content, userId || null, history);
 
     // Stream the response word-by-word
     const words = result.text.split(/(\s+)/);
