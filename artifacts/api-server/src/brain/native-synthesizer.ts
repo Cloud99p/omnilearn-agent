@@ -907,22 +907,46 @@ function detectNeedForWebSearch(
 ): boolean {
   const lower = query.toLowerCase();
 
-  // STRATEGY: Check database first, search web only when needed
-  // Priority: Knowledge Graph → Web Search (if insufficient)
+  // CRITICAL: Web search should be RARE - only for specific cases
 
-  // 1. NEVER search web for basic identity/self-knowledge questions
-  const identityTriggers = [
-    "what is your name", "who are you", "your name is",
-    "who created", "who built", "who made",
-    "what are you", "what is this",
-    "tell me about yourself", "introduce yourself",
+  // 1. NEVER search web for these (even with no knowledge):
+  const neverSearchPatterns = [
+    // Statements (not questions)
+    /^(i am|i'm|my name|call me|i'll|you are|you're|that's|it's|this is)/,
+    // Introductions/greetings
+    /^(hello|hi|hey|greetings|sup|yo|howdy)/,
+    // Emotional statements
+    /(not fine|stressed|sad|depressed|anxious|tired|exhausted|😭|😢|😔)/,
+    // Naming/identity
+    /(name you|call you|your name is|i'll name)/,
+    // Casual chat
+    /^(ou|aha|oh|wow|okay|ok|yeah|yep|nope|cool|nice|alright)/,
+    // Commands/requests to AI
+    /(remember this|learn this|forget|delete|add this)/,
   ];
   
-  if (identityTriggers.some(trigger => lower.includes(trigger))) {
-    return false; // Answer from knowledge graph, never web
+  if (neverSearchPatterns.some(p => p.test(lower))) {
+    return false; // NEVER search web for these
   }
 
-  // 2. ALWAYS search web for time-sensitive topics
+  // 2. ONLY search web for SPECIFIC factual questions:
+  const searchOnlyFor = [
+    /what (is|are|was|were|does|do|did|will|would) [a-z]/,  // "What is X" (with actual topic)
+    /who (is|are|was|were) [a-z]/,  // "Who is X" (with actual person)
+    /where (is|are) [a-z]/,  // "Where is X"
+    /when (is|are|was|were) [a-z]/,  // "When is X"
+    /why (is|are|does|do) [a-z]/,  // "Why is X"
+    /how (does|do|did|can) [a-z]/,  // "How does X work"
+  ];
+  
+  // Must match a factual question pattern
+  const isFactualQuestion = searchOnlyFor.some(p => p.test(lower));
+  
+  if (!isFactualQuestion) {
+    return false; // Not a factual question = no web search
+  }
+
+  // 3. ALWAYS search web for time-sensitive topics (ONLY if factual question)
   const timeTriggers = [
     "news", "current", "recent", "latest", "today", "yesterday", 
     "this week", "this month", "this year",
@@ -931,57 +955,22 @@ function detectNeedForWebSearch(
   ];
   
   if (timeTriggers.some(trigger => lower.includes(trigger))) {
-    return true; // These change frequently, always check web
+    return true; // Time-sensitive = always search
   }
 
-  // 3. If NO knowledge nodes found, DON'T search web by default
-  // Only search if query indicates time-sensitive or external info needed
-  if (nodes.length === 0) {
-    // Check if it's a general knowledge question (worth searching)
-    const generalKnowledgeQuestions = [
-      /what (is|are|was|were)/,
-      /who (is|are|was|were)/,
-      /where (is|are)/,
-      /when (is|are)/,
-      /why (is|are)/,
-      /how (does|do|did)/,
-    ];
-    
-    if (generalKnowledgeQuestions.some(p => p.test(lower))) {
-      return true; // Search web for general knowledge questions
-    }
-    
-    return false; // Don't search for emotional statements, opinions, etc.
+  // 4. If we have knowledge nodes, DON'T search (use what we have)
+  if (nodes.length > 0) {
+    return false; // Knowledge graph has answers
   }
 
-  // 3. If knowledge exists but has LOW confidence/similarity, search web to supplement
-  const bestNode = nodes.reduce((best, node) => 
-    node.similarity > best.similarity ? node : best, nodes[0]);
+  // 5. Final check: is this a general knowledge question worth searching?
+  // Must be 4+ words (not just "what is it")
+  const wordCount = lower.split(/\s+/).filter(w => w.length > 0).length;
+  if (wordCount < 4) {
+    return false; // Too short/vague to search
+  }
   
-  if (bestNode.similarity < 0.3) {
-    // We have SOME related knowledge, but not very relevant
-    // Search web to get better information
-    return true;
-  }
-
-  // 4. If we have GOOD knowledge (similarity > 0.5), DON'T search web
-  // Trust the knowledge graph for well-established topics
-  if (bestNode.similarity > 0.5 && nodes.length >= 2) {
-    return false; // Sufficient knowledge, no web search needed
-  }
-
-  // 5. For questions about facts that might have changed, search web
-  const factUpdateTriggers = [
-    "what is", "who is", "where is", "when is",
-  ];
-  
-  if (factUpdateTriggers.some(trigger => lower.startsWith(trigger))) {
-    // If we have moderate knowledge (0.3-0.5), search web to verify/update
-    return bestNode.similarity < 0.5;
-  }
-
-  // Default: Don't search web if we have decent knowledge
-  return false;
+  return true; // Factual question, no knowledge, worth searching
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
