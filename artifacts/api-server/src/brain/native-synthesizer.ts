@@ -907,43 +907,26 @@ function detectNeedForWebSearch(
 ): boolean {
   const lower = query.toLowerCase();
 
-  // CRITICAL: Web search should be RARE - only for specific cases
-
-  // 1. NEVER search web for these (even with no knowledge):
-  const neverSearchPatterns = [
-    // Statements (not questions)
-    /^(i am|i'm|my name|call me|i'll|you are|you're|that's|it's|this is)/,
-    // Introductions/greetings
-    /^(hello|hi|hey|greetings|sup|yo|howdy)/,
-    // Emotional statements
-    /(not fine|stressed|sad|depressed|anxious|tired|exhausted|😭|😢|😔)/,
-    // Naming/identity
-    /(name you|call you|your name is|i'll name)/,
-    // Casual chat
-    /^(ou|aha|oh|wow|okay|ok|yeah|yep|nope|cool|nice|alright)/,
-    // Commands/requests to AI
-    /(remember this|learn this|forget|delete|add this)/,
-  ];
+  // CRITICAL: Web search should be EXTREMELY RARE - disabled by default
   
-  if (neverSearchPatterns.some(p => p.test(lower))) {
-    return false; // NEVER search web for these
-  }
-
-  // 2. ONLY search web for SPECIFIC factual questions:
+  // 1. DISABLE WEB SEARCH BY DEFAULT - only enable for specific factual questions
+  // This prevents searching for statements, emotions, casual chat, etc.
+  
+  // 2. ONLY search web for THESE specific factual question patterns:
   const searchOnlyFor = [
-    /what (is|are|was|were|does|do|did|will|would) [a-z]/,  // "What is X" (with actual topic)
-    /who (is|are|was|were) [a-z]/,  // "Who is X" (with actual person)
-    /where (is|are) [a-z]/,  // "Where is X"
-    /when (is|are|was|were) [a-z]/,  // "When is X"
-    /why (is|are|does|do) [a-z]/,  // "Why is X"
-    /how (does|do|did|can) [a-z]/,  // "How does X work"
+    /^what (is|are|was|were) (the |a |an )?[a-z]{3,}/,  // "What is the..." (with actual topic 3+ letters)
+    /^who (is|are|was|were) [a-z]{3,}/,  // "Who is..." (person name 3+ letters)
+    /^where (is|are) [a-z]{3,}/,  // "Where is..."
+    /^when (is|are|was|were) [a-z]{3,}/,  // "When is..."
+    /^why (is|are|does|do) [a-z]{3,}/,  // "Why is..."
+    /^how (many|much|long|far|old|often) /,  // "How many..."
+    /^how (does|do|did|can|would) [a-z]{3,}/,  // "How does..."
   ];
   
-  // Must match a factual question pattern
   const isFactualQuestion = searchOnlyFor.some(p => p.test(lower));
   
   if (!isFactualQuestion) {
-    return false; // Not a factual question = no web search
+    return false; // NOT a factual question = NO web search
   }
 
   // 3. ALWAYS search web for time-sensitive topics (ONLY if factual question)
@@ -963,13 +946,6 @@ function detectNeedForWebSearch(
     return false; // Knowledge graph has answers
   }
 
-  // 5. Final check: is this a general knowledge question worth searching?
-  // Must be 4+ words (not just "what is it")
-  const wordCount = lower.split(/\s+/).filter(w => w.length > 0).length;
-  if (wordCount < 4) {
-    return false; // Too short/vague to search
-  }
-  
   return true; // Factual question, no knowledge, worth searching
 }
 
@@ -1273,26 +1249,37 @@ function synthesizeMainContent(
 
   // CRITICAL: Filter out IRRELEVANT technical nodes
   const queryLower = query.toLowerCase();
-  const isGeneralQuestion = !queryLower.includes('tf-idf') && 
-                            !queryLower.includes('semantic') && 
-                            !queryLower.includes('retrieval') &&
-                            !queryLower.includes('algorithm');
   
-  // Filter nodes - exclude technical docs if query is general
+  // Check if query is about the app itself
+  const isAppQuery = queryLower.includes('omnilearn') || 
+                     queryLower.includes('this app') ||
+                     queryLower.includes('this system') ||
+                     queryLower.includes('the agent') ||
+                     queryLower.includes('your knowledge') ||
+                     queryLower.includes('your memory');
+  
+  // Filter nodes - exclude technical docs UNLESS query is about the app
   const filteredNodes = nodes.filter(node => {
     const content = node.content.toLowerCase();
     
-    // Exclude nodes about the app itself for general questions
-    if (isGeneralQuestion) {
+    // For general questions, exclude app documentation
+    if (!isAppQuery) {
+      // Skip nodes that are clearly about the app's implementation
       if (content.includes('omnilearn') || 
-          content.includes('sse') || 
+          content.includes('sse ') ||  // "sse " not "ssetfidf"
           content.includes('server-sent') ||
           content.includes('health check') ||
+          content.includes('/api/') ||
           content.includes('endpoint') ||
-          content.includes('api route') ||
+          content.includes('route') ||
+          content.includes('sha-256') ||
+          content.includes('proof chain') ||
+          content.includes('hebbian') ||
+          content.includes('tf-idf') ||
           content.includes('this application') ||
-          content.includes('the agent') ||
-          content.includes('this system')) {
+          content.includes('the system uses') ||
+          content.includes('particles') ||
+          content.includes('pids')) {
         return false; // Skip irrelevant technical nodes
       }
     }
