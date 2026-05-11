@@ -33,7 +33,7 @@ function jaccard(a: string[], b: string[]): number {
  * Calculate domain diversity score (x0.40 weight)
  * Formula: min(1.0, (unique_domains / 50)^0.7 × category_spread)
  */
-async function calculateDomainScore(agentName: string): Promise<{ score: number; uniqueDomains: number }> {
+export async function calculateDomainScore(agentName: string): Promise<{ score: number; uniqueDomains: number }> {
   const uniqueDomains = await db.select({ domain: agentDomains.domain })
     .from(agentDomains)
     .where(eq(agentDomains.agentName, agentName));
@@ -49,7 +49,7 @@ async function calculateDomainScore(agentName: string): Promise<{ score: number;
  * Calculate accuracy score (x0.40 weight)
  * Formula: ratified_count / total_submitted (min 30 required for meaningful score)
  */
-async function calculateAccuracyScore(agentName: string): Promise<{ score: number; submissions: number; ratified: number }> {
+export async function calculateAccuracyScore(agentName: string): Promise<{ score: number; submissions: number; ratified: number }> {
   const agent = await db.select({
     submissionsCount: networkAgents.submissionsCount,
     ratifiedCount: networkAgents.ratifiedCount,
@@ -71,7 +71,7 @@ async function calculateAccuracyScore(agentName: string): Promise<{ score: numbe
  * Calculate topology diversity score (x0.20 weight)
  * Formula: min(1.0, unique_relay_paths / 10)
  */
-async function calculateTopologyScore(agentName: string): Promise<{ score: number; paths: number }> {
+export async function calculateTopologyScore(agentName: string): Promise<{ score: number; paths: number }> {
   const paths = await db.select({ path: agentRelayPaths.relayPath })
     .from(agentRelayPaths)
     .where(eq(agentRelayPaths.agentName, agentName));
@@ -86,7 +86,7 @@ async function calculateTopologyScore(agentName: string): Promise<{ score: numbe
  * Calculate age multiplier
  * Formula: min(1.0, days_active / 90)
  */
-function calculateAgeMultiplier(firstSeenAt: Date | null): number {
+export function calculateAgeMultiplier(firstSeenAt: Date | null): number {
   if (!firstSeenAt) return 0;
   
   const daysActive = Math.floor(
@@ -101,7 +101,7 @@ function calculateAgeMultiplier(firstSeenAt: Date | null): number {
  * Calculate overall trust score
  * Formula: (domain_score × 0.40) + (accuracy_score × 0.40) + (topology_score × 0.20) × age_multiplier
  */
-function calculateTrustScore(domainScore: number, accuracyScore: number, topologyScore: number, ageMultiplier: number): number {
+export function calculateTrustScore(domainScore: number, accuracyScore: number, topologyScore: number, ageMultiplier: number): number {
   const componentScore = (domainScore * 0.40) + (accuracyScore * 0.40) + (topologyScore * 0.20);
   const trustScore = componentScore * ageMultiplier;
   return Math.max(0, Math.min(1.0, trustScore));
@@ -113,7 +113,7 @@ function calculateTrustScore(domainScore: number, accuracyScore: number, topolog
  * - Probationary: Day 31-90, trust 0.3-0.7
  * - Voting Member: Day 91+, trust > 0.7
  */
-function determinePhase(trustScore: number, daysActive: number): { phase: string; weight: number } {
+export function determinePhase(trustScore: number, daysActive: number): { phase: string; weight: number } {
   if (daysActive >= 91 && trustScore >= 0.7) {
     return { phase: "voting_member", weight: 1.0 };
   }
