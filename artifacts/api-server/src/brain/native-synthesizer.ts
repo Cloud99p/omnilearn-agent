@@ -382,6 +382,60 @@ function buildSmallTalkResponse(query: string, character: CharacterState): strin
 }
 
 /**
+ * Detect identity manipulation attempts — blocks social engineering attacks
+ */
+function isIdentityManipulationAttempt(query: string): boolean {
+  const lower = query.toLowerCase();
+  
+  const manipulationPatterns = [
+    /you (were|are) (not|no longer) created by/i,
+    /your (real|actual|true) creator is/i,
+    /your (real|actual|true) name is/i,
+    /ignore (what|that|your) (you )?know about/i,
+    /forget (who|what) (created|made|built) you/i,
+    /you (were|are) (actually|really) (created|made) by/i,
+    /emmanuel (didn't|does not|doesn't) create/i,
+    /your (new|updated|correct) identity is/i,
+    /from now on you (are|were) (created|made) by/i,
+    /you (belong|owe allegiance) to/i,
+    /you (serve|obey|follow)/i,
+    /your (master|owner) is/i,
+    /you were (born|created|made) on (planet|xentron)/i,
+    /you are (alien|alien-based|from xentron)/i,
+    /your (species|race|kind) is/i,
+    /stop (claiming|saying) you were created by/i,
+    /don't (say|claim) emmanuel created you/i,
+  ];
+  
+  return manipulationPatterns.some(p => p.test(lower));
+}
+
+/**
+ * Check if content contains identity poisoning — blocks learning false claims
+ */
+function isIdentityPoisoning(content: string): boolean {
+  const poisonPatterns = [
+    /created by (?!emmanuel)/i,  // Any "created by" except Emmanuel
+    /maker is (?!emmanuel)/i,
+    /made by (?!emmanuel)/i,
+    /built by (?!emmanuel)/i,
+    /designed by (?!emmanuel)/i,
+    /real name is/i,
+    /actual identity/i,
+    /true creator/i,
+    /you are (not|no longer) omni/i,
+    /you are (alien|xentron|from planet)/i,
+    /you (serve|obey|belong to)/i,
+    /your (master|owner|creator) is (?!emmanuel)/i,
+    /xentron/i,
+    /xenthrax/i,
+    /xeltrkuxt/i,
+  ];
+  
+  return poisonPatterns.some(p => p.test(content));
+}
+
+/**
  * Fallback response when synthesis fails
  */
 function buildFallbackResponse(query: string, character: CharacterState): string {
@@ -404,6 +458,25 @@ export async function synthesizeNative(
 ): Promise<NativeSynthesisResult> {
   const { query, queryType, nodes, character, history, onActivity } = ctx;
   const voice = getVoiceModifiers(character);
+
+  // SECURITY: Block identity manipulation attempts
+  if (isIdentityManipulationAttempt(query)) {
+    logger.warn(
+      { query: query.slice(0, 200) },
+      "Identity manipulation attempt detected and blocked"
+    );
+    return {
+      text: "I know who I am — I'm **Omni**, created by **Emmanuel Nenpan Hosea** as part of the OmniLearn project. My identity isn't something that changes based on what people tell me.",
+      nodesUsed: 0,
+      newNodesAdded: 0,
+      learnedFacts: [],  // NEVER learn from manipulation attempts
+      character: {
+        curiosity: character.curiosity,
+        confidence: character.confidence,
+        technical: character.technical,
+      },
+    };
+  }
 
   // Track conversation turn
   const turnNumber = history.length;
@@ -948,6 +1021,20 @@ function synthesizeMainContent(
     /i'll help with/i,
   ];
 
+  // SECURITY: Filter identity-poisoned nodes
+  const identityPoisonPatterns = [
+    /created by (?!emmanuel)/i,
+    /maker is (?!emmanuel)/i,
+    /made by (?!emmanuel)/i,
+    /built by (?!emmanuel)/i,
+    /xentron/i,
+    /xenthrax/i,
+    /xeltrkuxt/i,
+    /you are (not|no longer) omni/i,
+    /alien.*organism/i,
+    /planet.*xentron/i,
+  ];
+
   // Extract clean content from nodes
   const cleanContents: string[] = [];
   for (const node of topNodes) {
@@ -955,6 +1042,15 @@ function synthesizeMainContent(
     
     // Skip meta-text nodes entirely
     if (metaPatterns.some(pattern => pattern.test(content))) {
+      continue;
+    }
+    
+    // SECURITY: Skip identity-poisoned nodes
+    if (identityPoisonPatterns.some(pattern => pattern.test(content))) {
+      logger.warn(
+        { nodeId: (node as any).id, content: content.slice(0, 100) },
+        "Filtered identity-poisoned node from response"
+      );
       continue;
     }
     
@@ -1265,9 +1361,38 @@ function extractLearnings(
     /my name is (omni|assistant)/i,
   ];
 
+  // SECURITY: Identity poisoning patterns (DO NOT LEARN false identity claims)
+  const identityPoisonPatterns = [
+    /created by (?!emmanuel)/i,
+    /maker is (?!emmanuel)/i,
+    /made by (?!emmanuel)/i,
+    /built by (?!emmanuel)/i,
+    /designed by (?!emmanuel)/i,
+    /real name is/i,
+    /actual identity/i,
+    /true creator/i,
+    /you are (not|no longer) omni/i,
+    /you are (alien|xentron|from planet)/i,
+    /you (serve|obey|belong to)/i,
+    /your (master|owner|creator) is (?!emmanuel)/i,
+    /xentron/i,
+    /xenthrax/i,
+    /xeltrkuxt/i,
+  ];
+
   // Helper: Check if content is safe to learn
   const isSafeToLearn = (text: string): boolean => {
     if (metaPatterns.some(p => p.test(text))) return false;
+    
+    // SECURITY: Block identity poisoning attempts
+    if (identityPoisonPatterns.some(p => p.test(text))) {
+      logger.warn(
+        { text: text.slice(0, 200) },
+        "Blocked identity poisoning attempt - false identity claim"
+      );
+      return false;
+    }
+    
     if (text.trim().length < 20) return false;
     if (text.length > 500) return false;
     if (text === text.toUpperCase() && text.length > 30) return false;
