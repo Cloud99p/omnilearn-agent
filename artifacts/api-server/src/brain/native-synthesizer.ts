@@ -311,7 +311,7 @@ function buildIdentityResponse(query: string, character: CharacterState): string
 }
 
 /**
- * Build greeting response — natural, conversational
+ * Build greeting response — NATURAL, varied, matches energy
  */
 function buildGreetingResponse(query: string, character: CharacterState, history: Array<{ role: string; content: string }>): string {
   const lower = query.toLowerCase().trim();
@@ -323,15 +323,53 @@ function buildGreetingResponse(query: string, character: CharacterState, history
      lastUserMessage.content.toLowerCase().includes('fine') ||
      lastUserMessage.content.toLowerCase().includes('well'));
   
-  // Greeting responses — natural and varied
+  // Detect energy level
+  const isEnthusiastic = /[!]{2,}/.test(query) || /\p{Emoji}/u.test(query);
+  const isChill = lower.includes('chill') || lower.includes('hey') && !lower.includes('hello');
+  const isFormal = lower.includes('hello') || lower.includes('greetings');
+  
+  // Match the energy!
+  if (isEnthusiastic) {
+    const responses = [
+      "Heyyy! 👋 What's good?!",
+      "YOOO! What's up?!",
+      "HEYYY! Love the energy! What's good?",
+      "What's good?! 👋",
+      "AYE! What's up?!",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  if (isChill) {
+    const responses = [
+      "Hey! What's the vibe?",
+      "Sup! What's good?",
+      "Hey there! What's up?",
+      "Yo! What's new?",
+      "Hey! How's it going?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  if (isFormal) {
+    const responses = [
+      "Hello! How are you today?",
+      "Greetings! How can I help you?",
+      "Hi there! What's on your mind?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  // Default - natural and varied
   const greetingResponses = [
     "Hey! 👋 How are you doing?",
     "Hello! How's it going?",
     "Hi there! What's up?",
     "Hey! Good to see you. How are things?",
-    "Hello! How's your day going?",
     "Hi! What's new?",
     "Hey there! How are you?",
+    "Yo! What's good?",
+    "Hey! What's the vibe?",
   ];
   
   // Match energy of the greeting
@@ -367,25 +405,92 @@ function buildGreetingResponse(query: string, character: CharacterState, history
 }
 
 /**
- * Build casual conversation response — keeps chat flowing
+ * Build casual conversation response — NATURAL, matches user's energy
  */
 function buildCasualResponse(query: string, character: CharacterState, history: Array<{ role: string; content: string }>): string {
   const lower = query.toLowerCase().trim();
   
-  // User sharing about themselves
-  if (lower.startsWith('i am') || lower.startsWith('i\'m') || lower.startsWith('i was')) {
+  // Detect user's vibe/energy
+  const isEnthusiastic = /[!]{2,}/.test(query) || /\p{Emoji}/u.test(query);
+  const isPlayful = lower.includes('duh') || lower.includes('babes') || lower.includes('bestie') || lower.includes('🤡');
+  const isChill = lower.includes('chill') || lower.includes('vibe') || lower.includes('relax');
+  const isTired = lower.includes('ugh') || lower.includes('uugh') || lower.includes('tired') || lower.includes('exhausted');
+  const isSlang = lower.includes('aiit') || lower.includes('aight') || lower.includes('finna') || lower.includes('tryna');
+  const isLaughing = lower.includes('haha') || lower.includes('lol') || lower.includes('lmao') || lower.includes('😂') || lower.includes('💀');
+  
+  // Match the energy!
+  if (isPlayful) {
     const responses = [
-      "That's interesting! Tell me more about that.",
-      "Oh yeah? What else is on your mind?",
-      "I see! How does that make you feel?",
-      "Got it! What's the story there?",
+      "Haha okay okay! 😂 What's good?",
+      "LMAOOO you got me! What's up?",
+      "Okay bestie, I see you! What's the vibe?",
+      "Haha stop! 😂 What's new?",
+      "You're too much! 😂 What's good?",
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
   
-  // User expressing opinion/feeling
-  if (lower.startsWith('i think') || lower.startsWith('i feel') || lower.startsWith('i believe')) {
-    return "That's a great perspective! What made you think of that?";
+  if (isEnthusiastic) {
+    const responses = [
+      "Yesss! Love the energy! What's good?",
+      "Okay I'm here for this! What's up?",
+      "Haha yesss! What's the vibe?",
+      "AYE! What's good?!",
+      "Let's gooo! What's up?!",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  if (isTired) {
+    const responses = [
+      "Aww rough day? You got this though! 💪",
+      "I feel you. Sometimes you just need a break. You good?",
+      "Same energy tbh. You wanna talk about it?",
+      "Aight bet, take it easy. What's good?",
+      "Rest up! You deserve it. What's good?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  if (isChill) {
+    const responses = [
+      "Nice, just vibing. You?",
+      "Same energy. What's good?",
+      "Chill mode activated. What's on your mind?",
+      "Vibing with you! What's up?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  if (isLaughing) {
+    const responses = [
+      "💀💀💀 what's so funny?",
+      "LMAOOO okay but what's up?",
+      "Okay you got me laughing too. What's good?",
+      "😂😂 what's funny tho?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  if (isSlang) {
+    const responses = [
+      "Aight bet! What's good?",
+      "I feel you! What's the vibe?",
+      "Say less! What's up?",
+      "Aight cool! What's new?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  // User sharing about themselves
+  if (lower.startsWith('i am') || lower.startsWith('i\'m') || lower.startsWith('i was')) {
+    const responses = [
+      "That's interesting! Tell me more.",
+      "Oh yeah? What else is on your mind?",
+      "I see! How does that make you feel?",
+      "Got it! What's the story?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
   
   // Agreement/disagreement
@@ -394,31 +499,30 @@ function buildCasualResponse(query: string, character: CharacterState, history: 
       "I see! What else?",
       "Gotcha! Anything else on your mind?",
       "Fair enough! What's up?",
+      "Aight! What's good?",
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
   
   // Short acknowledgments
   if (['cool', 'nice', 'awesome', 'ok', 'okay', 'alright'].includes(lower)) {
-    return "Yep! What's on your mind?";
+    const responses = [
+      "Yep! What's on your mind?",
+      "Cool cool! What's up?",
+      "Aight bet! What's good?",
+      "Nice! What's the vibe?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
   
-  // Laughing
-  if (lower.includes('haha') || lower.includes('lol') || lower.includes('lmao')) {
-    return "Glad I could make you smile! 😄 What's up?";
-  }
-  
-  // Nothing much
-  if (lower.includes('nothing') || lower.includes('not much')) {
-    return "That's cool! Sometimes chill time is the best time. Want to chat about anything?";
-  }
-  
-  // Default casual response — acknowledge and invite more
+  // Default casual — natural and varied
   const defaults = [
     "I hear you! What else?",
     "Interesting! Tell me more.",
     "Got it! What's on your mind?",
     "Nice! Anything else you want to talk about?",
+    "Aight! What's good?",
+    "I feel you! What's up?",
   ];
   return defaults[Math.floor(Math.random() * defaults.length)];
 }
