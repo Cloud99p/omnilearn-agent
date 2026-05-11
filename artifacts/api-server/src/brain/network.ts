@@ -79,6 +79,9 @@ export async function runDecay(): Promise<void> {
 
 // ─── Core: contribute neurons ─────────────────────────────────────────────────
 
+// NOTE: This function is only called for local "self" contributions
+// External network contributions are disabled (see /api/network/contribute)
+
 export async function contributeNeurons(
   items: Array<{ content: string; type?: string; tags?: string[] }>,
   agentName = "self",
@@ -88,7 +91,7 @@ export async function contributeNeurons(
 
   await touchAgent(agentName, agentEndpoint);
 
-  // SAFEGUARD: Content moderation for shared network
+  // SAFEGUARD: Content moderation
   const { approved, rejected } = moderateBatch(items);
   
   if (rejected.length > 0) {
@@ -110,13 +113,6 @@ export async function contributeNeurons(
   if (!items.length) {
     return { added: 0, reinforced: 0, synapses: 0 };
   }
-
-  // SECURITY: 90-day probation period for external agents
-  const PROBATION_DAYS = 90;
-  const probationUntil = agentName !== "self" 
-    ? new Date(Date.now() + PROBATION_DAYS * 24 * 60 * 60 * 1000)
-    : null;
-  const isProbation = agentName !== "self";
 
   // Load recent neurons for dedup
   const recent = await db.select({
@@ -158,20 +154,10 @@ export async function contributeNeurons(
         weight: 1.0,
         sourceAgent: agentName,
         tokens: tok,
-        probationUntil,
-        isProbation,
-        positiveVotes: 0,
-        negativeVotes: 0,
-        voteScore: 0.0,
       }).returning({ id: networkNeurons.id });
       batchIds.push(neu.id);
       added++;
       recent.push({ id: neu.id, tokens: tok }); // prevent re-dedup in same batch
-      
-      logger.info(
-        { neuronId: neu.id, agent: agentName, probationUntil, isProbation },
-        `New neuron ${isProbation ? `in ${PROBATION_DAYS}-day probation` : 'as core neuron'}`
-      );
     }
   }
 
@@ -252,29 +238,16 @@ export async function queryNetwork(
 ): Promise<Array<{ id: number; content: string; type: string; weight: number; similarity: number }>> {
   const tokens = tokenize(text);
   
-  // SECURITY: Filter out neurons still in probation period (for external agents)
-  const now = new Date();
+  // Query local network neurons (external contributions disabled)
   const all = await db.select({
     id: networkNeurons.id,
     content: networkNeurons.content,
     type: networkNeurons.type,
     weight: networkNeurons.weight,
     tokens: networkNeurons.tokens,
-    isProbation: networkNeurons.isProbation,
-    probationUntil: networkNeurons.probationUntil,
-  }).from(networkNeurons)
-    .orderBy(desc(networkNeurons.weight))
-    .limit(500);
-  
-  // Filter: exclude probation neurons unless they're from "self" or probation has expired
-  const eligible = all.filter(n => {
-    if (!n.isProbation) return true; // Core neurons always included
-    if (agentName === "self") return true; // Self can see all
-    if (!n.probationUntil) return true; // No probation set
-    return new Date(n.probationUntil) <= now; // Probation expired
-  });
+  }).from(networkNeurons).orderBy(desc(networkNeurons.weight)).limit(500);
 
-  const scored = eligible
+  const scored = all
     .map(n => ({ ...n, similarity: jaccard(tokens, n.tokens as string[]) }))
     .filter(n => n.similarity > 0.05 || n.weight > 3)
     .sort((a, b) => (b.weight * 0.4 + b.similarity * 0.6) - (a.weight * 0.4 + a.similarity * 0.6))
