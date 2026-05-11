@@ -953,8 +953,25 @@ function synthesizeFromWeb(
   
   // Process fetched content first (full page = more reliable)
   if (fetchedContent) {
-    // Extract 2-3 key sentences from the fetched page
-    const sentences = fetchedContent.text.split(/[.!?]+/).filter(s => s.trim().length > 20);
+    // AGGRESSIVE CLEANING: Remove Wikipedia/navigation garbage
+    let cleanedText = fetchedContent.text
+      // Remove Wikipedia navigation elements
+      .replace(/\[Jump to content\].*/gi, "")
+      .replace(/\[-?x\]? Main menu/gi, "")
+      .replace(/move to sidebar (hide|show)/gi, "")
+      .replace(/Navigation\s*\*\s*\[Main page\]/gi, "")
+      .replace(/\[Contents\].*/gi, "")
+      .replace(/\[Main page\].*/gi, "")
+      .replace(/Visit the main page \[z\]/gi, "")
+      // Remove markdown links that are navigation
+      .replace(/\*\s*\[.*?\]\(.*?\)\s*".*?"/gi, "")
+      // Remove short lines (likely navigation)
+      .split('\n')
+      .filter(line => line.trim().length > 30)
+      .join('\n');
+    
+    // Extract 2-3 key sentences from the cleaned page
+    const sentences = cleanedText.split(/[.!?]+/).filter(s => s.trim().length > 20);
     const topSentences = sentences.slice(0, 3).map(s => s.trim() + ".");
     keyPoints.push(...topSentences);
   }
