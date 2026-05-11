@@ -22,6 +22,7 @@ import configRouter from "./config.js";
 import benchmarkRouter from "./benchmark.js";
 import storageRouter from "./storage.js";
 import repositoriesRouter from "./repositories.js";
+import documentsRouter from "./documents.js";
 import { defaultLimiter, chatLimiter, skillCreateLimiter, githubLimiter } from "../middlewares/rateLimit";
 
 const router: IRouter = Router();
@@ -52,5 +53,6 @@ router.use("/config", defaultLimiter, configRouter); // Configuration
 router.use("/benchmark", defaultLimiter, benchmarkRouter); // Benchmarks
 router.use("/storage", defaultLimiter, storageRouter); // Storage stats
 router.use("/repositories", defaultLimiter, repositoriesRouter); // Repositories
+router.use("/documents", defaultLimiter, documentsRouter); // Document ingestion
 
 export default router;
