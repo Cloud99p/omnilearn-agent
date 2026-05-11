@@ -2,7 +2,19 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { networkNeurons, networkSynapses, networkAgents, networkPulses } from "@workspace/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
-import { contributeNeurons, queryNetwork, getNetworkStats, runDecay } from "../brain/network.js";
+import { 
+  contributeNeurons, 
+  queryNetwork, 
+  getNetworkStats, 
+  runDecay,
+  voteOnNeuron,
+  ratifyNeuron,
+  calculateDomainScore,
+  calculateAccuracyScore,
+  calculateTopologyScore,
+  calculateAgeMultiplier,
+  determinePhase
+} from "../brain/network.js";
 
 const router = Router();
 
@@ -310,6 +322,7 @@ router.get("/network/agents", async (req, res) => {
         submissions: accuracyStats.submissions,
         ratified: accuracyStats.ratified,
         daysActive: a.daysActive ?? 0,
+        ageMultiplier,
       };
     }));
     
