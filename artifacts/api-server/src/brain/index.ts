@@ -94,6 +94,7 @@ export async function retrieveRelevantNodes(
 
   const allVectors = filteredNodes.map(n => n.tfidfVector as Record<string, number>);
 
+  // 1. Try semantic search first
   const scored: RetrievedNode[] = filteredNodes
     .map(node => {
       const nodeVec = node.tfidfVector as Record<string, number>;
@@ -101,11 +102,51 @@ export async function retrieveRelevantNodes(
       const similarity = queryScore(queryTokens, nodeTokens, nodeVec, allVectors);
       return { ...node, similarity };
     })
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, topK);
+    .sort((a, b) => b.similarity - a.similarity);
 
-  // Bump access count for top results
-  const topIds = scored.filter(n => n.similarity > 0.1).map(n => n.id);
+  // 2. If semantic search returns nothing relevant, try direct keyword match
+  const semanticResults = scored.filter(n => n.similarity > 0.05).slice(0, topK);
+  
+  if (semanticResults.length === 0) {
+    // Fallback: direct keyword/content match
+    const queryLower = query.toLowerCase();
+    const keywordResults = filteredNodes
+      .map(node => {
+        // Check if query keywords appear in content
+        const contentLower = node.content.toLowerCase();
+        const hasKeywordMatch = queryTokens.some(token => contentLower.includes(token));
+        
+        // Check if query appears in content (for exact phrases)
+        const hasExactMatch = contentLower.includes(queryLower);
+        
+        let similarity = 0;
+        if (hasExactMatch) similarity = 0.9;
+        else if (hasKeywordMatch) similarity = 0.3;
+        
+        return { ...node, similarity };
+      })
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, topK);
+    
+    // Use keyword results if they're better than semantic
+    if (keywordResults.length > 0 && keywordResults[0].similarity > 0.1) {
+      // Bump access count
+      const topIds = keywordResults.filter(n => n.similarity > 0.1).map(n => n.id);
+      if (topIds.length > 0) {
+        await Promise.all(
+          topIds.map(id =>
+            db.update(knowledgeNodes)
+              .set({ timesAccessed: sql`times_accessed + 1` })
+              .where(eq(knowledgeNodes.id, id))
+          )
+        );
+      }
+      return keywordResults;
+    }
+  }
+
+  // 3. Bump access count for top results
+  const topIds = semanticResults.filter(n => n.similarity > 0.1).map(n => n.id);
   if (topIds.length > 0) {
     await Promise.all(
       topIds.map(id =>
@@ -116,7 +157,7 @@ export async function retrieveRelevantNodes(
     );
   }
 
-  return scored;
+  return semanticResults;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
