@@ -104,8 +104,16 @@ export async function retrieveRelevantNodes(
     })
     .sort((a, b) => b.similarity - a.similarity);
 
-  // 2. If semantic search returns nothing relevant, try direct keyword match
-  const semanticResults = scored.filter(n => n.similarity > 0.05).slice(0, topK);
+  // 2. Filter by similarity threshold AND exclude low-quality matches
+  const semanticResults = scored.filter(n => {
+    // Only include nodes with good similarity (> 0.15, up from 0.05)
+    if (n.similarity <= 0.15) return false;
+    
+    // Exclude "rule" type nodes for factual questions (they're instructions, not facts)
+    if (n.type === "rule" && queryType !== "command") return false;
+    
+    return true;
+  }).slice(0, topK);
   
   if (semanticResults.length === 0) {
     // Fallback: direct keyword/content match
