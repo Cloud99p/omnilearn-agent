@@ -15,6 +15,15 @@ export const networkNeurons = pgTable("network_neurons", {
   lastReinforcedAt: timestamp("last_reinforced_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  
+  // SECURITY: Probation period for new neurons (90 days before voting eligibility)
+  probationUntil: timestamp("probation_until", { withTimezone: true }),
+  isProbation: boolean("is_probation").notNull().default(true),
+  
+  // Voting system
+  positiveVotes: integer("positive_votes").notNull().default(0),
+  negativeVotes: integer("negative_votes").notNull().default(0),
+  voteScore: real("vote_score").notNull().default(0.0),
 });
 
 export const networkSynapses = pgTable("network_synapses", {
