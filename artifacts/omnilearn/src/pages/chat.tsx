@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link, useSearch, useLocation } from "wouter";
+import { useAuth } from "@clerk/react";
 
 // Use Railway API URL directly (Vercel proxy unreliable)
 const BASE = import.meta.env.VITE_API_URL || import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -196,8 +197,15 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modeInitialized = useRef(false);
+  const { getToken } = useAuth();
 
   const installedSkillIds = skills.filter(s => s.isInstalled).map(s => s.id);
+
+  // Helper to get auth headers
+  const getAuthHeaders = async () => {
+    const token = await getToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(scrollToBottom, [messages, streamingContent]);
@@ -271,7 +279,8 @@ export default function Chat() {
 
   const fetchConversations = async () => {
     try {
-      const res = await fetch(`${BASE}/api/anthropic/conversations`);
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${BASE}/api/anthropic/conversations`, { headers });
       if (res.ok) {
         const all = await res.json();
         // Filter conversations by current mode to prevent cross-mode leakage
@@ -301,7 +310,8 @@ export default function Chat() {
   const loadConversationById = async (id: number) => {
     setLoadingConv(true);
     try {
-      const res = await fetch(`${BASE}/api/anthropic/conversations/${id}`);
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${BASE}/api/anthropic/conversations/${id}`, { headers });
       if (res.ok) {
         const data = await res.json();
         setMessages(data.messages || []);
@@ -318,7 +328,8 @@ export default function Chat() {
   const loadConversation = async (id: number) => {
     setLoadingConv(true);
     try {
-      const res = await fetch(`${BASE}/api/anthropic/conversations/${id}`);
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${BASE}/api/anthropic/conversations/${id}`, { headers });
       if (res.ok) {
         const data = await res.json();
         setMessages(data.messages || []);
@@ -335,9 +346,10 @@ export default function Chat() {
 
   const createConversation = async (firstMessage = "") => {
     const title = firstMessage.slice(0, 60) || "New conversation";
+    const headers = await getAuthHeaders();
     const res = await fetch(`${BASE}/api/anthropic/conversations`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ title, mode }),
     });
     if (!res.ok) throw new Error("Failed to create conversation");
@@ -363,7 +375,8 @@ export default function Chat() {
 
   const deleteConversation = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    await fetch(`${BASE}/api/anthropic/conversations/${id}`, { method: "DELETE" });
+    const headers = await getAuthHeaders();
+    await fetch(`${BASE}/api/anthropic/conversations/${id}`, { method: "DELETE", headers });
     setConversations(prev => prev.filter(c => c.id !== id));
     if (activeConvId === id) { setActiveConvId(null); setMessages([]); }
     if (nativeConvId === id) { setNativeConvId(null); setMessages([]); }
@@ -382,9 +395,10 @@ export default function Chat() {
     try {
       let convId = nativeConvId;
       if (!convId) convId = await createConversation();
+      const headers = await getAuthHeaders();
       const res = await fetch(`${BASE}/api/omni/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({ content, conversationId: convId }),
       });
       if (!res.ok || !res.body) throw new Error("Stream failed");
@@ -436,9 +450,10 @@ export default function Chat() {
     setGhostFallback(false);
 
     try {
+      const headers = await getAuthHeaders();
       const res = await fetch(`${BASE}/api/ghost/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({ content, conversationId: ghostConvId }),
       });
       if (!res.ok || !res.body) throw new Error("Stream failed");
@@ -494,9 +509,10 @@ export default function Chat() {
         setActiveConvId(convId);
       }
 
+      const headers = await getAuthHeaders();
       const res = await fetch(`${BASE}/api/local/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({ content, conversationId: convId }),
       });
       if (!res.ok || !res.body) throw new Error("Stream failed");
