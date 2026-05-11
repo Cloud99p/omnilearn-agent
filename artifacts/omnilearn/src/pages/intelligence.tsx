@@ -455,6 +455,8 @@ export default function IntelligencePage() {
   const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(true);
   const [trainText, setTrainText] = useState("");
+  const [trainUrl, setTrainUrl] = useState("");
+  const [trainUrls, setTrainUrls] = useState(""); // For research mode (multiple URLs)
   const [trainSource, setTrainSource] = useState("manual");
   const [training, setTraining] = useState(false);
   const [trainResult, setTrainResult] = useState<{ added: number; skipped: number; message: string } | null>(null);
@@ -648,19 +650,42 @@ export default function IntelligencePage() {
   };
 
   const handleTrain = async () => {
-    if (!trainText.trim() || training) return;
     setTraining(true); setTrainResult(null);
     try {
+      let payload: any = { source: trainSource };
+      
+      // Different source types have different input requirements
+      if (trainSource === "manual") {
+        if (!trainText.trim()) throw new Error("Please paste some text to train");
+        payload.text = trainText;
+      } else if (trainSource === "document") {
+        if (!trainText.trim() && !trainUrl.trim()) throw new Error("Paste document text OR provide a URL");
+        if (trainText.trim()) payload.text = trainText;
+        if (trainUrl.trim()) payload.url = trainUrl;
+      } else if (trainSource === "web") {
+        if (!trainUrl.trim()) throw new Error("Please enter a URL to fetch");
+        payload.url = trainUrl;
+      } else if (trainSource === "research") {
+        if (!trainUrls.trim()) throw new Error("Please enter URLs to research");
+        payload.urls = trainUrls.split("\n").filter(u => u.trim()).map(u => u.trim());
+      }
+      
       const res = await fetch(`${BASE}/api/omni/train`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: trainText, source: trainSource }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         const result = await res.json();
-        setTrainResult(result); setTrainText("");
+        setTrainResult(result);
+        // Clear inputs based on source type
+        if (trainSource === "manual" || trainSource === "document") setTrainText("");
+        if (trainSource === "document" || trainSource === "web") setTrainUrl("");
+        if (trainSource === "research") setTrainUrls("");
         fetchStats(); fetchCharacter();
       }
+    } catch (err: any) {
+      setTrainResult({ added: 0, message: err.message || "Training failed" });
     } finally { setTraining(false); }
   };
 
@@ -1219,15 +1244,15 @@ export default function IntelligencePage() {
               </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <span className="font-mono text-xs text-muted-foreground pt-2">Source:</span>
               {["manual", "document", "web", "research"].map(src => (
                 <button
                   key={src}
                   onClick={() => setTrainSource(src)}
                   className={cn(
-                    "px-2.5 py-1 rounded-md font-mono text-xs border transition-all",
-                    trainSource === src ? "bg-primary/10 border-primary/30 text-primary" : "border-border/40 text-muted-foreground hover:text-foreground"
+                    "px-3 py-1.5 rounded-md font-mono text-xs border transition-all capitalize",
+                    trainSource === src ? "bg-primary/10 border-primary/30 text-primary font-bold" : "border-border/40 text-muted-foreground hover:text-foreground hover:border-primary/20"
                   )}
                 >
                   {src}
@@ -1235,21 +1260,110 @@ export default function IntelligencePage() {
               ))}
             </div>
 
-            <textarea
-              value={trainText}
-              onChange={e => setTrainText(e.target.value)}
-              placeholder={"Paste text to teach OmniLearn. For example:\n\nMachine learning is a subset of artificial intelligence. Neural networks are computational models inspired by the brain. Gradient descent is an optimisation algorithm used to train neural networks by minimising loss functions..."}
-              rows={10}
-              className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/30 resize-none"
-            />
+            {/* MANUAL: Paste text */}
+            {trainSource === "manual" && (
+              <>
+                <textarea
+                  value={trainText}
+                  onChange={e => setTrainText(e.target.value)}
+                  placeholder={"Paste text to teach OmniLearn. For example:\n\nMachine learning is a subset of artificial intelligence. Neural networks are computational models inspired by the brain. Gradient descent is an optimisation algorithm used to train neural networks by minimising loss functions..."}
+                  rows={10}
+                  className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/30 resize-none"
+                />
+                <div className="font-mono text-xs text-muted-foreground">
+                  {trainText.length} characters · ~{Math.max(0, trainText.split(/\s+/).filter(Boolean).length)} words
+                </div>
+              </>
+            )}
+
+            {/* DOCUMENT: Paste text OR provide URL */}
+            {trainSource === "document" && (
+              <div className="space-y-3">
+                <div>
+                  <label className="font-mono text-xs text-muted-foreground mb-2 block">Option 1: Paste document text</label>
+                  <textarea
+                    value={trainText}
+                    onChange={e => setTrainText(e.target.value)}
+                    placeholder={"Paste article, paper, or document content...\n\nExample:\nDeep learning is a subset of machine learning that uses neural networks with many layers..."}
+                    rows={8}
+                    className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/30 resize-none"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-px bg-border/40" />
+                  <span className="font-mono text-xs text-muted-foreground">OR</span>
+                  <div className="flex-1 h-px bg-border/40" />
+                </div>
+                <div>
+                  <label className="font-mono text-xs text-muted-foreground mb-2 block">Option 2: Provide document URL</label>
+                  <input
+                    type="url"
+                    value={trainUrl}
+                    onChange={e => setTrainUrl(e.target.value)}
+                    placeholder="https://example.com/document.pdf or https://arxiv.org/paper/..."
+                    className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/30"
+                  />
+                </div>
+                <div className="font-mono text-xs text-muted-foreground">
+                  {trainText.length} characters · ~{Math.max(0, trainText.split(/\s+/).filter(Boolean).length)} words
+                  {trainUrl && ` | URL: ${trainUrl.slice(0, 50)}${trainUrl.length > 50 ? '...' : ''}`}
+                </div>
+              </div>
+            )}
+
+            {/* WEB: Single URL input */}
+            {trainSource === "web" && (
+              <div className="space-y-2">
+                <label className="font-mono text-xs text-muted-foreground">Enter URL to fetch and train from:</label>
+                <input
+                  type="url"
+                  value={trainUrl}
+                  onChange={e => setTrainUrl(e.target.value)}
+                  placeholder="https://example.com/article or https://news.ycombinator.com/..."
+                  className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/30"
+                />
+                {trainUrl && (
+                  <div className="font-mono text-xs text-muted-foreground truncate">
+                    Fetching from: {trainUrl}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* RESEARCH: Multiple URLs */}
+            {trainSource === "research" && (
+              <div className="space-y-2">
+                <label className="font-mono text-xs text-muted-foreground">Enter URLs (one per line) to research:</label>
+                <textarea
+                  value={trainUrls}
+                  onChange={e => setTrainUrls(e.target.value)}
+                  placeholder={"https://arxiv.org/paper/123\nhttps://example.com/research\nhttps://news.ycombinator.com/item?id=456"}
+                  rows={8}
+                  className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/30 resize-none"
+                />
+                {trainUrls && (
+                  <div className="font-mono text-xs text-muted-foreground">
+                    {trainUrls.split("\n").filter(u => u.trim()).length} URL(s) to fetch
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center justify-between">
               <span className="font-mono text-xs text-muted-foreground">
-                {trainText.length} characters · ~{Math.max(0, trainText.split(/\s+/).filter(Boolean).length)} words
+                {trainSource === "manual" && `${trainText.length} characters · ~${Math.max(0, trainText.split(/\s+/).filter(Boolean).length)} words`}
+                {trainSource === "document" && `${trainText.length} chars${trainUrl ? ` + URL` : ''}`}
+                {trainSource === "web" && (trainUrl ? `URL ready` : `Enter URL`)}
+                {trainSource === "research" && `${trainUrls.split("\n").filter(u => u.trim()).length} URL(s)`}
               </span>
               <button
                 onClick={handleTrain}
-                disabled={training || trainText.trim().length < 10}
+                disabled={training || (
+                  (trainSource === "manual" && trainText.trim().length < 10) ||
+                  (trainSource === "document" && !trainText.trim() && !trainUrl.trim()) ||
+                  (trainSource === "web" && !trainUrl.trim()) ||
+                  (trainSource === "research" && !trainUrls.trim())
+                )}
                 className="px-6 py-2.5 bg-primary text-background rounded-xl font-mono text-sm font-bold hover:bg-primary/80 disabled:opacity-40 transition-all flex items-center gap-2"
               >
                 {training ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
