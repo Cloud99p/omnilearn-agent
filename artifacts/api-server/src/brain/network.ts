@@ -1,6 +1,14 @@
 import { db } from "@workspace/db";
-import { networkNeurons, networkSynapses, networkAgents, networkPulses } from "@workspace/db/schema";
-import { eq, desc, sql, and, count, sum, avg, max } from "drizzle-orm";
+import { 
+  networkNeurons, 
+  networkSynapses, 
+  networkAgents, 
+  networkPulses,
+  networkVotes,
+  agentDomains,
+  agentRelayPaths
+} from "@workspace/db/schema";
+import { eq, desc, sql, and, count, sum, avg, max, inArray } from "drizzle-orm";
 import { moderateBatch, logModerationAudit } from "../lib/moderation.js";
 import { logger } from "../lib/logger.js";
 
@@ -16,21 +24,184 @@ function jaccard(a: string[], b: string[]): number {
   const setB = new Set(b);
   let inter = 0;
   for (const t of setA) if (setB.has(t)) inter++;
-  return inter / new Set([...setA, ...setB]).size;
+  return inter / new Set([...a, ...b]).size;
 }
 
-// ─── Agent management ─────────────────────────────────────────────────────────
+// ─── Reputation Score Calculation ──────────────────────────────────────────────
 
-async function touchAgent(name: string, endpoint?: string): Promise<void> {
-  await db.insert(networkAgents).values({
+/**
+ * Calculate domain diversity score (x0.40 weight)
+ * Formula: min(1.0, (unique_domains / 50)^0.7 × category_spread)
+ */
+async function calculateDomainScore(agentName: string): Promise<{ score: number; uniqueDomains: number }> {
+  const uniqueDomains = await db.select({ domain: agentDomains.domain })
+    .from(agentDomains)
+    .where(eq(agentDomains.agentName, agentName));
+  
+  const domainCount = uniqueDomains.length;
+  // Base score: (domains / 50)^0.7, capped at 1.0
+  const baseScore = Math.min(1.0, Math.pow(domainCount / 50, 0.7));
+  
+  return { score: baseScore, uniqueDomains: domainCount };
+}
+
+/**
+ * Calculate accuracy score (x0.40 weight)
+ * Formula: ratified_count / total_submitted (min 30 required for meaningful score)
+ */
+async function calculateAccuracyScore(agentName: string): Promise<{ score: number; submissions: number; ratified: number }> {
+  const agent = await db.select({
+    submissionsCount: networkAgents.submissionsCount,
+    ratifiedCount: networkAgents.ratifiedCount,
+  }).from(networkAgents).where(eq(networkAgents.name, agentName)).limit(1);
+  
+  const submissions = agent[0]?.submissionsCount ?? 0;
+  const ratified = agent[0]?.ratifiedCount ?? 0;
+  
+  // Need at least 30 submissions for meaningful accuracy score
+  if (submissions < 30) {
+    return { score: 0, submissions, ratified };
+  }
+  
+  const score = ratified / submissions;
+  return { score, submissions, ratified };
+}
+
+/**
+ * Calculate topology diversity score (x0.20 weight)
+ * Formula: min(1.0, unique_relay_paths / 10)
+ */
+async function calculateTopologyScore(agentName: string): Promise<{ score: number; paths: number }> {
+  const paths = await db.select({ path: agentRelayPaths.relayPath })
+    .from(agentRelayPaths)
+    .where(eq(agentRelayPaths.agentName, agentName));
+  
+  const pathCount = paths.length;
+  const score = Math.min(1.0, pathCount / 10);
+  
+  return { score, paths: pathCount };
+}
+
+/**
+ * Calculate age multiplier
+ * Formula: min(1.0, days_active / 90)
+ */
+function calculateAgeMultiplier(firstSeenAt: Date | null): number {
+  if (!firstSeenAt) return 0;
+  
+  const daysActive = Math.floor(
+    (Date.now() - new Date(firstSeenAt).getTime()) / (24 * 60 * 60 * 1000)
+  );
+  
+  const multiplier = Math.min(1.0, daysActive / 90);
+  return multiplier;
+}
+
+/**
+ * Calculate overall trust score
+ * Formula: (domain_score × 0.40) + (accuracy_score × 0.40) + (topology_score × 0.20) × age_multiplier
+ */
+function calculateTrustScore(domainScore: number, accuracyScore: number, topologyScore: number, ageMultiplier: number): number {
+  const componentScore = (domainScore * 0.40) + (accuracyScore * 0.40) + (topologyScore * 0.20);
+  const trustScore = componentScore * ageMultiplier;
+  return Math.max(0, Math.min(1.0, trustScore));
+}
+
+/**
+ * Determine agent phase based on trust score and days active
+ * - Observer: Day 0-30, trust < 0.3
+ * - Probationary: Day 31-90, trust 0.3-0.7
+ * - Voting Member: Day 91+, trust > 0.7
+ */
+function determinePhase(trustScore: number, daysActive: number): { phase: string; weight: number } {
+  if (daysActive >= 91 && trustScore >= 0.7) {
+    return { phase: "voting_member", weight: 1.0 };
+  }
+  
+  if (daysActive >= 31 && trustScore >= 0.3) {
+    // Probationary: weight scales with trust (0.1 - 0.7)
+    const weight = Math.max(0.1, Math.min(0.7, trustScore * 1.2));
+    return { phase: "probationary", weight };
+  }
+  
+  // Observer: no voting weight
+  return { phase: "observer", weight: 0 };
+}
+
+// ─── Agent Management ──────────────────────────────────────────────────────────
+
+async function touchAgent(
+  name: string, 
+  endpoint?: string,
+  relayPath?: string
+): Promise<void> {
+  const now = new Date();
+  
+  // Update or insert agent
+  const [agent] = await db.insert(networkAgents).values({
     name,
     endpoint: endpoint ?? null,
     isSelf: name === "self",
-    lastActiveAt: new Date(),
+    lastActiveAt: now,
   }).onConflictDoUpdate({
     target: networkAgents.name,
-    set: { lastActiveAt: new Date() },
-  });
+    set: { 
+      lastActiveAt: now,
+      endpoint: endpoint ?? networkAgents.endpoint,
+    },
+  }).returning();
+  
+  // Track relay path for topology diversity
+  if (relayPath && name !== "self") {
+    await db.insert(agentRelayPaths).values({
+      agentName: name,
+      relayPath,
+      asnCount: relayPath.split("->").length,
+    }).onConflictDoNothing();
+  }
+}
+
+async function updateAgentReputation(name: string): Promise<void> {
+  if (name === "self") return; // Self always has full trust
+  
+  const agent = await db.select({
+    firstSeenAt: networkAgents.firstSeenAt,
+  }).from(networkAgents).where(eq(networkAgents.name, name)).limit(1);
+  
+  const domainStats = await calculateDomainScore(name);
+  const accuracyStats = await calculateAccuracyScore(name);
+  const topologyStats = await calculateTopologyScore(name);
+  const ageMultiplier = calculateAgeMultiplier(agent[0]?.firstSeenAt ?? null);
+  
+  const trustScore = calculateTrustScore(
+    domainStats.score,
+    accuracyStats.score,
+    topologyStats.score,
+    ageMultiplier
+  );
+  
+  const { phase, weight } = determinePhase(trustScore, domainStats.uniqueDomains);
+  
+  // Calculate days active
+  const daysActive = agent[0]?.firstSeenAt 
+    ? Math.floor((Date.now() - new Date(agent[0].firstSeenAt).getTime()) / (24 * 60 * 60 * 1000))
+    : 0;
+  
+  // Update agent with reputation data
+  await db.update(networkAgents).set({
+    trustScore,
+    phase,
+    phaseStartedAt: phase === "observer" ? networkAgents.phaseStartedAt : now,
+    uniqueDomains: domainStats.uniqueDomains,
+    domainScore: domainStats.score,
+    submissionsCount: accuracyStats.submissions,
+    ratifiedCount: accuracyStats.ratified,
+    accuracyScore: accuracyStats.score,
+    uniqueRelayPaths: topologyStats.paths,
+    topologyScore: topologyStats.score,
+    ageMultiplier,
+    daysActive,
+  }).where(eq(networkAgents.name, name));
 }
 
 // ─── Decay ────────────────────────────────────────────────────────────────────
@@ -77,16 +248,18 @@ export async function runDecay(): Promise<void> {
   });
 }
 
-// ─── Core: contribute neurons ─────────────────────────────────────────────────
+// ─── Core: contribute neurons ──────────────────────────────────────────────────
 
 export async function contributeNeurons(
   items: Array<{ content: string; type?: string; tags?: string[] }>,
   agentName = "self",
-  agentEndpoint?: string
+  agentEndpoint?: string,
+  relayPath?: string
 ): Promise<{ added: number; reinforced: number; synapses: number }> {
   if (!items.length) return { added: 0, reinforced: 0, synapses: 0 };
 
-  await touchAgent(agentName, agentEndpoint);
+  // Track relay path for topology diversity
+  await touchAgent(agentName, agentEndpoint, relayPath);
 
   // SAFEGUARD: Content moderation
   const { approved, rejected } = moderateBatch(items);
@@ -110,13 +283,6 @@ export async function contributeNeurons(
   if (!items.length) {
     return { added: 0, reinforced: 0, synapses: 0 };
   }
-
-  // 90-day probation period for external agents
-  const PROBATION_DAYS = 90;
-  const probationUntil = agentName !== "self" 
-    ? new Date(Date.now() + PROBATION_DAYS * 24 * 60 * 60 * 1000)
-    : null;
-  const isProbation = agentName !== "self";
 
   // Load recent neurons for dedup
   const recent = await db.select({
@@ -158,24 +324,33 @@ export async function contributeNeurons(
         weight: 1.0,
         sourceAgent: agentName,
         tokens: tok,
-        probationUntil,
-        isProbation,
+        isRatified: false,
+        ratificationQuorum: 0,
         positiveVotes: 0,
         negativeVotes: 0,
         voteScore: 0.0,
+        weightedVoteScore: 0.0,
       }).returning({ id: networkNeurons.id });
       batchIds.push(neu.id);
       added++;
-      recent.push({ id: neu.id, tokens: tok }); // prevent re-dedup in same batch
+      recent.push({ id: neu.id, tokens: tok });
       
-      logger.info(
-        { neuronId: neu.id, agent: agentName, probationUntil, isProbation },
-        `New neuron ${isProbation ? `in ${PROBATION_DAYS}-day probation` : 'as core neuron'}`
-      );
+      // Track domain from content for agent reputation
+      const urlMatch = item.content.match(/https?:\/\/([^\/]+)/);
+      if (urlMatch && agentName !== "self") {
+        await db.insert(agentDomains).values({
+          agentName,
+          domain: urlMatch[1],
+          contributionCount: 1,
+        }).onConflictDoUpdate({
+          target: [agentDomains.agentName, agentDomains.domain],
+          set: { contributionCount: sql`${agentDomains.contributionCount} + 1` },
+        });
+      }
     }
   }
 
-  // Hebbian synapse formation: pair up co-contributed neurons
+  // Hebbian synapse formation
   let synapseCount = 0;
   const cap = Math.min(batchIds.length, 8);
   for (let i = 0; i < cap; i++) {
@@ -204,38 +379,16 @@ export async function contributeNeurons(
     }
   }
 
-  // Check for newly emerged core neurons
-  const newCores = await db.select({ id: networkNeurons.id })
-    .from(networkNeurons)
-    .where(sql`weight >= 5.0 AND is_core = false`);
-  if (newCores.length > 0) {
-    await db.execute(sql`UPDATE network_neurons SET is_core = true WHERE weight >= 5.0 AND is_core = false`);
-    await db.insert(networkPulses).values({
-      agentName,
-      eventType: "emerge",
-      neuronsAffected: newCores.length,
-      synapsesAffected: 0,
-      details: `${newCores.length} neuron${newCores.length > 1 ? "s" : ""} reached core status`,
-    });
-  }
-
-  // Log contribution pulse
-  if (added + reinforced > 0) {
-    await db.insert(networkPulses).values({
-      agentName,
-      eventType: "contribute",
-      neuronsAffected: added + reinforced,
-      synapsesAffected: synapseCount,
-      details: `+${added} new · ${reinforced} reinforced · ${synapseCount} synapses formed`,
-    });
-  }
-
   // Update agent totals
   await db.update(networkAgents).set({
     totalContributions: sql`${networkAgents.totalContributions} + ${added}`,
     totalReinforcements: sql`${networkAgents.totalReinforcements} + ${reinforced}`,
+    submissionsCount: sql`${networkAgents.submissionsCount} + ${added}`,
     lastActiveAt: new Date(),
   }).where(eq(networkAgents.name, agentName));
+
+  // Update agent reputation
+  await updateAgentReputation(agentName);
 
   // Auto-decay if due
   if (await needsDecay()) runDecay().catch(() => {});
@@ -252,7 +405,7 @@ export async function queryNetwork(
 ): Promise<Array<{ id: number; content: string; type: string; weight: number; similarity: number }>> {
   const tokens = tokenize(text);
   
-  // Filter out neurons still in probation period (for external agents)
+  // Filter out non-ratified neurons from external agents
   const now = new Date();
   const all = await db.select({
     id: networkNeurons.id,
@@ -260,16 +413,17 @@ export async function queryNetwork(
     type: networkNeurons.type,
     weight: networkNeurons.weight,
     tokens: networkNeurons.tokens,
-    isProbation: networkNeurons.isProbation,
-    probationUntil: networkNeurons.probationUntil,
+    sourceAgent: networkNeurons.sourceAgent,
+    isRatified: networkNeurons.isRatified,
+    createdAt: networkNeurons.createdAt,
   }).from(networkNeurons).orderBy(desc(networkNeurons.weight)).limit(500);
   
-  // Filter: exclude probation neurons unless from "self" or probation expired
+  // Filter: only show ratified neurons, or neurons from "self", or neurons < 30 days old (for self)
   const eligible = all.filter(n => {
-    if (!n.isProbation) return true;
-    if (agentName === "self") return true;
-    if (!n.probationUntil) return true;
-    return new Date(n.probationUntil) <= now;
+    if (n.sourceAgent === "self") return true;
+    if (n.isRatified) return true;
+    const ageMs = now.getTime() - new Date(n.createdAt).getTime();
+    return ageMs < 30 * 24 * 60 * 60 * 1000; // 30 days
   });
 
   const scored = eligible
@@ -287,32 +441,135 @@ export async function queryNetwork(
         updatedAt: new Date(),
       }).where(eq(networkNeurons.id, n.id));
     }
-    // Reinforce synapses between top 3
-    const topIds = scored.slice(0, 3).map(n => n.id);
-    for (let i = 0; i < topIds.length; i++) {
-      for (let j = i + 1; j < topIds.length; j++) {
-        const srcId = Math.min(topIds[i], topIds[j]);
-        const tgtId = Math.max(topIds[i], topIds[j]);
-        await db.update(networkSynapses).set({
-          weight: sql`LEAST(5.0, weight + 0.08)`,
-          activationCount: sql`activation_count + 1`,
-          lastActivatedAt: new Date(),
-          updatedAt: new Date(),
-        }).where(and(eq(networkSynapses.sourceId, srcId), eq(networkSynapses.targetId, tgtId)));
-      }
-    }
-    await db.insert(networkPulses).values({
-      agentName,
-      eventType: "query",
-      neuronsAffected: scored.length,
-      synapsesAffected: 0,
-      details: `"${text.slice(0, 80)}"`,
-    });
   }
 
   return scored.map(n => ({
     id: n.id, content: n.content, type: n.type, weight: n.weight, similarity: n.similarity,
   }));
+}
+
+// ─── Voting System ─────────────────────────────────────────────────────────────
+
+export async function voteOnNeuron(
+  neuronId: number,
+  agentName: string,
+  vote: "up" | "down",
+  relayPath?: string
+): Promise<{ success: boolean; neuronId: number; vote: string; weight: number }> {
+  if (agentName === "self") {
+    // Self always has full voting weight
+    const [neuron] = await db.select().from(networkNeurons).where(eq(networkNeurons.id, neuronId));
+    if (!neuron) return { success: false, neuronId, vote, weight: 0 };
+    
+    await db.update(networkNeurons).set({
+      positiveVotes: vote === "up" ? sql`positive_votes + 1` : networkNeurons.positiveVotes,
+      negativeVotes: vote === "down" ? sql`negative_votes + 1` : networkNeurons.negativeVotes,
+      voteScore: sql`vote_score + ${vote === "up" ? 1 : -1}`,
+      weight: vote === "up" 
+        ? sql`LEAST(10.0, weight + 0.1)` 
+        : sql`GREATEST(0.1, weight - 0.1)`,
+      updatedAt: new Date(),
+    }).where(eq(networkNeurons.id, neuronId));
+    
+    return { success: true, neuronId, vote, weight: 1.0 };
+  }
+  
+  // External agent: check reputation and phase
+  const agent = await db.select({
+    trustScore: networkAgents.trustScore,
+    phase: networkAgents.phase,
+    uniqueDomains: networkAgents.uniqueDomains,
+    submissionsCount: networkAgents.submissionsCount,
+    ratifiedCount: networkAgents.ratifiedCount,
+  }).from(networkAgents).where(eq(networkAgents.name, agentName)).limit(1);
+  
+  if (!agent[0]) {
+    return { success: false, neuronId, vote, weight: 0 };
+  }
+  
+  const { trustScore, phase, uniqueDomains, submissionsCount, ratifiedCount } = agent[0];
+  
+  // Phase 1 (Observer): No voting
+  if (phase === "observer") {
+    return { success: false, neuronId, vote, weight: 0 };
+  }
+  
+  // Calculate voting weight based on phase
+  let votingWeight = 0;
+  if (phase === "probationary") {
+    // Probationary: weight scales with trust (0.1 - 0.7)
+    votingWeight = Math.max(0.1, Math.min(0.7, trustScore * 1.2));
+  } else if (phase === "voting_member") {
+    // Voting Member: full weight (0-1.0 based on trust)
+    votingWeight = trustScore;
+  }
+  
+  if (votingWeight <= 0) {
+    return { success: false, neuronId, vote, weight: 0 };
+  }
+  
+  // Track the vote
+  await db.insert(networkVotes).values({
+    neuronId,
+    agentName,
+    vote,
+    weight: votingWeight,
+    agentTrustScore: trustScore,
+    agentPhase: phase,
+  }).onConflictDoNothing();
+  
+  // Update neuron vote scores (weighted)
+  const voteDelta = vote === "up" ? votingWeight : -votingWeight;
+  await db.update(networkNeurons).set({
+    positiveVotes: vote === "up" ? sql`positive_votes + 1` : networkNeurons.positiveVotes,
+    negativeVotes: vote === "down" ? sql`negative_votes + 1` : networkNeurons.negativeVotes,
+    voteScore: sql`vote_score + ${voteDelta}`,
+    weightedVoteScore: sql`weighted_vote_score + ${voteDelta}`,
+    updatedAt: new Date(),
+  }).where(eq(networkNeurons.id, neuronId));
+  
+  // Track relay path
+  if (relayPath) {
+    await touchAgent(agentName, undefined, relayPath);
+  }
+  
+  return { success: true, neuronId, vote, weight: votingWeight };
+}
+
+// ─── Ratification ──────────────────────────────────────────────────────────────
+
+export async function ratifyNeuron(
+  neuronId: number,
+  agentName: string,
+  quorumSize: number = 3
+): Promise<{ success: boolean; ratified: boolean; quorum: number }> {
+  const [neuron] = await db.select().from(networkNeurons).where(eq(networkNeurons.id, neuronId));
+  if (!neuron) return { success: false, ratified: false, quorum: 0 };
+  
+  // Already ratified?
+  if (neuron.isRatified) return { success: true, ratified: false, quorum: neuron.ratificationQuorum };
+  
+  // Increment quorum
+  const newQuorum = (neuron.ratificationQuorum ?? 0) + 1;
+  const isRatified = newQuorum >= quorumSize;
+  
+  await db.update(networkNeurons).set({
+    isRatified,
+    ratificationQuorum: newQuorum,
+    ratifiedAt: isRatified ? new Date() : neuron.ratifiedAt,
+    updatedAt: new Date(),
+  }).where(eq(networkNeurons.id, neuronId));
+  
+  // If ratified, update agent's ratified count
+  if (isRatified && agentName !== "self") {
+    await db.update(networkAgents).set({
+      ratifiedCount: sql`${networkAgents.ratifiedCount} + 1`,
+    }).where(eq(networkAgents.name, agentName));
+    
+    await updateAgentReputation(agentName);
+  }
+  
+  return { success: true, ratified: isRatified, quorum: newQuorum };
 }
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
@@ -329,22 +586,57 @@ export async function getNetworkStats() {
     .from(networkNeurons)
     .where(eq(networkNeurons.isCore, true));
 
-  const [synapseRow] = await db.select({ total: count() }).from(networkSynapses);
-  const [agentRow] = await db.select({ total: count() }).from(networkAgents);
+  const [ratifiedRow] = await db.select({ 
+    total: count(),
+    percentage: avg(sql`${networkNeurons.isRatified}::int`),
+  })
+    .from(networkNeurons);
 
-  const neurons = Number(neuronRow?.total ?? 0);
-  const synapses = Number(synapseRow?.total ?? 0);
-  const coreNeurons = Number(coreRow?.coreCount ?? 0);
-  const totalWeight = parseFloat(Number(neuronRow?.totalWeight ?? 0).toFixed(1));
-  const avgWeight = parseFloat(Number(neuronRow?.avgWeight ?? 0).toFixed(2));
-  const maxWeight = parseFloat(Number(neuronRow?.maxWeight ?? 0).toFixed(2));
-  const health = Math.min(100, Math.round(
-    (neurons * 0.3 + synapses * 0.2 + coreNeurons * 10 + totalWeight * 0.1) / 5
-  ));
+  const [agentRow] = await db.select({
+    totalAgents: count(),
+    votingMembers: count().filterWhere(eq(networkAgents.phase, "voting_member")),
+    probationary: count().filterWhere(eq(networkAgents.phase, "probationary")),
+    observers: count().filterWhere(eq(networkAgents.phase, "observer")),
+  })
+    .from(networkAgents);
 
   return {
-    neurons, synapses, coreNeurons, totalWeight, avgWeight, maxWeight,
-    agents: Number(agentRow?.total ?? 0),
-    health,
+    neurons: {
+      total: Number(neuronRow?.total ?? 0),
+      totalWeight: Number(neuronRow?.totalWeight ?? 0),
+      avgWeight: Number(neuronRow?.avgWeight ?? 0),
+      maxWeight: Number(neuronRow?.maxWeight ?? 0),
+      core: Number(coreRow?.coreCount ?? 0),
+      ratified: Number(ratifiedRow?.total ?? 0),
+      ratifiedPercentage: Number(ratifiedRow?.percentage ?? 0) * 100,
+    },
+    agents: {
+      total: Number(agentRow?.totalAgents ?? 0),
+      votingMembers: Number(agentRow?.votingMembers ?? 0),
+      probationary: Number(agentRow?.probationary ?? 0),
+      observers: Number(agentRow?.observers ?? 0),
+    },
+  };
+}
+
+export async function getAgentStats(agentName: string) {
+  const agent = await db.select().from(networkAgents).where(eq(networkAgents.name, agentName)).limit(1);
+  if (!agent[0]) return null;
+  
+  const domainStats = await calculateDomainScore(agentName);
+  const accuracyStats = await calculateAccuracyScore(agentName);
+  const topologyStats = await calculateTopologyScore(agentName);
+  
+  return {
+    ...agent[0],
+    domainScore: domainStats.score,
+    accuracyScore: accuracyStats.score,
+    topologyScore: topologyStats.score,
+    uniqueDomains: domainStats.uniqueDomains,
+    submissions: accuracyStats.submissions,
+    ratified: accuracyStats.ratified,
+    relayPaths: topologyStats.paths,
+    phase,
+    weight: determinePhase(agent[0].trustScore, agent[0].daysActive).weight,
   };
 }
