@@ -226,6 +226,7 @@ export function extractFacts(text: string): ExtractedFact[] {
     return facts; // Return empty - no fact extraction
   }
 
+  // 1. Try pattern-based extraction first (high quality)
   for (const { re, type, conf } of FACT_PATTERNS) {
     const pattern = new RegExp(re.source, re.flags);
     let match;
@@ -245,6 +246,50 @@ export function extractFacts(text: string): ExtractedFact[] {
       const tags = extractTags([subj, obj]);
 
       facts.push({ content, type, tags, confidence: conf });
+    }
+  }
+
+  // 2. If bulk text (>200 chars), extract sentences as facts (more aggressive)
+  if (text.length > 200 && facts.length < 5) {
+    // Split into sentences
+    const sentences = text
+      .split(/[.!?]+\s+/)
+      .filter(s => s.trim().length > 30 && s.trim().length < 300);
+    
+    for (const sentence of sentences) {
+      const clean = sentence.trim();
+      
+      // Skip if already extracted
+      const key = clean.toLowerCase().slice(0, 50);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      
+      // Skip questions/commands
+      if (isNonLearnable(clean)) continue;
+      
+      // Must have a verb
+      const hasVerb = /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?|contains?|includes?|consists?|requires?|depends?|affects?|produces?|generates?|forms?|becomes?|remains?)\b/i.test(clean);
+      if (!hasVerb) continue;
+      
+      // Determine type
+      let type: ExtractedFact["type"] = "fact";
+      if (/\b(can|could|enables?|allows?|must|should|requires?)\b/i.test(clean)) {
+        type = "rule";
+      } else if (/\b(concept|idea|theory|principle|notion)\b/i.test(clean)) {
+        type = "concept";
+      } else if (/\b(think|believe|opinion|feel)\b/i.test(clean)) {
+        type = "opinion";
+      }
+      
+      // Extract key terms for tags
+      const terms = extractKeyTerms(clean);
+      
+      facts.push({
+        content: clean,
+        type,
+        tags: terms.slice(0, 5),
+        confidence: 0.65, // Lower confidence for sentence extraction
+      });
     }
   }
 
