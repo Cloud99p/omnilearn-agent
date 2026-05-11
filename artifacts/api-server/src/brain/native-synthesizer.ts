@@ -761,6 +761,30 @@ export async function synthesizeNative(
   const relevantNodes = nodes.filter(n => n.similarity > 0.02).slice(0, 8);
   const nodesUsed = relevantNodes.length;
 
+  // CRITICAL: Check if this is an emotional statement (NOT a question)
+  const isEmotionalStatement = /\b(not fine|stressed|sad|depressed|anxious|tired|exhausted|overwhelmed|frustrated|angry|upset|worried|scared|lonely|hurt|pain|cry|cried|crying|😭|😢|😔|😞|😟)\b/i.test(query);
+  
+  // NEVER search web for emotional statements - just be empathetic
+  if (isEmotionalStatement) {
+    const empatheticResponses = [
+      "Aww, I'm really sorry you're going through that. Engineering can be tough, but you've got this! 💪 Want to talk about it?",
+      "That sounds rough. It's okay to not be okay sometimes. You're doing better than you think! ❤️",
+      "I hear you. Stress is no joke. Take a breath - you're stronger than you know. Want to vent?",
+      "Same energy sometimes tbh. But hey, you're not alone in this. What's stressing you most?",
+    ];
+    return {
+      text: empatheticResponses[Math.floor(Math.random() * empatheticResponses.length)],
+      nodesUsed: 0,
+      newNodesAdded: 0,
+      learnedFacts: [],
+      character: {
+        curiosity: character.curiosity,
+        confidence: character.confidence,
+        technical: character.technical,
+      },
+    };
+  }
+
   // Detect if web search is needed (current events, news, recent facts)
   // BUT: if onActivity is undefined, we're in Local mode - NO web search!
   const needsWebSearch = onActivity && detectNeedForWebSearch(query, relevantNodes);
@@ -913,7 +937,21 @@ function detectNeedForWebSearch(
   // 3. If NO knowledge nodes found, DON'T search web by default
   // Only search if query indicates time-sensitive or external info needed
   if (nodes.length === 0) {
-    return false; // Prefer knowledge graph, only search for time-sensitive topics
+    // Check if it's a general knowledge question (worth searching)
+    const generalKnowledgeQuestions = [
+      /what (is|are|was|were)/,
+      /who (is|are|was|were)/,
+      /where (is|are)/,
+      /when (is|are)/,
+      /why (is|are)/,
+      /how (does|do|did)/,
+    ];
+    
+    if (generalKnowledgeQuestions.some(p => p.test(lower))) {
+      return true; // Search web for general knowledge questions
+    }
+    
+    return false; // Don't search for emotional statements, opinions, etc.
   }
 
   // 3. If knowledge exists but has LOW confidence/similarity, search web to supplement
@@ -1244,8 +1282,45 @@ function synthesizeMainContent(
 ): string {
   if (nodes.length === 0) return "";
 
-  // Take top 5 nodes for richer context
-  const topNodes = nodes.slice(0, 5);
+  // CRITICAL: Filter out IRRELEVANT technical nodes
+  const queryLower = query.toLowerCase();
+  const isGeneralQuestion = !queryLower.includes('tf-idf') && 
+                            !queryLower.includes('semantic') && 
+                            !queryLower.includes('retrieval') &&
+                            !queryLower.includes('algorithm');
+  
+  // Filter nodes - exclude technical docs if query is general
+  const filteredNodes = nodes.filter(node => {
+    const content = node.content.toLowerCase();
+    
+    // Exclude nodes about the app itself for general questions
+    if (isGeneralQuestion) {
+      if (content.includes('omnilearn') || 
+          content.includes('sse') || 
+          content.includes('server-sent') ||
+          content.includes('health check') ||
+          content.includes('endpoint') ||
+          content.includes('api route') ||
+          content.includes('this application') ||
+          content.includes('the agent') ||
+          content.includes('this system')) {
+        return false; // Skip irrelevant technical nodes
+      }
+    }
+    
+    return true;
+  });
+  
+  // Take top 5 UNIQUE nodes (no duplicates)
+  const seenContent = new Set<string>();
+  const uniqueNodes = filteredNodes.filter(node => {
+    const key = node.content.slice(0, 50).toLowerCase();
+    if (seenContent.has(key)) return false;
+    seenContent.add(key);
+    return true;
+  }).slice(0, 5);
+  
+  const topNodes = uniqueNodes;
 
   // Aggressive meta-text filtering
   const metaPatterns = [
