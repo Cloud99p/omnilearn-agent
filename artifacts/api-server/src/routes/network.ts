@@ -79,17 +79,28 @@ router.get("/network/pulses", async (req, res) => {
 });
 
 router.post("/network/contribute", async (req, res) => {
-  const { neurons, agentName = "self", agentEndpoint } = req.body as {
-    neurons: Array<{ content: string; type?: string; tags?: string[] }>;
-    agentName?: string;
-    agentEndpoint?: string;
-  };
+  const GHOST_SECRET = process.env.GHOST_SECRET;
+  
+  // SECURITY: Require ghost secret header for contribute operations (optional for self)
+  const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
+  const agentName = req.body.agentName as string | undefined;
+  
+  // If contributing as external agent (not "self"), require secret
+  if (agentName && agentName !== "self" && GHOST_SECRET && providedSecret !== GHOST_SECRET) {
+    req.log.warn(
+      { agentName, agentEndpoint: req.body.agentEndpoint },
+      "Unauthorized network contribute attempt - invalid or missing ghost secret"
+    );
+    res.status(401).json({ error: "Unauthorized: valid X-Ghost-Secret header required for external agents" });
+    return;
+  }
+  
   if (!Array.isArray(neurons) || !neurons.length) {
     res.status(400).json({ error: "neurons array is required" });
     return;
   }
   try {
-    const result = await contributeNeurons(neurons, agentName, agentEndpoint);
+    const result = await contributeNeurons(neurons, agentName ?? "self", agentEndpoint);
     res.json(result);
   } catch (err) {
     req.log.error(err, "network contribute error");
@@ -143,6 +154,19 @@ router.post("/network/decay", async (req, res) => {
 });
 
 router.post("/network/sync", async (req, res) => {
+  const GHOST_SECRET = process.env.GHOST_SECRET;
+  
+  // SECURITY: Require ghost secret header for sync operations
+  const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
+  if (GHOST_SECRET && providedSecret !== GHOST_SECRET) {
+    req.log.warn(
+      { agentName: req.body.agentName, agentEndpoint: req.body.agentEndpoint },
+      "Unauthorized network sync attempt - invalid or missing ghost secret"
+    );
+    res.status(401).json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
+    return;
+  }
+  
   const { knowledge, agentName, agentEndpoint } = req.body as {
     knowledge: Array<{ content: string; type?: string; tags?: string[] }>;
     agentName: string;
