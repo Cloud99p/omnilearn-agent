@@ -23,7 +23,7 @@ router.get("/conversations", async (req, res) => {
   try {
     const { userId } = getAuth(req);
     
-    // If Clerk configured and user logged in, filter by user
+    // If Clerk configured and user logged in, show ONLY their conversations
     if (userId) {
       const list = await db.select()
         .from(conversations)
@@ -32,9 +32,10 @@ router.get("/conversations", async (req, res) => {
       return res.json(list);
     }
     
-    // If Clerk not configured, return all conversations (no isolation)
+    // If NOT logged in (anonymous user), show conversations without clerkId
     const list = await db.select()
       .from(conversations)
+      .where(eq(conversations.clerkId, null))
       .orderBy(conversations.createdAt);
     return res.json(list);
   } catch (err) {
@@ -173,12 +174,12 @@ router.post("/conversations/:conversationId/messages/stream", async (req, res) =
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.createdAt);
 
-    // Save user message with clerkId (if Clerk configured)
+    // Save user message - with clerkId if logged in, null if anonymous
     await db.insert(messages).values({
       conversationId,
       role: "user",
       content,
-      clerkId: userId || null, // USER ISOLATION (optional)
+      clerkId: userId || null, // Anonymous = null, Logged-in = userId
     });
 
     // Build message history for brain
