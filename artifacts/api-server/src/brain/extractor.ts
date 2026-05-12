@@ -195,6 +195,9 @@ function isNonLearnable(text: string): boolean {
     /can i ask/,
     /are you (there|ready|listening)/,
     /do you (know|remember|understand)/,
+    // Filter out meta-text that's just conversational openers
+    /^(Great|Good|Sure|Absolutely|Of course|Well|Okay|Alright)\s*!\s*/i,
+    /^(Great|Good)\s+question\s*!\s*/i,
   ];
   
   if (metaPatterns.some(pattern => pattern.test(trimmed))) return true;

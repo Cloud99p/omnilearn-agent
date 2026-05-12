@@ -1316,6 +1316,9 @@ function synthesizeMainContent(
     /thanks for sharing/i,
     /here's what/i,
     /i'll help with/i,
+    // Filter out conversational openers (already added by wrapper)
+    /^(Great|Good|Sure|Absolutely|Of course|Well|Okay|Alright)\s*!\s*/i,
+    /^(Great|Good)\s+question\s*!\s*/i,
   ];
 
   // SECURITY: Filter identity-poisoned nodes
