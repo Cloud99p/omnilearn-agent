@@ -2,17 +2,16 @@
 # Deploy to Railway, Render, or any Docker host
 # Includes document extraction tools for PDF, Word, Excel, OCR support
 
-FROM node:24-bookworm-slim
+FROM node:22-bookworm
 
 # Install document extraction dependencies
 RUN apt-get update && apt-get install -y \
-    poppler-utils      # pdftotext, pdfinfo (PDF extraction)
-    pandoc             # DOCX, PPTX conversion
-    tesseract-ocr      # OCR for images
-    tesseract-ocr-eng  # English language data for OCR
-    gnumeric           # Excel spreadsheet conversion
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    poppler-utils \
+    pandoc \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    gnumeric \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@10 --activate
