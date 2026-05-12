@@ -4,14 +4,8 @@
 
 FROM node:22-bookworm
 
-# Install document extraction dependencies
-RUN apt-get update && apt-get install -y \
-    poppler-utils \
-    pandoc \
-    tesseract-ocr \
-    tesseract-ocr-eng \
-    gnumeric \
-    && rm -rf /var/lib/apt/lists/*
+# Install document extraction dependencies (PDF, Word, Excel, OCR)
+RUN apt-get update && apt-get install -y poppler-utils pandoc tesseract-ocr tesseract-ocr-eng gnumeric && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@10 --activate
