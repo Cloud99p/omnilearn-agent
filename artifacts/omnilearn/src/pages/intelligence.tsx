@@ -458,6 +458,8 @@ export default function IntelligencePage() {
   const [trainUrl, setTrainUrl] = useState("");
   const [trainUrls, setTrainUrls] = useState(""); // For research mode (multiple URLs)
   const [trainSource, setTrainSource] = useState("manual");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileContent, setFileContent] = useState("");
   const [training, setTraining] = useState(false);
   const [trainResult, setTrainResult] = useState<{ added: number; skipped: number; message: string } | null>(null);
   const [addContent, setAddContent] = useState("");
@@ -652,35 +654,54 @@ export default function IntelligencePage() {
   const handleTrain = async () => {
     setTraining(true); setTrainResult(null);
     try {
-      let payload: any = { source: trainSource };
-      
-      // Different source types have different input requirements
+      // Validate input based on source type
       if (trainSource === "manual") {
         if (!trainText.trim()) throw new Error("Please paste some text to train");
-        payload.text = trainText;
       } else if (trainSource === "document") {
-        if (!trainText.trim() && !trainUrl.trim()) throw new Error("Paste document text OR provide a URL");
-        if (trainText.trim()) payload.text = trainText;
-        if (trainUrl.trim()) payload.url = trainUrl;
+        if (!trainText.trim() && !selectedFile) throw new Error("Upload a document file or paste text");
       } else if (trainSource === "web") {
         if (!trainUrl.trim()) throw new Error("Please enter a URL to fetch");
-        payload.url = trainUrl;
       } else if (trainSource === "research") {
         if (!trainUrls.trim()) throw new Error("Please enter URLs to research");
-        payload.urls = trainUrls.split("\n").filter(u => u.trim()).map(u => u.trim());
       }
       
-      const res = await fetch(`${BASE}/api/omni/train`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      // Use FormData for file uploads, JSON for text/URL
+      let res;
+      if (selectedFile && trainSource === "document") {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("source", "document");
+        if (trainText.trim()) formData.append("text", trainText);
+        
+        res = await fetch(`${BASE}/api/omni/train`, {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        const payload: any = { source: trainSource };
+        if (trainSource === "manual") payload.text = trainText;
+        if (trainSource === "web") payload.url = trainUrl;
+        if (trainSource === "research") {
+          payload.urls = trainUrls.split("\n").filter(u => u.trim()).map(u => u.trim());
+        }
+        
+        res = await fetch(`${BASE}/api/omni/train`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+      
       if (res.ok) {
         const result = await res.json();
         setTrainResult(result);
         // Clear inputs based on source type
-        if (trainSource === "manual" || trainSource === "document") setTrainText("");
-        if (trainSource === "document" || trainSource === "web") setTrainUrl("");
+        if (trainSource === "manual" || trainSource === "document") {
+          setTrainText("");
+          setSelectedFile(null);
+          setFileContent("");
+        }
+        if (trainSource === "web" || trainSource === "research") setTrainUrl("");
         if (trainSource === "research") setTrainUrls("");
         fetchStats(); fetchCharacter();
       }
@@ -1276,37 +1297,79 @@ export default function IntelligencePage() {
               </>
             )}
 
-            {/* DOCUMENT: Paste text OR provide URL */}
+            {/* DOCUMENT: Upload file OR paste text */}
             {trainSource === "document" && (
               <div className="space-y-3">
+                {/* File Upload */}
                 <div>
-                  <label className="font-mono text-xs text-muted-foreground mb-2 block">Option 1: Paste document text</label>
+                  <label className="font-mono text-xs text-muted-foreground mb-2 block">Upload Document File</label>
+                  <div className="border-2 border-dashed border-border/50 rounded-xl p-6 text-center hover:border-primary/30 transition-colors">
+                    <input
+                      type="file"
+                      id="document-upload"
+                      accept=".pdf,.doc,.docx,.txt,.md,.html,.json,.csv,.xlsx,.xls,.ppt,.pptx,.png,.jpg,.jpeg,.webp"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setSelectedFile(file);
+                          // Preview text content for text files
+                          if (file.type.startsWith('text/') || file.name.endsWith('.md') || file.name.endsWith('.json')) {
+                            const text = await file.text();
+                            setFileContent(text);
+                            setTrainText(text);
+                          } else {
+                            setFileContent(`[Binary file: ${file.name} - will be extracted on upload]`);
+                            setTrainText("");
+                          }
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <label htmlFor="document-upload" className="cursor-pointer">
+                      <Database className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                      <p className="font-mono text-xs text-foreground mb-1">
+                        {selectedFile ? selectedFile.name : "Click to upload or drag and drop"}
+                      </p>
+                      <p className="font-mono text-[10px] text-muted-foreground/50">
+                        PDF, DOC, DOCX, TXT, MD, HTML, JSON, CSV, XLSX, PPTX, images (OCR)
+                      </p>
+                      {selectedFile && (
+                        <p className="font-mono text-[10px] text-muted-foreground/40 mt-2">
+                          {(selectedFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                {/* OR divider */}
+                {selectedFile && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-px bg-border/40" />
+                    <span className="font-mono text-xs text-muted-foreground">OR</span>
+                    <div className="flex-1 h-px bg-border/40" />
+                  </div>
+                )}
+
+                {/* Manual text paste */}
+                <div>
+                  <label className="font-mono text-xs text-muted-foreground mb-2 block">Or paste text directly</label>
                   <textarea
                     value={trainText}
                     onChange={e => setTrainText(e.target.value)}
                     placeholder={"Paste article, paper, or document content...\n\nExample:\nDeep learning is a subset of machine learning that uses neural networks with many layers..."}
                     rows={8}
                     className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/30 resize-none"
+                    disabled={!!selectedFile}
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-px bg-border/40" />
-                  <span className="font-mono text-xs text-muted-foreground">OR</span>
-                  <div className="flex-1 h-px bg-border/40" />
-                </div>
-                <div>
-                  <label className="font-mono text-xs text-muted-foreground mb-2 block">Option 2: Provide document URL</label>
-                  <input
-                    type="url"
-                    value={trainUrl}
-                    onChange={e => setTrainUrl(e.target.value)}
-                    placeholder="https://example.com/document.pdf or https://arxiv.org/paper/..."
-                    className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/30"
-                  />
-                </div>
+
+                {/* Info */}
                 <div className="font-mono text-xs text-muted-foreground">
-                  {trainText.length} characters · ~{Math.max(0, trainText.split(/\s+/).filter(Boolean).length)} words
-                  {trainUrl && ` | URL: ${trainUrl.slice(0, 50)}${trainUrl.length > 50 ? '...' : ''}`}
+                  {selectedFile
+                    ? `File: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`
+                    : `${trainText.length} characters · ~${Math.max(0, trainText.split(/\s+/).filter(Boolean).length)} words`
+                  }
                 </div>
               </div>
             )}
@@ -1352,7 +1415,7 @@ export default function IntelligencePage() {
             <div className="flex items-center justify-between">
               <span className="font-mono text-xs text-muted-foreground">
                 {trainSource === "manual" && `${trainText.length} characters · ~${Math.max(0, trainText.split(/\s+/).filter(Boolean).length)} words`}
-                {trainSource === "document" && `${trainText.length} chars${trainUrl ? ` + URL` : ''}`}
+                {trainSource === "document" && (selectedFile ? `File: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)` : `${trainText.length} characters · ~${Math.max(0, trainText.split(/\s+/).filter(Boolean).length)} words`)}
                 {trainSource === "web" && (trainUrl ? `URL ready` : `Enter URL`)}
                 {trainSource === "research" && `${trainUrls.split("\n").filter(u => u.trim()).length} URL(s)`}
               </span>
@@ -1360,7 +1423,7 @@ export default function IntelligencePage() {
                 onClick={handleTrain}
                 disabled={training || (
                   (trainSource === "manual" && trainText.trim().length < 10) ||
-                  (trainSource === "document" && !trainText.trim() && !trainUrl.trim()) ||
+                  (trainSource === "document" && trainText.trim().length < 10 && !selectedFile) ||
                   (trainSource === "web" && !trainUrl.trim()) ||
                   (trainSource === "research" && !trainUrls.trim())
                 )}

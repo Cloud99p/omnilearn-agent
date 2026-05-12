@@ -1,7 +1,18 @@
 # Dockerfile for OmniLearn API Server
-# Deploy to Render, Railway, or any Docker host
+# Deploy to Railway, Render, or any Docker host
+# Includes document extraction tools for PDF, Word, Excel, OCR support
 
-FROM node:24-alpine
+FROM node:24-bookworm-slim
+
+# Install document extraction dependencies
+RUN apt-get update && apt-get install -y \
+    poppler-utils      # pdftotext, pdfinfo (PDF extraction)
+    pandoc             # DOCX, PPTX conversion
+    tesseract-ocr      # OCR for images
+    tesseract-ocr-eng  # English language data for OCR
+    gnumeric           # Excel spreadsheet conversion
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@10 --activate
