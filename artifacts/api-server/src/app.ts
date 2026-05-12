@@ -17,6 +17,9 @@ initSentry();
 
 const app: Express = express();
 
+// Trust Railway's proxy (fixes X-Forwarded-For errors)
+app.set('trust proxy', true);
+
 // ── Background ontology reflection ────
 const ONTOLOGY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 function scheduleOntologyReflection() {
