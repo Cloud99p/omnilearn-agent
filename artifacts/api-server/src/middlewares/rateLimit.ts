@@ -16,6 +16,7 @@ import { logger } from "../lib/logger";
 export const defaultLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10000, // Effectively unlimited for development/testing
+  trustProxy: true, // Required when app.set('trust proxy', true)
   message: {
     error: "Too many requests",
     message: "You have exceeded the rate limit. Please try again later.",
@@ -46,6 +47,7 @@ export const defaultLimiter = rateLimit({
 export const chatLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10000, // Effectively unlimited for development/testing
+  trustProxy: true, // Required when app.set('trust proxy', true)
   message: {
     error: "Too many chat requests",
     message: "You have exceeded the hourly chat limit. Please try again later.",
@@ -75,6 +77,7 @@ export const chatLimiter = rateLimit({
 export const skillCreateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5, // Limit each IP to 5 skill creations per hour
+  trustProxy: true, // Required when app.set('trust proxy', true)
   message: {
     error: "Too many skill creation attempts",
     message: "You have exceeded the skill creation limit. Please try again later.",
@@ -104,6 +107,7 @@ export const skillCreateLimiter = rateLimit({
 export const githubLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 30, // Limit each IP to 30 GitHub requests per hour (increased for testing)
+  trustProxy: true, // Required when app.set('trust proxy', true)
   message: {
     error: "Too many GitHub requests",
     message: "You have exceeded the GitHub API rate limit. Please try again later.",
