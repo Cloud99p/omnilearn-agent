@@ -234,3 +234,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 - Powered by [Anthropic Claude](https://anthropic.com)
 - UI components from [shadcn/ui](https://ui.shadcn.com)
 - ORM by [Drizzle](https://orm.drizzle.team)
+# Redeploy trigger
