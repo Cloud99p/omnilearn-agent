@@ -988,10 +988,6 @@ function synthesizeFromNodesOnly(
 ): string {
   const parts: string[] = [];
 
-  // Add conversational bridge if coming from casual chat
-  const opening = buildConversationalOpening(query, queryType, character, history);
-  if (opening) parts.push(opening);
-
   // Main knowledge content
   const knowledgeSection = synthesizeFromNodes(query, nodes, character, voice, queryType, history);
   if (knowledgeSection) parts.push(knowledgeSection);
@@ -1042,10 +1038,6 @@ function synthesizeFromNodesAndWeb(
   history: Array<{ role: string; content: string }>,
 ): string {
   const parts: string[] = [];
-
-  // Conversational opening
-  const opening = buildConversationalOpening(query, queryType, character, history);
-  if (opening) parts.push(opening);
 
   // Web results (if available)
   if (searchResults.length > 0) {
@@ -1178,37 +1170,6 @@ function buildOpening(
 ): string {
   // Minimal opening - no meta-text
   return "";
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Build conversational opening (when switching from casual to factual)
-// ──────────────────────────────────────────────────────────────────────────────
-
-function buildConversationalOpening(
-  query: string,
-  queryType: string,
-  character: CharacterState,
-  history: Array<{ role: string; content: string }>,
-): string {
-  // Check if we were in casual mode (recent greetings/small talk)
-  const recentUserMessages = history.filter(m => m.role === 'user').slice(-3);
-  const wasCasual = recentUserMessages.some(m => {
-    const content = m.content.toLowerCase();
-    return isGreeting(content) || isSmallTalk(content) || isCasualStatement(content);
-  });
-  
-  if (!wasCasual) return ""; // No bridge needed if already in factual mode
-  
-  // We're switching from casual to factual - add a natural bridge
-  const bridges = [
-    `Good question!`,
-    `Great question!`,
-    `I can help with that!`,
-    `Let me share what I know!`,
-    `Here's what I've learned:`,
-  ];
-  
-  return bridges[Math.floor(Math.random() * bridges.length)];
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
