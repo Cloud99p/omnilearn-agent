@@ -7,6 +7,7 @@ import { eq, desc, sql } from "drizzle-orm";
 import { proposeHebbianDelta, type EdgeRelationship } from "./hebbian.js";
 import { tokenize, queryScore, buildTfidfVector, computeIdfFromVectors } from "./tfidf.js";
 import { extractFacts, detectQueryType, extractKeyTerms } from "./extractor.js";
+import { embedText, cosineSimilarity } from "./embeddings.js";
 import {
   applyDeltas, computeTraitDeltaFromLearning, rebalanceTraits, needsRebalancing,
   detectTechnicalContent, detectEmotionalContent,
@@ -94,24 +95,39 @@ export async function retrieveRelevantNodes(
 
   const allVectors = filteredNodes.map(n => n.tfidfVector as Record<string, number>);
 
-  // 1. Try semantic search first
-  const scored: RetrievedNode[] = filteredNodes
-    .map(node => {
-      const nodeVec = node.tfidfVector as Record<string, number>;
-      const nodeTokens = node.tokens as string[];
-      const similarity = queryScore(queryTokens, nodeTokens, nodeVec, allVectors);
-      return { ...node, similarity };
-    })
-    .sort((a, b) => b.similarity - a.similarity);
+  // HYBRID RETRIEVAL: Combine semantic embeddings + TF-IDF
+  let queryEmbedding: number[] | null = null;
+  try {
+    queryEmbedding = await embedText(query);
+  } catch (err) {
+    logger.warn({ err }, 'Embedding generation failed, using TF-IDF only');
+  }
 
-  // 2. Filter by similarity threshold AND exclude low-quality matches
+  // Score nodes using both methods
+  const scored: RetrievedNode[] = filteredNodes.map(node => {
+    // TF-IDF score
+    const nodeVec = node.tfidfVector as Record<string, number>;
+    const nodeTokens = node.tokens as string[];
+    const tfidfScore = queryScore(queryTokens, nodeTokens, nodeVec, allVectors);
+    
+    // Embedding score (if available)
+    let embeddingScore = 0;
+    if (queryEmbedding && node.embedding && Array.isArray(node.embedding) && node.embedding.length > 0) {
+      embeddingScore = cosineSimilarity(queryEmbedding, node.embedding);
+    }
+    
+    // Hybrid score: 70% embeddings + 30% TF-IDF (when embeddings available)
+    const similarity = queryEmbedding && embeddingScore > 0
+      ? (0.7 * embeddingScore + 0.3 * tfidfScore)
+      : tfidfScore;
+    
+    return { ...node, similarity };
+  }).sort((a, b) => b.similarity - a.similarity);
+
+  // Filter by similarity threshold AND exclude low-quality matches
   const semanticResults = scored.filter(n => {
-    // Only include nodes with good similarity (> 0.15, up from 0.05)
     if (n.similarity <= 0.15) return false;
-    
-    // Exclude "rule" type nodes for factual questions (they're instructions, not facts)
     if (n.type === "rule" && queryType !== "command") return false;
-    
     return true;
   }).slice(0, topK);
   

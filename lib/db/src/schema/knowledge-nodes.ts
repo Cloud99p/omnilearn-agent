@@ -14,6 +14,7 @@ export const knowledgeNodes = pgTable("knowledge_nodes", {
   timesConfirmed: integer("times_confirmed").notNull().default(0),
   tfidfVector: jsonb("tfidf_vector").notNull().default({}),
   tokens: text("tokens").array().notNull().default([]),
+  embedding: jsonb("embedding").$type<number[]>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
