@@ -48,3 +48,4 @@ COPY --from=builder /app/package.json ./
 EXPOSE 3000
 ENV NODE_ENV=production PORT=3000
 CMD ["pnpm", "--filter", "@workspace/api-server", "run", "start"]
+# Rebuild: Thu May 14 23:46:11 UTC 2026
