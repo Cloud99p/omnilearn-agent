@@ -8,7 +8,8 @@
     "build": "echo build skipped",
     "start": "tsx src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "cleanup:identity": "tsx scripts/cleanup-identity-facts.ts"
+    "cleanup:identity": "tsx scripts/cleanup-identity-facts.ts",
+    "backfill-embeddings": "tsx src/scripts/backfill-embeddings.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
