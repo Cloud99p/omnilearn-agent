@@ -387,11 +387,12 @@ export function extractFacts(text: string): ExtractedFact[] {
   }
 
   // 2. If bulk text (>200 chars), extract sentences as facts (more aggressive)
-  if (text.length > 200 && facts.length < 5) {
+  // For long educational content (>500 chars), always extract sentences regardless of pattern matches
+  if (text.length > 200 && (facts.length < 10 || text.length > 500)) {
     // Split into sentences
     const sentences = text
       .split(/[.!?]+\s+/)
-      .filter((s) => s.trim().length > 30 && s.trim().length < 300);
+      .filter((s) => s.trim().length > 20 && s.trim().length < 400);
 
     for (const sentence of sentences) {
       const clean = sentence.trim();
