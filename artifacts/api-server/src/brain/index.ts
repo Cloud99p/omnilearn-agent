@@ -553,6 +553,10 @@ export async function trainOnText(
   clerkId: string | null,
 ): Promise<{ added: number; skipped: number; nodes: KnowledgeNode[] }> {
   const facts = extractFacts(text);
+  logger.info({ factCount: facts.length, textLength: text.length }, "extractFacts returned");
+  if (facts.length > 0) {
+    logger.info({ firstFact: facts[0].content.slice(0, 200) }, "First extracted fact");
+  }
   let added = 0;
   let skipped = 0;
   const insertedNodes: KnowledgeNode[] = [];

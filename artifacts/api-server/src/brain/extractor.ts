@@ -327,6 +327,10 @@ function isNonLearnable(text: string): boolean {
 export function extractFacts(text: string): ExtractedFact[] {
   const facts: ExtractedFact[] = [];
   const seen = new Set<string>();
+  
+  // DEBUG: Log text preview
+  const textPreview = text.slice(0, 100).replace(/\n/g, '\\n');
+  console.log(`[EXTRACT] Input text (${text.length} chars): ${textPreview}...`);
 
   // NORMALIZE TEXT: Fix common OCR/copy-paste errors
   let normalized = text
@@ -392,10 +396,15 @@ export function extractFacts(text: string): ExtractedFact[] {
   // 2. If bulk text (>200 chars), extract sentences as facts (ALWAYS for educational content)
   if (text.length > 200) {
     // Split into sentences - handle citation markers like .[6][7]
-    const sentences = text
-      .replace(/\]\s*\[/g, '], [') // Normalize citation spacing
+    const normalized = text.replace(/\]\s*\[/g, '], [');
+    const sentences = normalized
       .split(/[.!?]+(?:\s*\[\d+\])*(?:\s*\[\d+\])*\s+/)
       .filter((s) => s.trim().length > 20 && s.trim().length < 500);
+    
+    console.log(`[EXTRACT] Found ${sentences.length} sentences from ${text.length} chars`);
+    if (sentences.length > 0) {
+      console.log(`[EXTRACT] First: ${sentences[0].slice(0, 150)}`);
+    }
 
     for (const sentence of sentences) {
       const clean = sentence.trim();
