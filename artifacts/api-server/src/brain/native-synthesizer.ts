@@ -787,8 +787,8 @@ export async function synthesizeNative(
 
   // CASUAL MODE: Keep conversation flowing naturally
   if (mode === "casual") {
-    // Check for greetings - ONLY on first turn
-    if (isGreeting(query) && turnNumber < 2) {
+    // Check for greetings - works anytime user says hello
+    if (isGreeting(query)) {
       return {
         text: buildGreetingResponse(query, character, history),
         nodesUsed: 0,
