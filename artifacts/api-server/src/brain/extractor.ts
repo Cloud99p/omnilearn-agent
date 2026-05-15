@@ -243,23 +243,36 @@ export function hasKnowledgeQuality(text: string): boolean {
  */
 function isNonLearnable(text: string): boolean {
   const trimmed = text.trim().toLowerCase();
+  console.log(`[NonLearnable] Checking: ${trimmed.slice(0, 80)}...`);
 
   // Empty or too short
-  if (trimmed.length < 10) return true;
+  if (trimmed.length < 10) {
+    console.log(`[NonLearnable] TRUE - too short (${trimmed.length})`);
+    return true;
+  }
 
   // Questions ending with ?
-  if (trimmed.endsWith("?")) return true;
+  if (trimmed.endsWith("?")) {
+    console.log(`[NonLearnable] TRUE - ends with ?`);
+    return true;
+  }
 
   // Direct questions (what, who, where, when, why, how, etc.)
   // NOTE: Removed 'is' and 'are' - they appear in statements like 'Dogs are domesticated'
   const questionStarts =
     /^(what|who|where|when|why|how|can|could|does|do|will|would|should|tell|explain|describe|show|give|help)/i;
-  if (questionStarts.test(trimmed)) return true;
+  if (questionStarts.test(trimmed)) {
+    console.log(`[NonLearnable] TRUE - question start: ${trimmed.slice(0, 50)}`);
+    return true;
+  }
 
   // Commands/requests (imperative mood)
   const commands =
     /^(explain|show|tell|give|help|teach|describe|summarize|clarify|elaborate|expand|simplify|rephrase|repeat)/i;
-  if (commands.test(trimmed)) return true;
+  if (commands.test(trimmed)) {
+    console.log(`[NonLearnable] TRUE - command: ${trimmed.slice(0, 50)}`);
+    return true;
+  }
 
   // Understanding/clarification requests
   const clarification = [
