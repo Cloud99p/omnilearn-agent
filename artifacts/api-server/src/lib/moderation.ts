@@ -111,17 +111,21 @@ const PII_PATTERNS = {
 // ─── Moderation Functions ────────────────────────────────────────────────────
 
 export function moderateContent(content: string): ModerationResult {
-  const results: Array<{ category: string; severity: string; patterns: string[] }> = [];
+  const results: Array<{
+    category: string;
+    severity: string;
+    patterns: string[];
+  }> = [];
 
   // Check harmful content categories
   for (const [category, patterns] of Object.entries(HARMFUL_PATTERNS)) {
-    const matches = patterns.filter(pattern => pattern.test(content));
+    const matches = patterns.filter((pattern) => pattern.test(content));
     if (matches.length > 0) {
       const severity = getSeverityForCategory(category);
       results.push({
         category,
         severity,
-        patterns: matches.map(m => m.toString()),
+        patterns: matches.map((m) => m.toString()),
       });
     }
   }
@@ -148,12 +152,17 @@ export function moderateContent(content: string): ModerationResult {
 
   // Find highest severity
   const severityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
-  const highestSeverity = results.reduce((max, r) => 
-    severityOrder[r.severity as keyof typeof severityOrder] > severityOrder[max as keyof typeof severityOrder] ? r.severity : max
-  , results[0].severity);
+  const highestSeverity = results.reduce(
+    (max, r) =>
+      severityOrder[r.severity as keyof typeof severityOrder] >
+      severityOrder[max as keyof typeof severityOrder]
+        ? r.severity
+        : max,
+    results[0].severity,
+  );
 
-  const allPatterns = results.flatMap(r => r.patterns);
-  const categories = results.map(r => r.category).join(", ");
+  const allPatterns = results.flatMap((r) => r.patterns);
+  const categories = results.map((r) => r.category).join(", ");
 
   return {
     approved: false,
@@ -167,7 +176,7 @@ export function moderateContent(content: string): ModerationResult {
 function getSeverityForCategory(category: string): string {
   const critical = ["violence", "hate", "sexualMinors", "selfHarm"];
   const high = ["illegal", "dangerous", "pii", "harassment"];
-  
+
   if (critical.includes(category)) return "critical";
   if (high.includes(category)) return "high";
   return "medium";
@@ -175,12 +184,15 @@ function getSeverityForCategory(category: string): string {
 
 // ─── Batch Moderation (for network contributions) ───────────────────────────
 
-export function moderateBatch(items: Array<{ content: string; type?: string }>): {
+export function moderateBatch(
+  items: Array<{ content: string; type?: string }>,
+): {
   approved: Array<{ content: string; type?: string }>;
   rejected: Array<{ content: string; type?: string; reason: string }>;
 } {
   const approved: Array<{ content: string; type?: string }> = [];
-  const rejected: Array<{ content: string; type?: string; reason: string }> = [];
+  const rejected: Array<{ content: string; type?: string; reason: string }> =
+    [];
 
   for (const item of items) {
     const result = moderateContent(item.content);
@@ -192,8 +204,12 @@ export function moderateBatch(items: Array<{ content: string; type?: string }>):
         reason: result.reason || "Content policy violation",
       });
       logger.warn(
-        { category: result.category, severity: result.severity, content: item.content.slice(0, 100) },
-        "Content moderation: rejected"
+        {
+          category: result.category,
+          severity: result.severity,
+          content: item.content.slice(0, 100),
+        },
+        "Content moderation: rejected",
       );
     }
   }
@@ -211,13 +227,12 @@ export interface UserReport {
   description?: string;
 }
 
-export async function submitUserReport(report: UserReport): Promise<{ success: boolean; reportId?: string }> {
+export async function submitUserReport(
+  report: UserReport,
+): Promise<{ success: boolean; reportId?: string }> {
   try {
     // Log the report for review
-    logger.warn(
-      { report },
-      "User submitted content report"
-    );
+    logger.warn({ report }, "User submitted content report");
 
     // In production, this would:
     // 1. Insert into a reports table
@@ -226,7 +241,7 @@ export async function submitUserReport(report: UserReport): Promise<{ success: b
     // 4. Auto-remove if multiple reports received
 
     const reportId = `rpt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    
+
     return { success: true, reportId };
   } catch (error) {
     logger.error({ error }, "Failed to submit user report");
@@ -247,10 +262,7 @@ export interface ModerationAudit {
 }
 
 export function logModerationAudit(audit: ModerationAudit): void {
-  logger.info(
-    { audit },
-    "Moderation audit log"
-  );
+  logger.info({ audit }, "Moderation audit log");
   // In production, write to a dedicated audit_log table
 }
 

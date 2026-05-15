@@ -2,7 +2,10 @@ import { Router } from "express";
 import { z } from "zod";
 import { submitUserReport, moderateContent } from "../lib/moderation.js";
 import { logger } from "../lib/logger.js";
-import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
+import {
+  requireAuth,
+  type AuthenticatedRequest,
+} from "../middlewares/requireAuth.js";
 
 const router = Router();
 
@@ -28,7 +31,7 @@ router.post("/report", requireAuth, async (req, res) => {
     if (result.success) {
       logger.info(
         { clerkId, reportId: result.reportId, ...body },
-        "User report submitted"
+        "User report submitted",
       );
       res.json({
         success: true,

@@ -17,6 +17,7 @@
 ## 🚀 Quick Deploy (5 Steps)
 
 ### 1. Get Anthropic API Key
+
 1. Go to [console.anthropic.com](https://console.anthropic.com)
 2. Sign up / Log in
 3. Go to **Settings** → **API Keys**
@@ -24,6 +25,7 @@
 5. **$5 free credit** for new accounts
 
 ### 2. Create Supabase Database (Free)
+
 1. Go to [supabase.com](https://supabase.com)
 2. Sign up with GitHub
 3. **New Project** → Name: `omnilearn`
@@ -33,12 +35,14 @@
 7. Copy **Connection string** (URI format)
 
 ### 3. Get Clerk Keys
+
 1. Go to [clerk.com](https://clerk.com)
 2. Sign up → Create application
 3. Copy **Secret Key** (`sk_test_...`)
 4. Copy **Publishable Key** (`pk_test_...`)
 
 ### 4. Deploy to Railway
+
 1. Go to [railway.app](https://railway.app)
 2. Sign up → **New Project** → **Deploy from GitHub**
 3. Select `omnilearn-agent`
@@ -46,6 +50,7 @@
 5. Deploy!
 
 ### 5. Update Vercel
+
 1. Copy Railway URL
 2. Update `vercel.json`
 3. Push to GitHub
@@ -56,17 +61,19 @@
 ## 🔧 Environment Variables
 
 ### Railway (Backend)
-| Variable | Value | Where to Get |
-|----------|-------|--------------|
-| `DATABASE_URL` | `postgresql://...` | Supabase → Settings → Database |
-| `CLERK_SECRET_KEY` | `sk_test_...` | Clerk → API Keys |
-| `CLERK_PUBLISHABLE_KEY` | `pk_test_...` | Clerk → API Keys |
-| `ANTHROPIC_API_KEY` | `sk-ant-...` | [console.anthropic.com](https://console.anthropic.com) |
-| `PORT` | `3000` | (default) |
+
+| Variable                | Value              | Where to Get                                           |
+| ----------------------- | ------------------ | ------------------------------------------------------ |
+| `DATABASE_URL`          | `postgresql://...` | Supabase → Settings → Database                         |
+| `CLERK_SECRET_KEY`      | `sk_test_...`      | Clerk → API Keys                                       |
+| `CLERK_PUBLISHABLE_KEY` | `pk_test_...`      | Clerk → API Keys                                       |
+| `ANTHROPIC_API_KEY`     | `sk-ant-...`       | [console.anthropic.com](https://console.anthropic.com) |
+| `PORT`                  | `3000`             | (default)                                              |
 
 ### Vercel (Frontend)
-| Variable | Value | Where to Get |
-|----------|-------|--------------|
+
+| Variable                     | Value         | Where to Get     |
+| ---------------------------- | ------------- | ---------------- |
 | `VITE_CLERK_PUBLISHABLE_KEY` | `pk_test_...` | Clerk → API Keys |
 
 ---
@@ -108,6 +115,7 @@
 ```
 
 Connection string format:
+
 ```
 postgresql://postgres:[YOUR-PASSWORD]@db.xxx.supabase.co:5432/postgres
 ```
@@ -186,6 +194,7 @@ postgresql://postgres:[YOUR-PASSWORD]@db.xxx.supabase.co:5432/postgres
 ## ✅ Verify Deployment
 
 ### 1. Test Backend
+
 ```
 Visit: https://your-railway-url.up.railway.app/api/healthz
 
@@ -193,6 +202,7 @@ Expected: {"status":"healthy"}
 ```
 
 ### 2. Test Frontend
+
 ```
 Visit: https://your-vercel-url.vercel.app
 
@@ -202,6 +212,7 @@ Visit: https://your-vercel-url.vercel.app
 ```
 
 ### 3. Test API Proxy
+
 ```
 Visit: https://your-vercel-url.vercel.app/api/healthz
 
@@ -213,26 +224,31 @@ Expected: {"status":"healthy"} (proxied from Railway)
 ## 🐛 Troubleshooting
 
 ### Build fails on Railway
+
 - Check logs in Railway dashboard
 - Verify all environment variables are set
 - Ensure DATABASE_URL includes full connection string
 
 ### "ANTHROPIC_API_KEY must be set"
+
 - Variable name is exactly `ANTHROPIC_API_KEY` (case-sensitive)
 - Key starts with `sk-ant-`
 - No extra spaces in the value
 
 ### Database connection error
+
 - Supabase URL must include `?sslmode=require` at the end
 - Check firewall: Supabase → Settings → Database → Connection pool → Enable
 - Test in Supabase SQL editor first
 
 ### Clerk authentication fails
+
 - Both `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` must be set
 - Keys are `sk_test_` and `pk_test_` (not production keys)
 - Enable Google/GitHub OAuth in Clerk dashboard
 
-### Frontend 404 on /api/*
+### Frontend 404 on /api/\*
+
 - Check `vercel.json` rewrites — URL must match Railway exactly
 - Railway service must be running (not crashed)
 - Check Railway logs for errors
@@ -241,12 +257,12 @@ Expected: {"status":"healthy"} (proxied from Railway)
 
 ## 📊 Cost Breakdown
 
-| Service | Tier | Cost |
-|---------|------|------|
-| Vercel | Hobby | Free |
-| Railway | Hobby | $5 credit/month (free) |
-| Supabase | Free | Free (500MB DB, 50K MAU) |
-| Clerk | Free | 10,000 MAU free |
+| Service   | Tier          | Cost                        |
+| --------- | ------------- | --------------------------- |
+| Vercel    | Hobby         | Free                        |
+| Railway   | Hobby         | $5 credit/month (free)      |
+| Supabase  | Free          | Free (500MB DB, 50K MAU)    |
+| Clerk     | Free          | 10,000 MAU free             |
 | Anthropic | Pay-as-you-go | $5 credit (new), then usage |
 
 **Estimated total:** $0-10/month for moderate usage

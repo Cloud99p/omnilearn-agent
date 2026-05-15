@@ -80,6 +80,7 @@
    - Click **Create Monitor**
 
 4. **Add More Monitors (Optional)**
+
    ```
    Frontend: https://omnilearn.dpdns.org
    Backend Root: https://workspaceapi-server-production-29ee.up.railway.app
@@ -96,11 +97,13 @@
 ### Alert Configuration
 
 **Recommended:**
+
 - **Email alerts:** Always enable
 - **SMS alerts:** Enable for critical monitors (API down)
 - **Webhook alerts:** Optional (Discord, Slack, Telegram)
 
 **Alert Threshold:**
+
 - Down for 5 minutes → Email alert
 - Down for 15 minutes → SMS alert
 - Down for 30 minutes → Webhook to team chat
@@ -198,17 +201,20 @@ railway logs --export > logs.json
 ## Monitoring Checklist
 
 ### Daily (Automated)
+
 - [x] Uptime monitoring (UptimeRobot)
 - [x] Error tracking (Sentry)
 - [x] Application logs (Railway)
 
 ### Weekly (Manual Review)
+
 - [ ] Review Sentry error trends
 - [ ] Check UptimeRobot uptime %
 - [ ] Review slow queries in Supabase
 - [ ] Check Railway resource usage
 
 ### Monthly (Deep Dive)
+
 - [ ] Performance trends analysis
 - [ ] Error rate trends
 - [ ] Database growth analysis
@@ -289,13 +295,13 @@ SENTRY_TRACES_SAMPLE_RATE=0.1
 
 ## Quick Links
 
-| Service | Dashboard | Docs |
-|---------|-----------|------|
-| Sentry | https://sentry.io | https://docs.sentry.io |
-| UptimeRobot | https://uptimerobot.com | https://uptimerobot.com/api |
-| Railway Logs | https://railway.app | https://docs.railway.app |
-| Vercel Analytics | https://vercel.com | https://vercel.com/docs/analytics |
-| Supabase Logs | https://supabase.com | https://supabase.com/docs |
+| Service          | Dashboard               | Docs                              |
+| ---------------- | ----------------------- | --------------------------------- |
+| Sentry           | https://sentry.io       | https://docs.sentry.io            |
+| UptimeRobot      | https://uptimerobot.com | https://uptimerobot.com/api       |
+| Railway Logs     | https://railway.app     | https://docs.railway.app          |
+| Vercel Analytics | https://vercel.com      | https://vercel.com/docs/analytics |
+| Supabase Logs    | https://supabase.com    | https://supabase.com/docs         |
 
 ---
 

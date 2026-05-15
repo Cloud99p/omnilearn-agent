@@ -11,9 +11,14 @@ export const repositories = pgTable("repositories", {
   isStarred: boolean("is_starred").notNull().default(false),
   language: text("language"),
   htmlUrl: text("html_url"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
-export const insertRepositorySchema = createInsertSchema(repositories).omit({ id: true, createdAt: true });
+export const insertRepositorySchema = createInsertSchema(repositories).omit({
+  id: true,
+  createdAt: true,
+});
 export type Repository = typeof repositories.$inferSelect;
 export type InsertRepository = z.infer<typeof insertRepositorySchema>;

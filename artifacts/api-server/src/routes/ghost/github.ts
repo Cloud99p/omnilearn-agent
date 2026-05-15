@@ -1,16 +1,26 @@
 import { Router } from "express";
-import { requireAuth, type AuthenticatedRequest } from "../../middlewares/requireAuth.js";
+import {
+  requireAuth,
+  type AuthenticatedRequest,
+} from "../../middlewares/requireAuth.js";
 import { createClerkClient } from "@clerk/express";
 import { Octokit } from "@octokit/rest";
 
 const router = Router();
-const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY,
+});
 
 async function getGitHubToken(clerkId: string): Promise<string | null> {
   try {
-    const tokens = await clerkClient.users.getUserOauthAccessToken(clerkId, "oauth_github");
+    const tokens = await clerkClient.users.getUserOauthAccessToken(
+      clerkId,
+      "oauth_github",
+    );
     return tokens.data?.[0]?.token ?? null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function b64(str: string): string {
@@ -216,15 +226,23 @@ GHOST_NODE_NAME=My Ghost Node
 GHOST_NODE_REGION=unknown
 `;
 
-const PACKAGE_JSON = JSON.stringify({
-  name: "omnilearn-ghost-node",
-  version: "1.0.0",
-  description: "OmniLearn distributed ghost node server",
-  main: "ghost-server.js",
-  scripts: { start: "node ghost-server.js" },
-  dependencies: { "@anthropic-ai/sdk": "^0.32.0", "cors": "^2.8.5", "express": "^4.21.0" },
-  engines: { node: ">=18" },
-}, null, 2);
+const PACKAGE_JSON = JSON.stringify(
+  {
+    name: "omnilearn-ghost-node",
+    version: "1.0.0",
+    description: "OmniLearn distributed ghost node server",
+    main: "ghost-server.js",
+    scripts: { start: "node ghost-server.js" },
+    dependencies: {
+      "@anthropic-ai/sdk": "^0.32.0",
+      cors: "^2.8.5",
+      express: "^4.21.0",
+    },
+    engines: { node: ">=18" },
+  },
+  null,
+  2,
+);
 
 const GITIGNORE = `.env
 node_modules/
@@ -243,8 +261,14 @@ router.post("/github/create-repo", requireAuth, async (req, res) => {
     return;
   }
 
-  const { repoName = "omnilearn-ghost-node", description = "OmniLearn distributed ghost node server", isPrivate = false } = req.body as {
-    repoName?: string; description?: string; isPrivate?: boolean;
+  const {
+    repoName = "omnilearn-ghost-node",
+    description = "OmniLearn distributed ghost node server",
+    isPrivate = false,
+  } = req.body as {
+    repoName?: string;
+    description?: string;
+    isPrivate?: boolean;
   };
 
   const octokit = new Octokit({ auth: token });
@@ -261,10 +285,26 @@ router.post("/github/create-repo", requireAuth, async (req, res) => {
     // Push all files
     const files: Array<{ path: string; content: string; message: string }> = [
       { path: "README.md", content: README, message: "Add README" },
-      { path: "ghost-server.js", content: GHOST_SERVER_JS, message: "Add ghost node server" },
-      { path: "docker-compose.yml", content: DOCKER_COMPOSE, message: "Add Docker Compose config" },
-      { path: ".env.example", content: ENV_EXAMPLE, message: "Add example environment file" },
-      { path: "package.json", content: PACKAGE_JSON, message: "Add package.json" },
+      {
+        path: "ghost-server.js",
+        content: GHOST_SERVER_JS,
+        message: "Add ghost node server",
+      },
+      {
+        path: "docker-compose.yml",
+        content: DOCKER_COMPOSE,
+        message: "Add Docker Compose config",
+      },
+      {
+        path: ".env.example",
+        content: ENV_EXAMPLE,
+        message: "Add example environment file",
+      },
+      {
+        path: "package.json",
+        content: PACKAGE_JSON,
+        message: "Add package.json",
+      },
       { path: ".gitignore", content: GITIGNORE, message: "Add .gitignore" },
     ];
 
@@ -300,10 +340,16 @@ router.post("/github/create-repo", requireAuth, async (req, res) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes("already exists")) {
-      res.status(409).json({ error: `Repository "${repoName}" already exists on your GitHub account.` });
+      res
+        .status(409)
+        .json({
+          error: `Repository "${repoName}" already exists on your GitHub account.`,
+        });
     } else {
       req.log.error(err, "Failed to create ghost node repo");
-      res.status(500).json({ error: "Failed to create repository", detail: message });
+      res
+        .status(500)
+        .json({ error: "Failed to create repository", detail: message });
     }
   }
 });

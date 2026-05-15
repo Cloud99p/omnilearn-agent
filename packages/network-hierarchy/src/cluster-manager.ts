@@ -2,7 +2,7 @@
  * Cluster Manager - Handles cluster formation, maintenance, and fusion
  */
 
-import { Cluster, GhostNode, NetworkTier, calculateTier } from './types.js';
+import { Cluster, GhostNode, NetworkTier, calculateTier } from "./types.js";
 
 export class ClusterManager {
   private clusters: Map<string, Cluster> = new Map();
@@ -14,13 +14,13 @@ export class ClusterManager {
     this.nodes.set(node.id, node);
     node.joinedAt = new Date();
     node.lastSeen = new Date();
-    node.status = 'online';
+    node.status = "online";
     node.uptime = 100;
     node.capacity = 100; // Default capacity
     node.metadata = {
-      version: '0.1.0',
-      synthesizer: 'local',
-      languages: ['en'],
+      version: "0.1.0",
+      synthesizer: "local",
+      languages: ["en"],
     };
 
     // Attempt to cluster
@@ -30,12 +30,16 @@ export class ClusterManager {
   /** Attempt to form a cluster with nearby nodes */
   private attemptClusterFormation(node: GhostNode): void {
     const nearbyNodes = this.findNearbyNodes(node, this.discoveryRadiusKm);
-    
-    if (nearbyNodes.length >= 49) { // 49 + this node = 50
-      const clusterId = this.createCluster([...nearbyNodes, node], this.discoveryRadiusKm);
-      
+
+    if (nearbyNodes.length >= 49) {
+      // 49 + this node = 50
+      const clusterId = this.createCluster(
+        [...nearbyNodes, node],
+        this.discoveryRadiusKm,
+      );
+
       // Assign nodes to cluster
-      nearbyNodes.forEach(n => {
+      nearbyNodes.forEach((n) => {
         n.clusterId = clusterId;
         n.lastSeen = new Date();
       });
@@ -46,16 +50,18 @@ export class ClusterManager {
 
   /** Find nodes within radius */
   findNearbyNodes(node: GhostNode, radiusKm: number): GhostNode[] {
-    return Array.from(this.nodes.values()).filter(n => {
+    return Array.from(this.nodes.values()).filter((n) => {
       if (n.id === node.id) return false;
-      if (n.status !== 'online') return false;
+      if (n.status !== "online") return false;
       if (n.clusterId) return false; // Already in a cluster
-      
+
       // Simple distance check (in production, use spatial index)
       const latDiff = Math.abs(n.location.lat - node.location.lat) * 111; // km per degree lat
-      const lngDiff = Math.abs(n.location.lng - node.location.lng) * 
-        Math.cos((node.location.lat * Math.PI) / 180) * 111; // km per degree lng
-      
+      const lngDiff =
+        Math.abs(n.location.lng - node.location.lng) *
+        Math.cos((node.location.lat * Math.PI) / 180) *
+        111; // km per degree lng
+
       const distance = Math.sqrt(latDiff ** 2 + lngDiff ** 2);
       return distance <= radiusKm;
     });
@@ -64,14 +70,16 @@ export class ClusterManager {
   /** Create a new cluster */
   private createCluster(nodes: GhostNode[], radiusKm: number): string {
     const clusterId = `cluster_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     // Calculate center location
-    const centerLat = nodes.reduce((sum, n) => sum + n.location.lat, 0) / nodes.length;
-    const centerLng = nodes.reduce((sum, n) => sum + n.location.lng, 0) / nodes.length;
-    
+    const centerLat =
+      nodes.reduce((sum, n) => sum + n.location.lat, 0) / nodes.length;
+    const centerLng =
+      nodes.reduce((sum, n) => sum + n.location.lng, 0) / nodes.length;
+
     // Determine tier
     const tier = calculateTier(nodes.length, radiusKm);
-    
+
     const cluster: Cluster = {
       id: clusterId,
       tier,
@@ -79,9 +87,9 @@ export class ClusterManager {
       location: { lat: centerLat, lng: centerLng },
       radiusKm,
       childIds: [],
-      nodeIds: nodes.map(n => n.id),
+      nodeIds: nodes.map((n) => n.id),
       totalNodes: nodes.length,
-      onlineNodes: nodes.filter(n => n.status === 'online').length,
+      onlineNodes: nodes.filter((n) => n.status === "online").length,
       capacity: nodes.reduce((sum, n) => sum + (n.capacity || 100), 0),
       load: 0,
       knowledgeIndex: [],
@@ -95,7 +103,11 @@ export class ClusterManager {
   }
 
   /** Generate cluster name based on tier and location */
-  private generateClusterName(tier: NetworkTier, lat: number, lng: number): string {
+  private generateClusterName(
+    tier: NetworkTier,
+    lat: number,
+    lng: number,
+  ): string {
     if (tier === NetworkTier.LOCAL_CLUSTER) {
       return `Local_${Math.floor(lat)}_${Math.floor(lng)}`;
     }
@@ -113,17 +125,23 @@ export class ClusterManager {
     const cluster = this.clusters.get(clusterId);
     if (!cluster) return null;
 
-    const nearbyClusters = this.findNearbyClusters(cluster, cluster.radiusKm * 2);
-    if (nearbyClusters.length >= 4) { // 4 + this = 5 clusters = metro tier
+    const nearbyClusters = this.findNearbyClusters(
+      cluster,
+      cluster.radiusKm * 2,
+    );
+    if (nearbyClusters.length >= 4) {
+      // 4 + this = 5 clusters = metro tier
       return {
         id: `fusion_${Date.now()}`,
         proposerClusterId: clusterId,
-        targetClusterIds: nearbyClusters.map(c => c.id),
+        targetClusterIds: nearbyClusters.map((c) => c.id),
         proposedTier: NetworkTier.METRO,
         proposedName: `Metro_${Math.floor(cluster.location.lat / 5)}_${Math.floor(cluster.location.lng / 5)}`,
-        totalNodes: cluster.totalNodes + nearbyClusters.reduce((sum, c) => sum + c.totalNodes, 0),
+        totalNodes:
+          cluster.totalNodes +
+          nearbyClusters.reduce((sum, c) => sum + c.totalNodes, 0),
         timestamp: new Date(),
-        status: 'pending',
+        status: "pending",
         votes: {},
       };
     }
@@ -132,13 +150,15 @@ export class ClusterManager {
 
   /** Find nearby clusters */
   private findNearbyClusters(cluster: Cluster, radiusKm: number): Cluster[] {
-    return Array.from(this.clusters.values()).filter(c => {
+    return Array.from(this.clusters.values()).filter((c) => {
       if (c.id === cluster.id) return false;
-      
+
       const latDiff = Math.abs(c.location.lat - cluster.location.lat) * 111;
-      const lngDiff = Math.abs(c.location.lng - cluster.location.lng) * 
-        Math.cos((cluster.location.lat * Math.PI) / 180) * 111;
-      
+      const lngDiff =
+        Math.abs(c.location.lng - cluster.location.lng) *
+        Math.cos((cluster.location.lat * Math.PI) / 180) *
+        111;
+
       const distance = Math.sqrt(latDiff ** 2 + lngDiff ** 2);
       return distance <= radiusKm;
     });
@@ -177,14 +197,14 @@ export class FusionManager {
     const proposal = this.proposals.get(proposalId);
     if (proposal) {
       proposal.votes[clusterId] = voted;
-      
+
       // Check if we have enough votes
       const totalClusters = 1 + proposal.targetClusterIds.length;
       const voteCount = Object.keys(proposal.votes).length;
-      
+
       if (voteCount === totalClusters) {
-        const allVoted = Object.values(proposal.votes).every(v => v);
-        proposal.status = allVoted ? 'accepted' : 'rejected';
+        const allVoted = Object.values(proposal.votes).every((v) => v);
+        proposal.status = allVoted ? "accepted" : "rejected";
       }
     }
   }

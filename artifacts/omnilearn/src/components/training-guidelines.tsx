@@ -4,7 +4,7 @@ export function TrainingGuidelines() {
   return (
     <div className="mt-4 p-4 rounded-lg bg-muted/50 border border-border">
       <h3 className="text-sm font-semibold mb-3">💡 What to Teach OmniLearn</h3>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
         {/* DOs */}
         <div className="space-y-2">
@@ -41,8 +41,10 @@ export function TrainingGuidelines() {
 
       {/* Examples */}
       <div className="mt-4 pt-4 border-t border-border">
-        <h4 className="text-xs font-semibold mb-2 uppercase tracking-wide text-muted-foreground">Examples</h4>
-        
+        <h4 className="text-xs font-semibold mb-2 uppercase tracking-wide text-muted-foreground">
+          Examples
+        </h4>
+
         <div className="space-y-2 text-sm">
           <div className="flex gap-2">
             <span className="text-green-600">✅</span>
@@ -72,8 +74,9 @@ export function TrainingGuidelines() {
       </div>
 
       <p className="mt-4 text-xs text-muted-foreground">
-        💡 <strong>Tip:</strong> OmniLearn automatically extracts knowledge from conversations. 
-        You don't need to use special formats - just share information naturally!
+        💡 <strong>Tip:</strong> OmniLearn automatically extracts knowledge from
+        conversations. You don't need to use special formats - just share
+        information naturally!
       </p>
     </div>
   );

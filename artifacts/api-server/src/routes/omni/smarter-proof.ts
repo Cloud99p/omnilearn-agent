@@ -21,12 +21,12 @@ router.get("/smarter-proof", async (req, res) => {
     // ── 1. Load all nodes ──────────────────────────────────────────────────────
     const allNodes = await db
       .select({
-        id:           knowledgeNodes.id,
-        content:      knowledgeNodes.content,
-        type:         knowledgeNodes.type,
-        confidence:   knowledgeNodes.confidence,
+        id: knowledgeNodes.id,
+        content: knowledgeNodes.content,
+        type: knowledgeNodes.type,
+        confidence: knowledgeNodes.confidence,
         timesAccessed: knowledgeNodes.timesAccessed,
-        createdAt:    knowledgeNodes.createdAt,
+        createdAt: knowledgeNodes.createdAt,
       })
       .from(knowledgeNodes)
       .orderBy(desc(knowledgeNodes.timesAccessed));
@@ -42,7 +42,10 @@ router.get("/smarter-proof", async (req, res) => {
     // Are top 20% of nodes handling a disproportionate share of accesses?
     // Random baseline: each 20% group handles exactly 20% of accesses.
     // A smart agent concentrates usage on its best nodes.
-    const totalAccesses = allNodes.reduce((s, n) => s + (n.timesAccessed ?? 0), 0);
+    const totalAccesses = allNodes.reduce(
+      (s, n) => s + (n.timesAccessed ?? 0),
+      0,
+    );
     const top20Count = Math.max(1, Math.ceil(totalNodes * 0.2));
     const top20Accesses = allNodes
       .slice(0, top20Count)
@@ -77,7 +80,9 @@ router.get("/smarter-proof", async (req, res) => {
     for (const q of PROBES) {
       try {
         const retrieved = await retrieveRelevantNodes(q, null, TOP_K);
-        const relevant = retrieved.filter(n => n.similarity > RELEVANCE_THRESHOLD);
+        const relevant = retrieved.filter(
+          (n) => n.similarity > RELEVANCE_THRESHOLD,
+        );
         const avgSim =
           retrieved.length > 0
             ? retrieved.reduce((s, n) => s + n.similarity, 0) / retrieved.length
@@ -87,12 +92,16 @@ router.get("/smarter-proof", async (req, res) => {
           nodesRetrieved: retrieved.length,
           relevantCount: relevant.length,
           avgSimilarity: Math.round(avgSim * 1000) / 1000,
-          precision: retrieved.length > 0 ? relevant.length / retrieved.length : 0,
+          precision:
+            retrieved.length > 0 ? relevant.length / retrieved.length : 0,
         });
       } catch {
         probeResults.push({
-          question: q, nodesRetrieved: 0, relevantCount: 0,
-          avgSimilarity: 0, precision: 0,
+          question: q,
+          nodesRetrieved: 0,
+          relevantCount: 0,
+          avgSimilarity: 0,
+          precision: 0,
         });
       }
     }
@@ -125,11 +134,11 @@ router.get("/smarter-proof", async (req, res) => {
     // Lower dominance = more balanced = smarter (learns across domains)
 
     // ── 7. Top accessed nodes (for display) ───────────────────────────────────
-    const topNodes = allNodes.slice(0, 8).map(n => ({
-      id:           n.id,
-      content:      n.content.slice(0, 120),
-      type:         n.type,
-      confidence:   n.confidence,
+    const topNodes = allNodes.slice(0, 8).map((n) => ({
+      id: n.id,
+      content: n.content.slice(0, 120),
+      type: n.type,
+      confidence: n.confidence,
       timesAccessed: n.timesAccessed,
     }));
 
@@ -150,13 +159,14 @@ router.get("/smarter-proof", async (req, res) => {
         paretoRatio: Math.round(paretoRatio * 1000) / 1000,
         randomBaseline: randomParetoBaseline,
         lift: Math.round((paretoRatio / randomParetoBaseline) * 100) / 100,
-        verdict: paretoRatio > 0.3 ? "pass" : totalAccesses < 5 ? "growing" : "fail",
+        verdict:
+          paretoRatio > 0.3 ? "pass" : totalAccesses < 5 ? "growing" : "fail",
       },
 
       confidence: {
         globalAvg: Math.round(globalAvgConf * 1000) / 1000,
-        top10Avg:  Math.round(top10AvgConf * 1000) / 1000,
-        gradient:  Math.round(confGradient * 100) / 100,
+        top10Avg: Math.round(top10AvgConf * 1000) / 1000,
+        gradient: Math.round(confGradient * 100) / 100,
         histogram: buckets.map((count, i) => ({
           label: `${i * 20}–${i * 20 + 20}%`,
           count,
@@ -169,7 +179,8 @@ router.get("/smarter-proof", async (req, res) => {
         avgPrecision: Math.round(avgPrecision * 1000) / 1000,
         randomBaseline: Math.round(randomPrecisionBaseline * 1000) / 1000,
         lift: Math.round(precisionLift * 10) / 10,
-        verdict: precisionLift >= 1.5 ? "pass" : totalNodes < 10 ? "growing" : "fail",
+        verdict:
+          precisionLift >= 1.5 ? "pass" : totalNodes < 10 ? "growing" : "fail",
       },
 
       graph: {
@@ -177,7 +188,8 @@ router.get("/smarter-proof", async (req, res) => {
         density: Math.round(density * 100) / 100,
         typeCounts: typeEntries.map(([type, count]) => ({ type, count })),
         dominantTypeFraction: Math.round(dominantTypeFraction * 100) / 100,
-        verdict: density >= 0.3 ? "pass" : totalNodes < 5 ? "growing" : "growing",
+        verdict:
+          density >= 0.3 ? "pass" : totalNodes < 5 ? "growing" : "growing",
       },
 
       topNodes,

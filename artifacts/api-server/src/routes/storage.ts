@@ -25,7 +25,7 @@ router.get("/stats", async (req, res) => {
         percentUsed: 0,
       },
     };
-    
+
     res.json(stats);
   } catch (err) {
     req.log.error(err, "Failed to get storage stats");
@@ -42,7 +42,7 @@ router.get("/cleanup", async (req, res) => {
       deletedItems: 0,
       message: "Cleanup completed",
     };
-    
+
     res.json(result);
   } catch (err) {
     req.log.error(err, "Failed to cleanup storage");

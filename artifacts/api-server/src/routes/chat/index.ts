@@ -22,18 +22,20 @@ router.use(clerkMiddleware());
 router.get("/conversations", async (req, res) => {
   try {
     const { userId } = getAuth(req);
-    
+
     // If Clerk configured and user logged in, show ONLY their conversations
     if (userId) {
-      const list = await db.select()
+      const list = await db
+        .select()
         .from(conversations)
         .where(eq(conversations.clerkId, userId))
         .orderBy(conversations.createdAt);
       return res.json(list);
     }
-    
+
     // If NOT logged in (anonymous user), show conversations without clerkId
-    const list = await db.select()
+    const list = await db
+      .select()
       .from(conversations)
       .where(eq(conversations.clerkId, null))
       .orderBy(conversations.createdAt);
@@ -47,7 +49,8 @@ router.get("/conversations", async (req, res) => {
 // List all conversations (for debugging - remove in production)
 router.get("/conversations/all", async (req, res) => {
   try {
-    const list = await db.select()
+    const list = await db
+      .select()
       .from(conversations)
       .orderBy(conversations.createdAt);
     return res.json(list);
@@ -60,17 +63,19 @@ router.get("/conversations/all", async (req, res) => {
 // Create conversation (USER-ISOLATED: saves with current user's clerkId)
 router.post("/conversations", async (req, res) => {
   const { userId } = getAuth(req);
-  
+
   const parsed = CreateConversationBody.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "Invalid body", details: parsed.error });
+    return res
+      .status(400)
+      .json({ error: "Invalid body", details: parsed.error });
   }
   try {
     // SECURITY: Save with user's clerkId if Clerk configured
     const [conv] = await db
       .insert(conversations)
-      .values({ 
-        title: parsed.data.title, 
+      .values({
+        title: parsed.data.title,
         mode: parsed.data.mode,
         clerkId: userId || null, // USER ISOLATION (optional)
       })
@@ -97,7 +102,9 @@ router.get("/conversations/:conversationId", async (req, res) => {
 
     // If Clerk configured, check ownership
     if (userId && conv.clerkId && conv.clerkId !== userId) {
-      return res.status(403).json({ error: "Forbidden - not your conversation" });
+      return res
+        .status(403)
+        .json({ error: "Forbidden - not your conversation" });
     }
 
     const msgs = await db
@@ -122,15 +129,19 @@ router.delete("/conversations/:conversationId", async (req, res) => {
   try {
     // If Clerk configured, check ownership before deleting
     if (userId) {
-      await db.delete(conversations).where(
-        and(
-          eq(conversations.id, params.data.conversationId),
-          eq(conversations.clerkId, userId)
-        )
-      );
+      await db
+        .delete(conversations)
+        .where(
+          and(
+            eq(conversations.id, params.data.conversationId),
+            eq(conversations.clerkId, userId),
+          ),
+        );
     } else {
       // No Clerk - delete by ID only
-      await db.delete(conversations).where(eq(conversations.id, params.data.conversationId));
+      await db
+        .delete(conversations)
+        .where(eq(conversations.id, params.data.conversationId));
     }
     return res.status(204).end();
   } catch (err) {
@@ -140,107 +151,120 @@ router.delete("/conversations/:conversationId", async (req, res) => {
 });
 
 // Stream message — uses native brain (no external LLM, learns from conversation)
-router.post("/conversations/:conversationId/messages/stream", async (req, res) => {
-  const { userId } = getAuth(req);
-  
-  const params = SendAnthropicMessageParams.safeParse(req.params);
-  const body = SendAnthropicMessageBody.safeParse(req.body);
+router.post(
+  "/conversations/:conversationId/messages/stream",
+  async (req, res) => {
+    const { userId } = getAuth(req);
 
-  if (!params.success) return res.status(400).json({ error: "Invalid params" });
-  if (!body.success) return res.status(400).json({ error: "Invalid body", details: body.error });
+    const params = SendAnthropicMessageParams.safeParse(req.params);
+    const body = SendAnthropicMessageBody.safeParse(req.body);
 
-  const { conversationId } = params.data;
-  const { content } = body.data;
+    if (!params.success)
+      return res.status(400).json({ error: "Invalid params" });
+    if (!body.success)
+      return res
+        .status(400)
+        .json({ error: "Invalid body", details: body.error });
 
-  try {
-    // Verify conversation exists
-    const [conv] = await db
-      .select()
-      .from(conversations)
-      .where(eq(conversations.id, conversationId));
-    if (!conv) {
-      return res.status(404).json({ error: "Conversation not found" });
-    }
-    
-    // If Clerk configured, check ownership
-    if (userId && conv.clerkId && conv.clerkId !== userId) {
-      return res.status(403).json({ error: "Forbidden - not your conversation" });
-    }
-    
-    // Fetch existing messages for context
-    const existingMessages = await db
-      .select()
-      .from(messages)
-      .where(eq(messages.conversationId, conversationId))
-      .orderBy(messages.createdAt);
+    const { conversationId } = params.data;
+    const { content } = body.data;
 
-    // Save user message - with clerkId if logged in, null if anonymous
-    await db.insert(messages).values({
-      conversationId,
-      role: "user",
-      content,
-      clerkId: userId || null, // Anonymous = null, Logged-in = userId
-    });
+    try {
+      // Verify conversation exists
+      const [conv] = await db
+        .select()
+        .from(conversations)
+        .where(eq(conversations.id, conversationId));
+      if (!conv) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
 
-    // Build message history for brain
-    const history = existingMessages.map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }));
+      // If Clerk configured, check ownership
+      if (userId && conv.clerkId && conv.clerkId !== userId) {
+        return res
+          .status(403)
+          .json({ error: "Forbidden - not your conversation" });
+      }
 
-    // Set SSE headers
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.flushHeaders();
+      // Fetch existing messages for context
+      const existingMessages = await db
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, conversationId))
+        .orderBy(messages.createdAt);
 
-    const sendEvent = (data: object) => {
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
-    };
+      // Save user message - with clerkId if logged in, null if anonymous
+      await db.insert(messages).values({
+        conversationId,
+        role: "user",
+        content,
+        clerkId: userId || null, // Anonymous = null, Logged-in = userId
+      });
 
-    // Process through native brain (learns from conversation)
-    const result = await processMessage(content, userId || null, history);
+      // Build message history for brain
+      const history = existingMessages.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
 
-    // Stream the response word-by-word
-    const words = result.text.split(/(\s+)/);
-    for (const word of words) {
-      sendEvent({ content: word });
-      const delay = /[.!?]$/.test(word) ? 80 : word.trim().length === 0 ? 10 : 25;
-      await new Promise(r => setTimeout(r, delay));
-    }
+      // Set SSE headers
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
 
-    // Send metadata
-    sendEvent({
-      meta: {
-        nodesUsed: result.nodesUsed,
-        newNodesAdded: result.newNodesAdded,
-        character: {
-          curiosity: result.character.curiosity,
-          confidence: result.character.confidence,
-          technical: result.character.technical,
+      const sendEvent = (data: object) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      };
+
+      // Process through native brain (learns from conversation)
+      const result = await processMessage(content, userId || null, history);
+
+      // Stream the response word-by-word
+      const words = result.text.split(/(\s+)/);
+      for (const word of words) {
+        sendEvent({ content: word });
+        const delay = /[.!?]$/.test(word)
+          ? 80
+          : word.trim().length === 0
+            ? 10
+            : 25;
+        await new Promise((r) => setTimeout(r, delay));
+      }
+
+      // Send metadata
+      sendEvent({
+        meta: {
+          nodesUsed: result.nodesUsed,
+          newNodesAdded: result.newNodesAdded,
+          character: {
+            curiosity: result.character.curiosity,
+            confidence: result.character.confidence,
+            technical: result.character.technical,
+          },
         },
-      },
-    });
+      });
 
-    // Save assistant message with clerkId (if Clerk configured)
-    await db.insert(messages).values({
-      conversationId,
-      role: "assistant",
-      content: result.text,
-      clerkId: userId || null, // USER ISOLATION (optional)
-    });
+      // Save assistant message with clerkId (if Clerk configured)
+      await db.insert(messages).values({
+        conversationId,
+        role: "assistant",
+        content: result.text,
+        clerkId: userId || null, // USER ISOLATION (optional)
+      });
 
-    sendEvent({ done: true, conversationId });
-    return res.end();
-  } catch (err) {
-    req.log.error({ err }, "Streaming failed");
-    if (!res.headersSent) {
-      return res.status(500).json({ error: "Streaming failed" });
-    } else {
-      res.write(`data: ${JSON.stringify({ error: "Streaming failed" })}\n\n`);
+      sendEvent({ done: true, conversationId });
       return res.end();
+    } catch (err) {
+      req.log.error({ err }, "Streaming failed");
+      if (!res.headersSent) {
+        return res.status(500).json({ error: "Streaming failed" });
+      } else {
+        res.write(`data: ${JSON.stringify({ error: "Streaming failed" })}\n\n`);
+        return res.end();
+      }
     }
-  }
-});
+  },
+);
 
 export default router;

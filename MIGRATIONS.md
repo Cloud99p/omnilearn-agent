@@ -72,6 +72,7 @@ cat lib/db/drizzle/0001_add_updated_at.sql
 ```
 
 Expected output:
+
 ```sql
 ALTER TABLE "users" ADD COLUMN "updated_at" timestamp DEFAULT now();
 ```
@@ -95,11 +96,13 @@ psql $DATABASE_URL < lib/db/drizzle/0001_add_updated_at.sql
 **Option B: Automated (Railway deployment)**
 
 Add to Railway deployment:
+
 ```bash
 pnpm run db:migrate
 ```
 
 Or use Railway's startup command:
+
 ```bash
 pnpm run db:migrate && node dist/index.js
 ```
@@ -108,13 +111,14 @@ pnpm run db:migrate && node dist/index.js
 
 ## Migration vs Push
 
-| Command | Use Case | Safe for Production? |
-|---------|----------|---------------------|
-| `db:generate` + `db:migrate` | Production deployments | ✅ YES |
-| `db:push` | Local development only | ❌ NO (can drop data) |
-| `db:push-force` | Reset local database | ❌❌ DANGEROUS |
+| Command                      | Use Case               | Safe for Production?  |
+| ---------------------------- | ---------------------- | --------------------- |
+| `db:generate` + `db:migrate` | Production deployments | ✅ YES                |
+| `db:push`                    | Local development only | ❌ NO (can drop data) |
+| `db:push-force`              | Reset local database   | ❌❌ DANGEROUS        |
 
 **Rule of thumb:**
+
 - **Development:** Use `db:push` for rapid iteration
 - **Production:** Always use `db:generate` + `db:migrate`
 
@@ -244,6 +248,7 @@ pnpm run db:migrate
 ### Connection String
 
 Get your connection string from Supabase Dashboard:
+
 1. Go to **Project Settings** → **Database**
 2. Copy **Connection string** (URI mode)
 3. Format: `postgresql://postgres:[PASSWORD]@db.xxx.supabase.co:5432/postgres`
@@ -251,6 +256,7 @@ Get your connection string from Supabase Dashboard:
 ### Pooling Mode
 
 For production, use **Transaction Mode** pooling:
+
 ```
 postgresql://postgres.[PROJECT].[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true
 ```
@@ -258,11 +264,13 @@ postgresql://postgres.[PROJECT].[PASSWORD]@aws-0-[REGION].pooler.supabase.com:65
 ### Migration in Railway
 
 Add to Railway startup command:
+
 ```bash
 pnpm run db:migrate && pnpm --filter @workspace/api-server run start
 ```
 
 Or create a separate deployment job:
+
 ```yaml
 # railway.toml
 [build]
@@ -283,6 +291,7 @@ pnpm run db:studio
 ```
 
 This opens http://localhost:3000 with:
+
 - Table browser
 - SQL editor
 - Data editor
@@ -297,6 +306,7 @@ This opens http://localhost:3000 with:
 **Cause:** Migration ran twice or schema was pushed manually.
 
 **Fix:**
+
 ```bash
 # Option 1: Reset migration history (development only)
 rm -rf lib/db/drizzle/meta/*.json
@@ -311,6 +321,7 @@ pnpm run db:push --force
 **Cause:** Migration didn't run or schema is out of sync.
 
 **Fix:**
+
 ```bash
 # Check if migration file exists
 ls lib/db/drizzle/*.sql
@@ -327,6 +338,7 @@ pnpm run db:push
 **Cause:** DATABASE_URL not set or database not accessible.
 
 **Fix:**
+
 ```bash
 # Check environment variable
 echo $DATABASE_URL

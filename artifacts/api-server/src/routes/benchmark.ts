@@ -9,61 +9,68 @@ const router = Router();
 router.post("/run", async (req, res) => {
   try {
     const { question } = req.body as { question: string };
-    
+
     req.log.info({ question }, "Running benchmark");
-    
+
     if (!question?.trim()) {
       req.log.error("No question provided");
       res.status(400).json({ error: "question is required" });
       return;
     }
-    
+
     const startTime = Date.now();
-    
+
     // PATH A: Baseline - Answer without knowledge graph
     const pathAStart = Date.now();
     const baselineResponse = generateBaselineResponse(question);
     const pathALatency = Date.now() - pathAStart;
-    
+
     // PATH B: Augmented - Answer WITH knowledge graph
     const pathBStart = Date.now();
-    const tokens = question.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(t => t.length > 3);
-    
+    const tokens = question
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length > 3);
+
     // Retrieve relevant knowledge nodes
-    const relevantNodes = await db.select({
-      id: knowledgeNodes.id,
-      content: knowledgeNodes.content,
-      type: knowledgeNodes.type,
-      confidence: knowledgeNodes.confidence,
-      tags: knowledgeNodes.tags,
-    }).from(knowledgeNodes)
+    const relevantNodes = await db
+      .select({
+        id: knowledgeNodes.id,
+        content: knowledgeNodes.content,
+        type: knowledgeNodes.type,
+        confidence: knowledgeNodes.confidence,
+        tags: knowledgeNodes.tags,
+      })
+      .from(knowledgeNodes)
       .orderBy(desc(knowledgeNodes.confidence))
       .limit(10);
-    
+
     // Filter by token matching (simple TF-IDF approximation)
-    const matchedNodes = relevantNodes.filter(node => {
+    const matchedNodes = relevantNodes.filter((node) => {
       const nodeText = node.content.toLowerCase();
-      return tokens.some(token => nodeText.includes(token));
+      return tokens.some((token) => nodeText.includes(token));
     });
-    
+
     const augmentedResponse = generateAugmentedResponse(question, matchedNodes);
     const pathBLatency = Date.now() - pathBStart;
-    
+
     // Calculate delta
     const delta = {
       wordCountDiff: augmentedResponse.wordCount - baselineResponse.wordCount,
-      sentenceDepthDiff: augmentedResponse.sentenceDepth - baselineResponse.sentenceDepth,
+      sentenceDepthDiff:
+        augmentedResponse.sentenceDepth - baselineResponse.sentenceDepth,
       knowledgeTermsAdded: matchedNodes.length,
       confidenceImprovement: matchedNodes.length > 0 ? 0.15 : 0,
-      retrievedNodes: matchedNodes.map(n => ({
+      retrievedNodes: matchedNodes.map((n) => ({
         id: n.id,
         content: n.content.slice(0, 100) + "...",
         confidence: n.confidence,
       })),
     };
-    
+
     const totalLatency = Date.now() - startTime;
-    
+
     const results = {
       timestamp: new Date().toISOString(),
       question,
@@ -81,7 +88,7 @@ router.post("/run", async (req, res) => {
         sentenceDepth: augmentedResponse.sentenceDepth,
         latency: pathBLatency,
         nodesRetrieved: matchedNodes.length,
-        nodesUsed: matchedNodes.slice(0, 5).map(n => n.id),
+        nodesUsed: matchedNodes.slice(0, 5).map((n) => n.id),
       },
       delta: {
         wordCountDiff: delta.wordCountDiff,
@@ -93,17 +100,18 @@ router.post("/run", async (req, res) => {
       overall: {
         totalLatency,
         knowledgeImpact: matchedNodes.length > 0 ? "positive" : "neutral",
-        recommendation: matchedNodes.length > 0 
-          ? "Knowledge graph improved response quality" 
-          : "No relevant knowledge found - consider adding more nodes",
+        recommendation:
+          matchedNodes.length > 0
+            ? "Knowledge graph improved response quality"
+            : "No relevant knowledge found - consider adding more nodes",
       },
     };
-    
+
     res.json(results);
   } catch (err) {
     req.log.error({ err }, "Failed to run benchmark");
-    res.status(500).json({ 
-      error: "benchmark failed", 
+    res.status(500).json({
+      error: "benchmark failed",
       details: String(err),
       stack: err instanceof Error ? err.stack : undefined,
     });
@@ -116,23 +124,29 @@ function generateBaselineResponse(question: string) {
   return {
     text,
     wordCount: text.split(/\s+/).length,
-    sentenceDepth: text.split(/[.!?]/).filter(s => s.trim()).length,
+    sentenceDepth: text.split(/[.!?]/).filter((s) => s.trim()).length,
   };
 }
 
-function generateAugmentedResponse(question: string, nodes: Array<{ content: string; type: string; confidence: number }>) {
+function generateAugmentedResponse(
+  question: string,
+  nodes: Array<{ content: string; type: string; confidence: number }>,
+) {
   if (nodes.length === 0) {
     return generateBaselineResponse(question);
   }
-  
+
   // Build response using retrieved knowledge
-  const knowledgeContext = nodes.slice(0, 5).map(n => n.content).join(" ");
+  const knowledgeContext = nodes
+    .slice(0, 5)
+    .map((n) => n.content)
+    .join(" ");
   const text = `Based on my knowledge graph (retrieved ${nodes.length} relevant nodes): ${knowledgeContext} This augmented response includes specific learned information that provides more depth and accuracy than a baseline response.`;
-  
+
   return {
     text,
     wordCount: text.split(/\s+/).length,
-    sentenceDepth: text.split(/[.!?]/).filter(s => s.trim()).length,
+    sentenceDepth: text.split(/[.!?]/).filter((s) => s.trim()).length,
   };
 }
 
@@ -145,7 +159,7 @@ router.get("/results", async (req, res) => {
       total: 0,
       best: null,
     };
-    
+
     res.json(results);
   } catch (err) {
     req.log.error(err, "Failed to get benchmark results");

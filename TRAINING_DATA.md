@@ -214,6 +214,7 @@ Key influences include neuroscience research on memory formation, knowledge grap
 ## How to Use This Training Data
 
 ### Method 1: Bulk Training Page
+
 1. Go to **Intelligence → Training** in your OmniLearn dashboard
 2. Select **Source: manual**
 3. Copy one section above
@@ -222,12 +223,14 @@ Key influences include neuroscience research on memory formation, knowledge grap
 6. Repeat for each section
 
 ### Method 2: Chat-Based Learning
+
 1. Go to **Chat**
 2. Switch to **Local** or **Native** mode
 3. Have conversations using the content above
 4. OmniLearn will automatically extract and store knowledge
 
 ### Method 3: API Import (Advanced)
+
 ```bash
 curl -X POST https://workspaceapi-server-production-29ee.up.railway.app/api/brain/train \
   -H "Content-Type: application/json" \
@@ -238,18 +241,18 @@ curl -X POST https://workspaceapi-server-production-29ee.up.railway.app/api/brai
 
 ## Expected Results After Training
 
-| Training Section | Knowledge Nodes | Connections |
-|-----------------|-----------------|-------------|
-| Core Identity | +5-8 | +10-15 |
-| Architecture | +10-15 | +20-30 |
-| Character System | +8-12 | +15-25 |
-| Memory Systems | +8-10 | +15-20 |
-| Learning Mechanisms | +8-12 | +20-30 |
-| AI/ML Concepts | +10-15 | +15-25 |
-| Web Development | +10-15 | +15-25 |
-| Deployment | +8-12 | +10-20 |
-| Project Management | +8-10 | +10-15 |
-| Personal Context | +5-8 | +5-10 |
+| Training Section    | Knowledge Nodes | Connections |
+| ------------------- | --------------- | ----------- |
+| Core Identity       | +5-8            | +10-15      |
+| Architecture        | +10-15          | +20-30      |
+| Character System    | +8-12           | +15-25      |
+| Memory Systems      | +8-10           | +15-20      |
+| Learning Mechanisms | +8-12           | +20-30      |
+| AI/ML Concepts      | +10-15          | +15-25      |
+| Web Development     | +10-15          | +15-25      |
+| Deployment          | +8-12           | +10-20      |
+| Project Management  | +8-10           | +10-15      |
+| Personal Context    | +5-8            | +5-10       |
 
 **Total expected after all training:** ~200-250 knowledge nodes, ~150-250 connections
 
@@ -260,21 +263,25 @@ curl -X POST https://workspaceapi-server-production-29ee.up.railway.app/api/brai
 After training, test OmniLearn with these queries:
 
 **Identity & Architecture:**
+
 - "What is OmniLearn and who created it?"
 - "How does the knowledge graph work?"
 - "What's the difference between Local and Native mode?"
 
 **Character System:**
+
 - "What are the 7 character traits?"
 - "How does curiosity affect responses?"
 - "How does the character evolve over time?"
 
 **Technical Concepts:**
+
 - "Explain TF-IDF in simple terms"
 - "What is Hebbian learning?"
 - "How does RAG work?"
 
 **Deployment:**
+
 - "Where is OmniLearn hosted?"
 - "What database does it use?"
 - "How does authentication work?"

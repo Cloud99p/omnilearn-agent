@@ -91,12 +91,8 @@
           "name": "messages_conversation_id_conversations_id_fk",
           "tableFrom": "messages",
           "tableTo": "conversations",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["conversation_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -812,9 +808,7 @@
         "ghost_invite_tokens_token_unique": {
           "name": "ghost_invite_tokens_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -904,9 +898,7 @@
         "ghost_worker_sessions_worker_id_unique": {
           "name": "ghost_worker_sessions_worker_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "worker_id"
-          ]
+          "columns": ["worker_id"]
         }
       },
       "policies": {},
@@ -987,9 +979,7 @@
         "ghost_worker_tasks_task_id_unique": {
           "name": "ghost_worker_tasks_task_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "task_id"
-          ]
+          "columns": ["task_id"]
         }
       },
       "policies": {},
@@ -1039,12 +1029,8 @@
           "name": "agent_domains_agent_name_network_agents_name_fk",
           "tableFrom": "agent_domains",
           "tableTo": "network_agents",
-          "columnsFrom": [
-            "agent_name"
-          ],
-          "columnsTo": [
-            "name"
-          ],
+          "columnsFrom": ["agent_name"],
+          "columnsTo": ["name"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1054,10 +1040,7 @@
         "agent_domain_unique": {
           "name": "agent_domain_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "agent_name",
-            "domain"
-          ]
+          "columns": ["agent_name", "domain"]
         }
       },
       "policies": {},
@@ -1107,12 +1090,8 @@
           "name": "agent_relay_paths_agent_name_network_agents_name_fk",
           "tableFrom": "agent_relay_paths",
           "tableTo": "network_agents",
-          "columnsFrom": [
-            "agent_name"
-          ],
-          "columnsTo": [
-            "name"
-          ],
+          "columnsFrom": ["agent_name"],
+          "columnsTo": ["name"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1122,10 +1101,7 @@
         "agent_relay_unique": {
           "name": "agent_relay_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "agent_name",
-            "relay_path"
-          ]
+          "columns": ["agent_name", "relay_path"]
         }
       },
       "policies": {},
@@ -1288,9 +1264,7 @@
         "network_agents_name_unique": {
           "name": "network_agents_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -1583,12 +1557,8 @@
           "name": "network_synapses_source_id_network_neurons_id_fk",
           "tableFrom": "network_synapses",
           "tableTo": "network_neurons",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1596,12 +1566,8 @@
           "name": "network_synapses_target_id_network_neurons_id_fk",
           "tableFrom": "network_synapses",
           "tableTo": "network_neurons",
-          "columnsFrom": [
-            "target_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["target_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1611,10 +1577,7 @@
         "net_synapse_pair": {
           "name": "net_synapse_pair",
           "nullsNotDistinct": false,
-          "columns": [
-            "source_id",
-            "target_id"
-          ]
+          "columns": ["source_id", "target_id"]
         }
       },
       "policies": {},
@@ -1684,12 +1647,8 @@
           "name": "network_votes_neuron_id_network_neurons_id_fk",
           "tableFrom": "network_votes",
           "tableTo": "network_neurons",
-          "columnsFrom": [
-            "neuron_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["neuron_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1697,12 +1656,8 @@
           "name": "network_votes_agent_name_network_agents_name_fk",
           "tableFrom": "network_votes",
           "tableTo": "network_agents",
-          "columnsFrom": [
-            "agent_name"
-          ],
-          "columnsTo": [
-            "name"
-          ],
+          "columnsFrom": ["agent_name"],
+          "columnsTo": ["name"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1712,10 +1667,7 @@
         "net_vote_unique": {
           "name": "net_vote_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "neuron_id",
-            "agent_name"
-          ]
+          "columns": ["neuron_id", "agent_name"]
         }
       },
       "policies": {},

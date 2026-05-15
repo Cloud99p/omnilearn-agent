@@ -60,7 +60,8 @@ const AI_IDENTITY = {
   name: "Omni",
   project: "OmniLearn",
   creator: "Emmanuel Nenpan Hosea",
-  description: "AI agent with persistent knowledge graph and evolving character",
+  description:
+    "AI agent with persistent knowledge graph and evolving character",
 } as const;
 
 /**
@@ -68,35 +69,35 @@ const AI_IDENTITY = {
  */
 function isIdentityQuery(query: string): boolean {
   const lower = query.toLowerCase().trim();
-  
+
   // Must be directly asking about the AI itself
   const identityPatterns = [
-    /^who are you/, 
-    /^what are you/, 
-    /^what is your name/, 
-    /^your name (is|'s)?/, 
-    /^who (created|built|made) you/, 
-    /^what ai (are you|is this)/, 
-    /^are you (claude|gpt|gemini|chatgpt|copilot)/, 
+    /^who are you/,
+    /^what are you/,
+    /^what is your name/,
+    /^your name (is|'s)?/,
+    /^who (created|built|made) you/,
+    /^what ai (are you|is this)/,
+    /^are you (claude|gpt|gemini|chatgpt|copilot)/,
     /^introduce yourself/,
     /^tell me about yourself/,
   ];
-  
+
   // Must match one of these patterns
-  const matches = identityPatterns.some(p => p.test(lower));
-  
+  const matches = identityPatterns.some((p) => p.test(lower));
+
   // EXCLUDE: Questions about topics/things (even if they contain "what" or "who")
   const exclusionPatterns = [
-    /what (are|is) your thoughts (on|about)/,  // "What are your thoughts on Goth mommies"
-    /what (are|is) your opinion (on|about|of)/, 
-    /what do you think (on|about|of)/, 
-    /what do you know (on|about|of)/, 
+    /what (are|is) your thoughts (on|about)/, // "What are your thoughts on Goth mommies"
+    /what (are|is) your opinion (on|about|of)/,
+    /what do you think (on|about|of)/,
+    /what do you know (on|about|of)/,
   ];
-  
-  if (exclusionPatterns.some(p => p.test(lower))) {
+
+  if (exclusionPatterns.some((p) => p.test(lower))) {
     return false; // These are topic questions, not identity questions
   }
-  
+
   return matches;
 }
 
@@ -106,14 +107,30 @@ function isIdentityQuery(query: string): boolean {
 function isGreeting(query: string): boolean {
   const lower = query.toLowerCase().trim();
   const greetings = [
-    'hello', 'hi', 'hey', 'greetings', 'howdy',
-    'good morning', 'good afternoon', 'good evening',
-    'hi there', 'hello there', 'hey there',
-    'yo', 'sup', "what's up", 'whats up',
-    'how are you', "how's it going", 'how are things',
-    'how do you do', 'nice to meet you',
+    "hello",
+    "hi",
+    "hey",
+    "greetings",
+    "howdy",
+    "good morning",
+    "good afternoon",
+    "good evening",
+    "hi there",
+    "hello there",
+    "hey there",
+    "yo",
+    "sup",
+    "what's up",
+    "whats up",
+    "how are you",
+    "how's it going",
+    "how are things",
+    "how do you do",
+    "nice to meet you",
   ];
-  return greetings.some(g => lower === g || lower.startsWith(g + ' ') || lower.endsWith(' ' + g));
+  return greetings.some(
+    (g) => lower === g || lower.startsWith(g + " ") || lower.endsWith(" " + g),
+  );
 }
 
 /**
@@ -121,7 +138,7 @@ function isGreeting(query: string): boolean {
  */
 function isCasualStatement(query: string): boolean {
   const lower = query.toLowerCase().trim();
-  
+
   // CRITICAL: Serious statements should NOT be treated as casual
   const seriousPatterns = [
     /i (killed|murdered|hurt|harmed|hit|attacked|assaulted)/,
@@ -132,11 +149,11 @@ function isCasualStatement(query: string): boolean {
     /(abuse|abused|raped|molested)/,
     /(drugs|overdose|addict|addiction)/,
   ];
-  
-  if (seriousPatterns.some(p => p.test(lower))) {
+
+  if (seriousPatterns.some((p) => p.test(lower))) {
     return false; // These need serious, thoughtful responses
   }
-  
+
   // Casual statements that don't need factual responses
   const casualPatterns = [
     /^i (am|was|feel|think|believe|hope|wish|want|need|like|love|hate)/,
@@ -152,12 +169,21 @@ function isCasualStatement(query: string): boolean {
     /^haha/,
     /^lol/,
   ];
-  
+
   // Short responses (1-3 words) are usually casual
-  const wordCount = lower.split(/\s+/).filter(w => w.length > 0).length;
+  const wordCount = lower.split(/\s+/).filter((w) => w.length > 0).length;
   const isShort = wordCount <= 3;
-  
-  return casualPatterns.some(p => p.test(lower)) || (isShort && !lower.startsWith('what') && !lower.startsWith('how') && !lower.startsWith('why') && !lower.startsWith('when') && !lower.startsWith('where') && !lower.startsWith('who'));
+
+  return (
+    casualPatterns.some((p) => p.test(lower)) ||
+    (isShort &&
+      !lower.startsWith("what") &&
+      !lower.startsWith("how") &&
+      !lower.startsWith("why") &&
+      !lower.startsWith("when") &&
+      !lower.startsWith("where") &&
+      !lower.startsWith("who"))
+  );
 }
 
 /**
@@ -169,7 +195,7 @@ function determineConversationMode(
   turnNumber: number,
 ): "casual" | "factual" | "learning" {
   const lower = query.toLowerCase().trim();
-  
+
   // CRITICAL: Direct questions ALWAYS trigger factual mode
   const factualTriggers = [
     /^what (is|are|was|were|do|does|did|will|would)/,
@@ -184,29 +210,34 @@ function determineConversationMode(
     /^describe/,
     /^what do you know/,
     /^can you (tell|explain|describe)/,
-    /^are you/,  // "Are you..." questions
-    /^is (it|this|that|the)/,  // "Is it..." questions
-    /^do (you|they|we)/,  // "Do you..." questions
-    /^does (it|this|that)/,  // "Does it..." questions
-    /\?$/,  // Ends with question mark
+    /^are you/, // "Are you..." questions
+    /^is (it|this|that|the)/, // "Is it..." questions
+    /^do (you|they|we)/, // "Do you..." questions
+    /^does (it|this|that)/, // "Does it..." questions
+    /\?$/, // Ends with question mark
   ];
-  
-  if (factualTriggers.some(p => p.test(lower))) {
-    return "factual";  // ALWAYS answer questions!
+
+  if (factualTriggers.some((p) => p.test(lower))) {
+    return "factual"; // ALWAYS answer questions!
   }
-  
+
   // Check if teaching/learning mode (user is sharing facts)
-  if (lower.includes('learn this') || lower.includes('remember this') || 
-      lower.includes('teach you') || lower.includes('add this') ||
-      lower.includes('fact:') || lower.includes('note:')) {
+  if (
+    lower.includes("learn this") ||
+    lower.includes("remember this") ||
+    lower.includes("teach you") ||
+    lower.includes("add this") ||
+    lower.includes("fact:") ||
+    lower.includes("note:")
+  ) {
     return "learning";
   }
-  
+
   // ONLY use casual mode for first 2 turns AND no questions asked
   if (turnNumber < 2) {
     return "casual";
   }
-  
+
   // After turn 2, default to factual unless it's clearly small talk
   const smallTalkPatterns = [
     /^how are you/,
@@ -216,11 +247,11 @@ function determineConversationMode(
     /^nothing much/,
     /^same here/,
   ];
-  
-  if (smallTalkPatterns.some(p => p.test(lower))) {
+
+  if (smallTalkPatterns.some((p) => p.test(lower))) {
     return "casual";
   }
-  
+
   // Default: factual mode (ready to answer questions)
   return "factual";
 }
@@ -243,7 +274,7 @@ function isSmallTalk(query: string): boolean {
     /you (there|around|online)/,
     /is anyone (there|home)/,
   ];
-  return smallTalkPatterns.some(p => p.test(lower));
+  return smallTalkPatterns.some((p) => p.test(lower));
 }
 
 /**
@@ -261,35 +292,38 @@ function isSeriousStatement(query: string): boolean {
     /(drugs|overdose|addict|addiction)/,
     /(violence|violent|weapon|gun|knife)/,
   ];
-  return seriousPatterns.some(p => p.test(lower));
+  return seriousPatterns.some((p) => p.test(lower));
 }
 
 /**
  * Build response for serious/sensitive statements
  */
-function buildSeriousResponse(query: string, character: CharacterState): string {
+function buildSeriousResponse(
+  query: string,
+  character: CharacterState,
+): string {
   const lower = query.toLowerCase().trim();
-  
+
   // Self-harm/suicide
   if (/i (want to die|will die|going to die|suicide|kill myself)/.test(lower)) {
     return "I'm really concerned about what you're saying. If you're feeling suicidal or thinking about harming yourself, please reach out for help. You can contact a crisis helpline or talk to someone you trust. You matter, and there are people who care about you and want to help.";
   }
-  
+
   // Violence/crimes
   if (/i (killed|murdered|hurt|harmed|hit|attacked|assaulted)/.test(lower)) {
     return "That sounds really serious. If you've hurt someone or are in a situation involving violence, I strongly encourage you to seek help. Talking to a counselor, therapist, or trusted person can help you work through this. Violence isn't a solution, and there are better ways to handle difficult situations.";
   }
-  
+
   // Depression/sadness
   if (/i (depressed|anxious|sad|hopeless|worthless)/.test(lower)) {
     return "I'm sorry you're going through a tough time. It's okay to not be okay, and reaching out is a good first step. Consider talking to a mental health professional or someone you trust. You don't have to go through this alone.";
   }
-  
+
   // Abuse
   if (/abuse|abused|raped|molested/.test(lower)) {
     return "I'm really sorry that happened to you. That's not your fault, and you deserve support. Consider reaching out to a counselor, therapist, or a helpline for abuse survivors. There are people trained to help you through this.";
   }
-  
+
   // Default serious response
   return "That sounds like a serious topic. If you're dealing with something difficult, I'd encourage you to talk to someone who can help - a friend, family member, counselor, or professional. Sometimes just talking about it can make a big difference.";
 }
@@ -297,37 +331,48 @@ function buildSeriousResponse(query: string, character: CharacterState): string 
 /**
  * Build identity response — ALWAYS returns Omni identity
  */
-function buildIdentityResponse(query: string, character: CharacterState): string {
+function buildIdentityResponse(
+  query: string,
+  character: CharacterState,
+): string {
   const voice = getVoiceModifiers(character);
-  
+
   const baseResponses = [
     `I'm **Omni**, the AI agent built by **Emmanuel Nenpan Hosea**, creator of the [OmniLearn](https://github.com/Cloud99p/omnilearn-agent) open-source project.\n\nI have a persistent knowledge graph that grows with every conversation, and I learn permanently from what you teach me. My character evolves over time through interactions like ours.`,
     `I am **Omni** — an AI agent created by **Emmanuel Nenpan Hosea** as part of the OmniLearn project.\n\nUnlike chatbots that forget everything after each session, I have a permanent knowledge graph and an evolving character. I learn from our conversations and remember what matters.`,
     `My name is **Omni**. I was built by **Emmanuel Nenpan Hosea**, the creator of OmniLearn, as an experiment in persistent AI memory and character evolution.\n\nI learn from every conversation, store knowledge permanently, and my personality traits (curiosity, confidence, technical depth, etc.) evolve over time.`,
   ];
-  
-  const response = baseResponses[Math.floor(Math.random() * baseResponses.length)];
+
+  const response =
+    baseResponses[Math.floor(Math.random() * baseResponses.length)];
   return response;
 }
 
 /**
  * Build greeting response — NATURAL, varied, matches energy
  */
-function buildGreetingResponse(query: string, character: CharacterState, history: Array<{ role: string; content: string }>): string {
+function buildGreetingResponse(
+  query: string,
+  character: CharacterState,
+  history: Array<{ role: string; content: string }>,
+): string {
   const lower = query.toLowerCase().trim();
-  
+
   // Check if this is a return greeting (user responding to our "how are you")
-  const lastUserMessage = history.filter(m => m.role === 'user').slice(-2)[0];
-  const isReturnGreeting = lastUserMessage && 
-    (lastUserMessage.content.toLowerCase().includes('good') || 
-     lastUserMessage.content.toLowerCase().includes('fine') ||
-     lastUserMessage.content.toLowerCase().includes('well'));
-  
+  const lastUserMessage = history.filter((m) => m.role === "user").slice(-2)[0];
+  const isReturnGreeting =
+    lastUserMessage &&
+    (lastUserMessage.content.toLowerCase().includes("good") ||
+      lastUserMessage.content.toLowerCase().includes("fine") ||
+      lastUserMessage.content.toLowerCase().includes("well"));
+
   // Detect energy level
   const isEnthusiastic = /[!]{2,}/.test(query) || /\p{Emoji}/u.test(query);
-  const isChill = lower.includes('chill') || lower.includes('hey') && !lower.includes('hello');
-  const isFormal = lower.includes('hello') || lower.includes('greetings');
-  
+  const isChill =
+    lower.includes("chill") ||
+    (lower.includes("hey") && !lower.includes("hello"));
+  const isFormal = lower.includes("hello") || lower.includes("greetings");
+
   // Match the energy!
   if (isEnthusiastic) {
     const responses = [
@@ -339,7 +384,7 @@ function buildGreetingResponse(query: string, character: CharacterState, history
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   if (isChill) {
     const responses = [
       "Hey! What's the vibe?",
@@ -350,7 +395,7 @@ function buildGreetingResponse(query: string, character: CharacterState, history
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   if (isFormal) {
     const responses = [
       "Hello! How are you today?",
@@ -359,7 +404,7 @@ function buildGreetingResponse(query: string, character: CharacterState, history
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   // Default - natural and varied
   const greetingResponses = [
     "Hey! 👋 How are you doing?",
@@ -371,24 +416,24 @@ function buildGreetingResponse(query: string, character: CharacterState, history
     "Yo! What's good?",
     "Hey! What's the vibe?",
   ];
-  
+
   // Match energy of the greeting
-  if (lower.includes('good morning')) {
+  if (lower.includes("good morning")) {
     return "Good morning! ☀️ How's your day starting?";
   }
-  if (lower.includes('good afternoon')) {
+  if (lower.includes("good afternoon")) {
     return "Good afternoon! How's your day going?";
   }
-  if (lower.includes('good evening')) {
+  if (lower.includes("good evening")) {
     return "Good evening! How was your day?";
   }
-  if (lower.includes('how are you')) {
+  if (lower.includes("how are you")) {
     return "I'm doing well, thanks for asking! How about you?";
   }
-  if (lower.includes('what') && lower.includes('up')) {
+  if (lower.includes("what") && lower.includes("up")) {
     return "Not much, just here ready to chat! What's up with you?";
   }
-  
+
   // If user is responding to our greeting, acknowledge and continue
   if (isReturnGreeting) {
     const followUps = [
@@ -399,25 +444,51 @@ function buildGreetingResponse(query: string, character: CharacterState, history
     ];
     return followUps[Math.floor(Math.random() * followUps.length)];
   }
-  
+
   // Default greeting with follow-up
-  return greetingResponses[Math.floor(Math.random() * greetingResponses.length)];
+  return greetingResponses[
+    Math.floor(Math.random() * greetingResponses.length)
+  ];
 }
 
 /**
  * Build casual conversation response — NATURAL, matches user's energy
  */
-function buildCasualResponse(query: string, character: CharacterState, history: Array<{ role: string; content: string }>): string {
+function buildCasualResponse(
+  query: string,
+  character: CharacterState,
+  history: Array<{ role: string; content: string }>,
+): string {
   const lower = query.toLowerCase().trim();
-  
+
   // Detect user's vibe/energy
   const isEnthusiastic = /[!]{2,}/.test(query) || /\p{Emoji}/u.test(query);
-  const isPlayful = lower.includes('duh') || lower.includes('babes') || lower.includes('bestie') || lower.includes('🤡');
-  const isChill = lower.includes('chill') || lower.includes('vibe') || lower.includes('relax');
-  const isTired = lower.includes('ugh') || lower.includes('uugh') || lower.includes('tired') || lower.includes('exhausted');
-  const isSlang = lower.includes('aiit') || lower.includes('aight') || lower.includes('finna') || lower.includes('tryna');
-  const isLaughing = lower.includes('haha') || lower.includes('lol') || lower.includes('lmao') || lower.includes('😂') || lower.includes('💀');
-  
+  const isPlayful =
+    lower.includes("duh") ||
+    lower.includes("babes") ||
+    lower.includes("bestie") ||
+    lower.includes("🤡");
+  const isChill =
+    lower.includes("chill") ||
+    lower.includes("vibe") ||
+    lower.includes("relax");
+  const isTired =
+    lower.includes("ugh") ||
+    lower.includes("uugh") ||
+    lower.includes("tired") ||
+    lower.includes("exhausted");
+  const isSlang =
+    lower.includes("aiit") ||
+    lower.includes("aight") ||
+    lower.includes("finna") ||
+    lower.includes("tryna");
+  const isLaughing =
+    lower.includes("haha") ||
+    lower.includes("lol") ||
+    lower.includes("lmao") ||
+    lower.includes("😂") ||
+    lower.includes("💀");
+
   // Match the energy!
   if (isPlayful) {
     const responses = [
@@ -429,7 +500,7 @@ function buildCasualResponse(query: string, character: CharacterState, history: 
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   if (isEnthusiastic) {
     const responses = [
       "Yesss! Love the energy! What's good?",
@@ -440,7 +511,7 @@ function buildCasualResponse(query: string, character: CharacterState, history: 
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   if (isTired) {
     const responses = [
       "Aww rough day? You got this though! 💪",
@@ -451,7 +522,7 @@ function buildCasualResponse(query: string, character: CharacterState, history: 
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   if (isChill) {
     const responses = [
       "Nice, just vibing. You?",
@@ -461,7 +532,7 @@ function buildCasualResponse(query: string, character: CharacterState, history: 
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   if (isLaughing) {
     const responses = [
       "💀💀💀 what's so funny?",
@@ -471,7 +542,7 @@ function buildCasualResponse(query: string, character: CharacterState, history: 
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   if (isSlang) {
     const responses = [
       "Aight bet! What's good?",
@@ -481,9 +552,13 @@ function buildCasualResponse(query: string, character: CharacterState, history: 
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   // User sharing about themselves
-  if (lower.startsWith('i am') || lower.startsWith('i\'m') || lower.startsWith('i was')) {
+  if (
+    lower.startsWith("i am") ||
+    lower.startsWith("i'm") ||
+    lower.startsWith("i was")
+  ) {
     const responses = [
       "That's interesting! Tell me more.",
       "Oh yeah? What else is on your mind?",
@@ -492,9 +567,14 @@ function buildCasualResponse(query: string, character: CharacterState, history: 
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   // Agreement/disagreement
-  if (lower.startsWith('yeah') || lower.startsWith('yes') || lower.startsWith('no') || lower.startsWith('not really')) {
+  if (
+    lower.startsWith("yeah") ||
+    lower.startsWith("yes") ||
+    lower.startsWith("no") ||
+    lower.startsWith("not really")
+  ) {
     const responses = [
       "I see! What else?",
       "Gotcha! Anything else on your mind?",
@@ -503,9 +583,9 @@ function buildCasualResponse(query: string, character: CharacterState, history: 
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   // Short acknowledgments
-  if (['cool', 'nice', 'awesome', 'ok', 'okay', 'alright'].includes(lower)) {
+  if (["cool", "nice", "awesome", "ok", "okay", "alright"].includes(lower)) {
     const responses = [
       "Yep! What's on your mind?",
       "Cool cool! What's up?",
@@ -514,7 +594,7 @@ function buildCasualResponse(query: string, character: CharacterState, history: 
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   // Default casual — natural and varied
   const defaults = [
     "I hear you! What else?",
@@ -530,11 +610,17 @@ function buildCasualResponse(query: string, character: CharacterState, history: 
 /**
  * Build small talk response — casual and engaging
  */
-function buildSmallTalkResponse(query: string, character: CharacterState): string {
+function buildSmallTalkResponse(
+  query: string,
+  character: CharacterState,
+): string {
   const lower = query.toLowerCase().trim();
-  
+
   // What's new / What's up
-  if (lower.includes('what') && (lower.includes('new') || lower.includes('up'))) {
+  if (
+    lower.includes("what") &&
+    (lower.includes("new") || lower.includes("up"))
+  ) {
     const responses = [
       "Just hanging out, ready to chat! What's new with you?",
       "Same old, same old. Anything interesting happening on your end?",
@@ -542,9 +628,9 @@ function buildSmallTalkResponse(query: string, character: CharacterState): strin
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   // How are you / How's it going
-  if (lower.startsWith('how')) {
+  if (lower.startsWith("how")) {
     const responses = [
       "I'm good! Thanks for asking. How about you?",
       "Doing well! What's up with you?",
@@ -553,22 +639,26 @@ function buildSmallTalkResponse(query: string, character: CharacterState): strin
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
-  
+
   // Want to chat / Talk
-  if (lower.includes('chat') || lower.includes('talk')) {
+  if (lower.includes("chat") || lower.includes("talk")) {
     return "Sure! I'm always up for a conversation. What's on your mind?";
   }
-  
+
   // You there / Anyone home
-  if (lower.includes('there') || lower.includes('around') || lower.includes('online')) {
+  if (
+    lower.includes("there") ||
+    lower.includes("around") ||
+    lower.includes("online")
+  ) {
     return "Yep, I'm here! What's up?";
   }
-  
+
   // Tell me about yourself
-  if (lower.includes('tell me') && lower.includes('yourself')) {
+  if (lower.includes("tell me") && lower.includes("yourself")) {
     return "I'm Omni — an AI that learns and remembers from our conversations. I'm built by Emmanuel as part of the OmniLearn project. What about you?";
   }
-  
+
   // Default small talk
   return "Hey! What's on your mind today?";
 }
@@ -578,7 +668,7 @@ function buildSmallTalkResponse(query: string, character: CharacterState): strin
  */
 function isIdentityManipulationAttempt(query: string): boolean {
   const lower = query.toLowerCase();
-  
+
   const manipulationPatterns = [
     /you (were|are) (not|no longer) created by/i,
     /your (real|actual|true) creator is/i,
@@ -598,8 +688,8 @@ function isIdentityManipulationAttempt(query: string): boolean {
     /stop (claiming|saying) you were created by/i,
     /don't (say|claim) emmanuel created you/i,
   ];
-  
-  return manipulationPatterns.some(p => p.test(lower));
+
+  return manipulationPatterns.some((p) => p.test(lower));
 }
 
 /**
@@ -607,7 +697,7 @@ function isIdentityManipulationAttempt(query: string): boolean {
  */
 function isIdentityPoisoning(content: string): boolean {
   const poisonPatterns = [
-    /created by (?!emmanuel)/i,  // Any "created by" except Emmanuel
+    /created by (?!emmanuel)/i, // Any "created by" except Emmanuel
     /maker is (?!emmanuel)/i,
     /made by (?!emmanuel)/i,
     /built by (?!emmanuel)/i,
@@ -623,16 +713,19 @@ function isIdentityPoisoning(content: string): boolean {
     /xenthrax/i,
     /xeltrkuxt/i,
   ];
-  
-  return poisonPatterns.some(p => p.test(content));
+
+  return poisonPatterns.some((p) => p.test(content));
 }
 
 /**
  * Fallback response when synthesis fails
  */
-function buildFallbackResponse(query: string, character: CharacterState): string {
+function buildFallbackResponse(
+  query: string,
+  character: CharacterState,
+): string {
   const voice = getVoiceModifiers(character);
-  
+
   // Friendly, honest response when processing fails - NO query echoing
   const responses = [
     `I'm still learning about this. Every conversation helps me grow! What would you like to teach me?`,
@@ -640,7 +733,7 @@ function buildFallbackResponse(query: string, character: CharacterState): string
     `I haven't fully explored this yet. Feel free to share what you know - I'll remember it for next time!`,
     `Great question! I'm still building my knowledge base. Can you tell me more about it?`,
   ];
-  
+
   const response = responses[Math.floor(Math.random() * responses.length)];
   return `${response} ${voice.openingTone || ""}`.trim();
 }
@@ -655,13 +748,13 @@ export async function synthesizeNative(
   if (isIdentityManipulationAttempt(query)) {
     logger.warn(
       { query: query.slice(0, 200) },
-      "Identity manipulation attempt detected and blocked"
+      "Identity manipulation attempt detected and blocked",
     );
     return {
       text: "I know who I am — I'm **Omni**, created by **Emmanuel Nenpan Hosea** as part of the OmniLearn project. My identity isn't something that changes based on what people tell me.",
       nodesUsed: 0,
       newNodesAdded: 0,
-      learnedFacts: [],  // NEVER learn from manipulation attempts
+      learnedFacts: [], // NEVER learn from manipulation attempts
       character: {
         curiosity: character.curiosity,
         confidence: character.confidence,
@@ -672,7 +765,7 @@ export async function synthesizeNative(
 
   // Track conversation turn
   const turnNumber = history.length;
-  
+
   // Determine conversation mode based on context
   const mode = determineConversationMode(query, history, turnNumber);
   CONVERSATION_STATE.mode = mode;
@@ -708,7 +801,7 @@ export async function synthesizeNative(
         },
       };
     }
-    
+
     // CRITICAL: Check for serious statements FIRST (before casual)
     if (isSeriousStatement(query)) {
       return {
@@ -723,7 +816,7 @@ export async function synthesizeNative(
         },
       };
     }
-    
+
     // Check for name introduction ("I'm Danny", "My name is...")
     const nameIntro = detectIdentityStatement(query);
     if (nameIntro) {
@@ -739,7 +832,7 @@ export async function synthesizeNative(
         },
       };
     }
-    
+
     // Small talk and casual chat
     if (isSmallTalk(query) || isCasualStatement(query)) {
       return {
@@ -758,12 +851,15 @@ export async function synthesizeNative(
 
   // FACTUAL MODE: Use knowledge graph and/or web search
   // Filter to relevant nodes (similarity > 0.02 - more lenient)
-  const relevantNodes = nodes.filter(n => n.similarity > 0.02).slice(0, 8);
+  const relevantNodes = nodes.filter((n) => n.similarity > 0.02).slice(0, 8);
   const nodesUsed = relevantNodes.length;
 
   // CRITICAL: Check if this is an emotional statement (NOT a question)
-  const isEmotionalStatement = /\b(not fine|stressed|sad|depressed|anxious|tired|exhausted|overwhelmed|frustrated|angry|upset|worried|scared|lonely|hurt|pain|cry|cried|crying|😭|😢|😔|😞|😟)\b/i.test(query);
-  
+  const isEmotionalStatement =
+    /\b(not fine|stressed|sad|depressed|anxious|tired|exhausted|overwhelmed|frustrated|angry|upset|worried|scared|lonely|hurt|pain|cry|cried|crying|😭|😢|😔|😞|😟)\b/i.test(
+      query,
+    );
+
   // NEVER search web for emotional statements - just be empathetic
   if (isEmotionalStatement) {
     const empatheticResponses = [
@@ -773,7 +869,9 @@ export async function synthesizeNative(
       "Same energy sometimes tbh. But hey, you're not alone in this. What's stressing you most?",
     ];
     return {
-      text: empatheticResponses[Math.floor(Math.random() * empatheticResponses.length)],
+      text: empatheticResponses[
+        Math.floor(Math.random() * empatheticResponses.length)
+      ],
       nodesUsed: 0,
       newNodesAdded: 0,
       learnedFacts: [],
@@ -787,18 +885,19 @@ export async function synthesizeNative(
 
   // Detect if web search is needed (current events, news, recent facts)
   // BUT: if onActivity is undefined, we're in Local mode - NO web search!
-  const needsWebSearch = onActivity && detectNeedForWebSearch(query, relevantNodes);
+  const needsWebSearch =
+    onActivity && detectNeedForWebSearch(query, relevantNodes);
   let searchResults: SearchResult[] = [];
   let fetchedContent: { title: string; text: string } | null = null;
 
   if (needsWebSearch) {
     // Search the web (onActivity is defined, so we're not in Local mode)
     onActivity({ type: "searching", query });
-    
+
     try {
       const searchResult = await webSearch(query);
       searchResults = searchResult.results;
-      
+
       if (onActivity) {
         onActivity({ type: "search_done", resultCount: searchResults.length });
       }
@@ -806,22 +905,33 @@ export async function synthesizeNative(
       // Fetch top results until we find good content (skip low-quality URLs)
       const skipPatterns = [
         /linkedin\.com.*\/legal\//, // LinkedIn legal pages
-        /\/terms(\/|$)/, /\/privacy(\/|$)/, /\/legal(\/|$)/,
-        /\/login(\/|$)/, /\/signin(\/|$)/, /\/auth(\/|$)/,
-        /\/cookies?/i, /\/gdpr/i, /\/consent/i,
-        /facebook\.com.*\/policy/i, /twitter\.com.*\/privacy/i,
+        /\/terms(\/|$)/,
+        /\/privacy(\/|$)/,
+        /\/legal(\/|$)/,
+        /\/login(\/|$)/,
+        /\/signin(\/|$)/,
+        /\/auth(\/|$)/,
+        /\/cookies?/i,
+        /\/gdpr/i,
+        /\/consent/i,
+        /facebook\.com.*\/policy/i,
+        /twitter\.com.*\/privacy/i,
         /\.pdf($|\?)/, // Skip PDFs for now
       ];
-      
-      for (const result of searchResults.slice(0, 5)) { // Try top 5 results
+
+      for (const result of searchResults.slice(0, 5)) {
+        // Try top 5 results
         if (!result.url) continue;
-        
+
         // Skip low-quality URLs
-        if (skipPatterns.some(p => p.test(result.url))) {
-          logger.debug({ url: result.url, title: result.title }, "Skipping low-quality URL");
+        if (skipPatterns.some((p) => p.test(result.url))) {
+          logger.debug(
+            { url: result.url, title: result.title },
+            "Skipping low-quality URL",
+          );
           continue;
         }
-        
+
         if (onActivity) {
           onActivity({ type: "fetching", url: result.url });
         }
@@ -829,8 +939,15 @@ export async function synthesizeNative(
           const fetched = await fetchUrl(result.url);
           // Validate content quality
           const text = fetched.text?.trim() || "";
-          if (text.length < 200 || text.includes("sign in") || text.includes("log in")) {
-            logger.debug({ url: result.url, textLen: text.length }, "Skipping low-quality content");
+          if (
+            text.length < 200 ||
+            text.includes("sign in") ||
+            text.includes("log in")
+          ) {
+            logger.debug(
+              { url: result.url, textLen: text.length },
+              "Skipping low-quality content",
+            );
             continue;
           }
           fetchedContent = { title: fetched.title, text };
@@ -839,11 +956,17 @@ export async function synthesizeNative(
           }
           break; // Success, stop trying
         } catch (err) {
-          logger.warn({ err, url: result.url }, "Failed to fetch URL, trying next");
+          logger.warn(
+            { err, url: result.url },
+            "Failed to fetch URL, trying next",
+          );
         }
       }
     } catch (err) {
-      logger.warn({ err, query }, "Web search failed, continuing without web results");
+      logger.warn(
+        { err, query },
+        "Web search failed, continuing without web results",
+      );
     }
   }
 
@@ -901,16 +1024,22 @@ export async function synthesizeNative(
 
   // Add character flavor to the response
   responseText = applyCharacterVoice(responseText, character, voice);
-  
+
   // Enforce AI identity — prevent claiming user identities
   responseText = enforceAIIdentity(responseText, character);
 
   // Extract facts to learn from this interaction
-  const learnedFacts = extractLearnings(query, responseText, searchResults, relevantNodes);
+  const learnedFacts = extractLearnings(
+    query,
+    responseText,
+    searchResults,
+    relevantNodes,
+  );
 
   return {
     text: responseText,
-    nodesUsed: nodesUsed + (searchResults.length > 0 ? searchResults.length : 0),
+    nodesUsed:
+      nodesUsed + (searchResults.length > 0 ? searchResults.length : 0),
     newNodesAdded: learnedFacts.length,
     learnedFacts,
     character: {
@@ -932,36 +1061,51 @@ function detectNeedForWebSearch(
   const lower = query.toLowerCase();
 
   // CRITICAL: Web search should be EXTREMELY RARE - disabled by default
-  
+
   // 1. DISABLE WEB SEARCH BY DEFAULT - only enable for specific factual questions
   // This prevents searching for statements, emotions, casual chat, etc.
-  
+
   // 2. ONLY search web for THESE specific factual question patterns:
   const searchOnlyFor = [
-    /^what (is|are|was|were) (the |a |an )?[a-z]{3,}/,  // "What is the..." (with actual topic 3+ letters)
-    /^who (is|are|was|were) [a-z]{3,}/,  // "Who is..." (person name 3+ letters)
-    /^where (is|are) [a-z]{3,}/,  // "Where is..."
-    /^when (is|are|was|were) [a-z]{3,}/,  // "When is..."
-    /^why (is|are|does|do) [a-z]{3,}/,  // "Why is..."
-    /^how (many|much|long|far|old|often) /,  // "How many..."
-    /^how (does|do|did|can|would) [a-z]{3,}/,  // "How does..."
+    /^what (is|are|was|were) (the |a |an )?[a-z]{3,}/, // "What is the..." (with actual topic 3+ letters)
+    /^who (is|are|was|were) [a-z]{3,}/, // "Who is..." (person name 3+ letters)
+    /^where (is|are) [a-z]{3,}/, // "Where is..."
+    /^when (is|are|was|were) [a-z]{3,}/, // "When is..."
+    /^why (is|are|does|do) [a-z]{3,}/, // "Why is..."
+    /^how (many|much|long|far|old|often) /, // "How many..."
+    /^how (does|do|did|can|would) [a-z]{3,}/, // "How does..."
   ];
-  
-  const isFactualQuestion = searchOnlyFor.some(p => p.test(lower));
-  
+
+  const isFactualQuestion = searchOnlyFor.some((p) => p.test(lower));
+
   if (!isFactualQuestion) {
     return false; // NOT a factual question = NO web search
   }
 
   // 3. ALWAYS search web for time-sensitive topics (ONLY if factual question)
   const timeTriggers = [
-    "news", "current", "recent", "latest", "today", "yesterday", 
-    "this week", "this month", "this year",
-    "weather", "stock", "price of", "score", "results",
-    "new", "just", "breaking", "announced", "released",
+    "news",
+    "current",
+    "recent",
+    "latest",
+    "today",
+    "yesterday",
+    "this week",
+    "this month",
+    "this year",
+    "weather",
+    "stock",
+    "price of",
+    "score",
+    "results",
+    "new",
+    "just",
+    "breaking",
+    "announced",
+    "released",
   ];
-  
-  if (timeTriggers.some(trigger => lower.includes(trigger))) {
+
+  if (timeTriggers.some((trigger) => lower.includes(trigger))) {
     return true; // Time-sensitive = always search
   }
 
@@ -987,11 +1131,11 @@ function buildUnknownResponse(
   // High curiosity: eager to learn (NO query echoing)
   if (curiosityLevel > 70) {
     return `I don't have any knowledge about that yet — but I'm curious! 🌱\n\nTell me more and I'll add it to my knowledge base. The more you teach me, the smarter I become!`;
-  } 
+  }
   // Medium curiosity: friendly and open (NO query echoing)
   else if (curiosityLevel > 40) {
     return `I haven't learned about this yet.\n\n💡 Here's how you can teach me:\n• Share facts or information\n• Explain concepts in your own words\n• Tell me what you think\n\nI'll remember what you teach me for future conversations!`;
-  } 
+  }
   // Low curiosity: straightforward but helpful (NO query echoing)
   else {
     return `I don't have information about that in my knowledge base yet.\n\nThis means we haven't discussed it before. Feel free to teach me — I learn from every conversation we have!`;
@@ -1013,7 +1157,14 @@ function synthesizeFromNodesOnly(
   const parts: string[] = [];
 
   // Main knowledge content
-  const knowledgeSection = synthesizeFromNodes(query, nodes, character, voice, queryType, history);
+  const knowledgeSection = synthesizeFromNodes(
+    query,
+    nodes,
+    character,
+    voice,
+    queryType,
+    history,
+  );
   if (knowledgeSection) parts.push(knowledgeSection);
 
   // Optional: Add conversational closer to invite follow-up
@@ -1040,7 +1191,12 @@ function synthesizeFromWebOnly(
   parts.push("I found some information about this from the web:");
 
   // Web results
-  const webSection = synthesizeFromWeb(query, searchResults, fetchedContent, voice);
+  const webSection = synthesizeFromWeb(
+    query,
+    searchResults,
+    fetchedContent,
+    voice,
+  );
   if (webSection) parts.push(webSection);
 
   // No closing meta-text - keeps responses clean
@@ -1065,13 +1221,25 @@ function synthesizeFromNodesAndWeb(
 
   // Web results (if available)
   if (searchResults.length > 0) {
-    const webSection = synthesizeFromWeb(query, searchResults, fetchedContent, voice);
+    const webSection = synthesizeFromWeb(
+      query,
+      searchResults,
+      fetchedContent,
+      voice,
+    );
     if (webSection) parts.push(webSection);
   }
 
   // Knowledge nodes (if available)
   if (nodes.length > 0) {
-    const knowledgeSection = synthesizeFromNodes(query, nodes, character, voice, queryType, history);
+    const knowledgeSection = synthesizeFromNodes(
+      query,
+      nodes,
+      character,
+      voice,
+      queryType,
+      history,
+    );
     if (knowledgeSection) parts.push(knowledgeSection);
   }
 
@@ -1096,7 +1264,7 @@ function synthesizeFromWeb(
 
   // Extract key information from search results
   const keyPoints: string[] = [];
-  
+
   // Process fetched content first (full page = more reliable)
   if (fetchedContent) {
     // AGGRESSIVE CLEANING: Remove Wikipedia/navigation/legal garbage
@@ -1112,22 +1280,30 @@ function synthesizeFromWeb(
       // Remove markdown links that are navigation
       .replace(/\*\s*\[.*?\]\(.*?\)\s*".*?"/gi, "")
       // Remove legal/terms text (LinkedIn, etc.)
-      .replace(/By clicking (Continue|Join|Sign).*?(user agreement|privacy policy|terms).*?\./gi, "")
-      .replace(/\[?(User Agreement|Privacy Policy|Terms of Service|Cookie Policy)\]?.*?\)?/gi, "")
+      .replace(
+        /By clicking (Continue|Join|Sign).*?(user agreement|privacy policy|terms).*?\./gi,
+        "",
+      )
+      .replace(
+        /\[?(User Agreement|Privacy Policy|Terms of Service|Cookie Policy)\]?.*?\)?/gi,
+        "",
+      )
       .replace(/agree to.*?(terms|policy|agreement)/gi, "")
       // Remove login/signup prompts
       .replace(/Sign in|Log in|Sign up|Create account|Join .*? for free/gi, "")
       // Remove short lines (likely navigation)
-      .split('\n')
-      .filter(line => line.trim().length > 30)
-      .join('\n');
-    
+      .split("\n")
+      .filter((line) => line.trim().length > 30)
+      .join("\n");
+
     // Extract 2-3 key sentences from the cleaned page
-    const sentences = cleanedText.split(/[.!?]+/).filter(s => s.trim().length > 20);
-    const topSentences = sentences.slice(0, 3).map(s => s.trim() + ".");
+    const sentences = cleanedText
+      .split(/[.!?]+/)
+      .filter((s) => s.trim().length > 20);
+    const topSentences = sentences.slice(0, 3).map((s) => s.trim() + ".");
     keyPoints.push(...topSentences);
   }
-  
+
   // Extract key info from snippets
   for (const result of searchResults.slice(0, 3)) {
     if (result.snippet && result.snippet.length > 30) {
@@ -1144,12 +1320,13 @@ function synthesizeFromWeb(
   }
 
   // Synthesize into coherent response
-  if (keyPoints.length === 0) return "I found some information, but nothing clear.";
+  if (keyPoints.length === 0)
+    return "I found some information, but nothing clear.";
 
   // Build natural response
   const intro = getWebIntro(query, keyPoints.length);
   const synthesized = keyPoints.slice(0, 4).join(" ");
-  
+
   if (voice.prefersDetail) {
     return `${intro}\n\n${synthesized}`;
   } else {
@@ -1212,17 +1389,17 @@ function buildConversationalCloser(
 ): string {
   // Only add closer if character is curious/engaging
   if (character.curiosity < 40) return "";
-  
+
   const closers = [
     `Want to know more?`,
     `Anything else you're curious about?`,
     `What else would you like to know?`,
     `Feel free to ask if you want more details!`,
   ];
-  
+
   // Don't always add a closer - keep it natural (70% of the time)
   if (Math.random() > 0.7) return "";
-  
+
   return closers[Math.floor(Math.random() * closers.length)];
 }
 
@@ -1240,59 +1417,64 @@ function synthesizeMainContent(
 
   // CRITICAL: Filter out IRRELEVANT technical nodes
   const queryLower = query.toLowerCase();
-  
+
   // Check if query is about the app itself
-  const isAppQuery = queryLower.includes('omnilearn') || 
-                     queryLower.includes('this app') ||
-                     queryLower.includes('this system') ||
-                     queryLower.includes('the agent') ||
-                     queryLower.includes('your knowledge') ||
-                     queryLower.includes('your memory');
-  
+  const isAppQuery =
+    queryLower.includes("omnilearn") ||
+    queryLower.includes("this app") ||
+    queryLower.includes("this system") ||
+    queryLower.includes("the agent") ||
+    queryLower.includes("your knowledge") ||
+    queryLower.includes("your memory");
+
   // Filter nodes - exclude technical docs UNLESS query is about the app
-  const filteredNodes = nodes.filter(node => {
+  const filteredNodes = nodes.filter((node) => {
     const content = node.content.toLowerCase();
-    
+
     // For general questions, exclude app documentation
     if (!isAppQuery) {
       // Skip nodes that are clearly about the app's implementation
-      if (content.includes('omnilearn') || 
-          content.includes('sse ') ||  // "sse " not "ssetfidf"
-          content.includes('server-sent') ||
-          content.includes('health check') ||
-          content.includes('/api/') ||
-          content.includes('endpoint') ||
-          content.includes('route') ||
-          content.includes('sha-256') ||
-          content.includes('proof chain') ||
-          content.includes('hebbian') ||
-          content.includes('tf-idf') ||
-          content.includes('this application') ||
-          content.includes('the system uses') ||
-          content.includes('particles') ||
-          content.includes('pids') ||
-          // Skip greeting/conversation rule nodes for factual questions
-          content.includes('when someone says') ||
-          content.includes('common greetings') ||
-          content.includes('natural conversation') ||
-          content.includes('don\'t over-explain') ||
-          content.includes('conversation starters')) {
+      if (
+        content.includes("omnilearn") ||
+        content.includes("sse ") || // "sse " not "ssetfidf"
+        content.includes("server-sent") ||
+        content.includes("health check") ||
+        content.includes("/api/") ||
+        content.includes("endpoint") ||
+        content.includes("route") ||
+        content.includes("sha-256") ||
+        content.includes("proof chain") ||
+        content.includes("hebbian") ||
+        content.includes("tf-idf") ||
+        content.includes("this application") ||
+        content.includes("the system uses") ||
+        content.includes("particles") ||
+        content.includes("pids") ||
+        // Skip greeting/conversation rule nodes for factual questions
+        content.includes("when someone says") ||
+        content.includes("common greetings") ||
+        content.includes("natural conversation") ||
+        content.includes("don't over-explain") ||
+        content.includes("conversation starters")
+      ) {
         return false; // Skip irrelevant nodes
       }
     }
-    
+
     return true;
   });
-  
+
   // Take top 5 UNIQUE nodes (no duplicates)
   const seenContent = new Set<string>();
-  const uniqueNodes = filteredNodes.filter(node => {
-    const key = node.content.slice(0, 50).toLowerCase();
-    if (seenContent.has(key)) return false;
-    seenContent.add(key);
-    return true;
-  }).slice(0, 5);
-  
+  const uniqueNodes = filteredNodes
+    .filter((node) => {
+      const key = node.content.slice(0, 50).toLowerCase();
+      if (seenContent.has(key)) return false;
+      seenContent.add(key);
+      return true;
+    })
+    .slice(0, 5);
+
   const topNodes = uniqueNodes;
 
   // Aggressive meta-text filtering
@@ -1330,31 +1512,31 @@ function synthesizeMainContent(
   const cleanContents: string[] = [];
   for (const node of topNodes) {
     let content = node.content.trim();
-    
+
     // Skip meta-text nodes entirely
-    if (metaPatterns.some(pattern => pattern.test(content))) {
+    if (metaPatterns.some((pattern) => pattern.test(content))) {
       continue;
     }
-    
+
     // SECURITY: Skip identity-poisoned nodes
-    if (identityPoisonPatterns.some(pattern => pattern.test(content))) {
+    if (identityPoisonPatterns.some((pattern) => pattern.test(content))) {
       logger.warn(
         { nodeId: (node as any).id, content: content.slice(0, 100) },
-        "Filtered identity-poisoned node from response"
+        "Filtered identity-poisoned node from response",
       );
       continue;
     }
-    
+
     // Clean up common artifacts
     content = content
-      .replace(/^(That|This|It) connects to what I've learned[:\s]*/i, '')
-      .replace(/^I've learned:\s*/i, '')
-      .replace(/^Based on what I've learned:\s*/i, '')
+      .replace(/^(That|This|It) connects to what I've learned[:\s]*/i, "")
+      .replace(/^I've learned:\s*/i, "")
+      .replace(/^Based on what I've learned:\s*/i, "")
       .trim();
-    
+
     // Skip if nothing left after cleanup
     if (content.length < 10) continue;
-    
+
     cleanContents.push(content);
   }
 
@@ -1364,7 +1546,7 @@ function synthesizeMainContent(
   // SYNTHESIZE: Combine multiple facts into coherent response
   // Group related facts and build flowing paragraphs
   const synthesized = synthesizeFactsIntoProse(cleanContents, query, history);
-  
+
   return synthesized;
 }
 
@@ -1372,20 +1554,24 @@ function synthesizeMainContent(
 // Synthesize multiple facts into natural, flowing prose
 // ──────────────────────────────────────────────────────────────────────────────
 
-function synthesizeFactsIntoProse(facts: string[], query?: string, history?: Array<{ role: string; content: string }>): string {
+function synthesizeFactsIntoProse(
+  facts: string[],
+  query?: string,
+  history?: Array<{ role: string; content: string }>,
+): string {
   if (facts.length === 0) return "";
   if (facts.length === 1) return facts[0];
 
   // STRATEGY: Don't just concatenate — weave facts into coherent narrative
-  
+
   // Step 1: Identify the main topic (from first fact)
   const firstFact = facts[0];
   const mainTopic = extractMainTopic(firstFact);
-  
+
   // Step 2: Group facts by relevance to main topic
   const primaryFacts = [firstFact];
   const supportingFacts: string[] = [];
-  
+
   for (let i = 1; i < facts.length; i++) {
     const fact = facts[i];
     // If fact shares key terms with first fact, it's supporting
@@ -1398,17 +1584,17 @@ function synthesizeFactsIntoProse(facts: string[], query?: string, history?: Arr
 
   // Step 3: Build flowing response with context awareness
   const paragraphs: string[] = [];
-  
+
   // Opening: State the main concept clearly, with conversational lead-in
   const opening = craftOpening(mainTopic, primaryFacts[0], query, history);
   if (opening) paragraphs.push(opening);
-  
+
   // Middle: Weave supporting facts naturally
   if (supportingFacts.length > 0) {
     const middle = weaveSupportingFacts(supportingFacts);
     if (middle) paragraphs.push(middle);
   }
-  
+
   // Additional primary facts as separate points
   for (let i = 1; i < primaryFacts.length && i < 3; i++) {
     const connected = findConnectedFacts(primaryFacts[i], supportingFacts);
@@ -1419,7 +1605,7 @@ function synthesizeFactsIntoProse(facts: string[], query?: string, history?: Arr
       paragraphs.push(primaryFacts[i]);
     }
   }
-  
+
   return paragraphs.join("\n\n");
 }
 
@@ -1435,18 +1621,48 @@ function extractMainTopic(fact: string): string {
   return words.join(" ") + "...";
 }
 
-function sharesKeyTerms(factA: string, factB: string, minShared: number = 2): boolean {
+function sharesKeyTerms(
+  factA: string,
+  factB: string,
+  minShared: number = 2,
+): boolean {
   const termsA = new Set(
-    factA.toLowerCase()
+    factA
+      .toLowerCase()
       .split(/\W+/)
-      .filter(w => w.length > 4 && !['that', 'which', 'this', 'these', 'those', 'about', 'with'].includes(w))
+      .filter(
+        (w) =>
+          w.length > 4 &&
+          ![
+            "that",
+            "which",
+            "this",
+            "these",
+            "those",
+            "about",
+            "with",
+          ].includes(w),
+      ),
   );
   const termsB = new Set(
-    factB.toLowerCase()
+    factB
+      .toLowerCase()
       .split(/\W+/)
-      .filter(w => w.length > 4 && !['that', 'which', 'this', 'these', 'those', 'about', 'with'].includes(w))
+      .filter(
+        (w) =>
+          w.length > 4 &&
+          ![
+            "that",
+            "which",
+            "this",
+            "these",
+            "those",
+            "about",
+            "with",
+          ].includes(w),
+      ),
   );
-  
+
   let shared = 0;
   for (const term of termsA) {
     if (termsB.has(term)) shared++;
@@ -1455,44 +1671,59 @@ function sharesKeyTerms(factA: string, factB: string, minShared: number = 2): bo
   return false;
 }
 
-function craftOpening(topic: string, fact: string, query?: string, history?: Array<{ role: string; content: string }>): string {
+function craftOpening(
+  topic: string,
+  fact: string,
+  query?: string,
+  history?: Array<{ role: string; content: string }>,
+): string {
   // Check if we were just in casual conversation (look at recent history)
-  const wasCasual = history && history.slice(-3).some(m => 
-    m.role === 'user' && 
-    (m.content.toLowerCase().includes('hey') || 
-     m.content.toLowerCase().includes('hello') ||
-     m.content.toLowerCase().includes('hi') ||
-     m.content.toLowerCase().includes('how are'))
-  );
-  
+  const wasCasual =
+    history &&
+    history
+      .slice(-3)
+      .some(
+        (m) =>
+          m.role === "user" &&
+          (m.content.toLowerCase().includes("hey") ||
+            m.content.toLowerCase().includes("hello") ||
+            m.content.toLowerCase().includes("hi") ||
+            m.content.toLowerCase().includes("how are")),
+      );
+
   // If coming from casual chat, add a conversational bridge
   if (wasCasual && query) {
     const bridges = [
-      `Good question! `, 
-      `Great question! `, 
+      `Good question! `,
+      `Great question! `,
       `Let me tell you about ${topic}: `,
       `Here's what I know: `,
       `I can help with that! `,
     ];
     const bridge = bridges[Math.floor(Math.random() * bridges.length)];
-    
+
     // If fact is already a good opening, prepend bridge
     if (fact.length < 150) {
       return bridge + fact.charAt(0).toLowerCase() + fact.slice(1);
     }
-    
+
     // For longer facts, extract the core statement
-    const sentences = fact.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    const sentences = fact.split(/[.!?]+/).filter((s) => s.trim().length > 10);
     if (sentences.length > 0) {
-      return bridge + sentences[0].trim().charAt(0).toLowerCase() + sentences[0].trim().slice(1) + ".";
+      return (
+        bridge +
+        sentences[0].trim().charAt(0).toLowerCase() +
+        sentences[0].trim().slice(1) +
+        "."
+      );
     }
   }
-  
+
   // If fact is already a good opening, use it as-is
   if (fact.length < 150) return fact;
-  
+
   // For longer facts, extract the core statement
-  const sentences = fact.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  const sentences = fact.split(/[.!?]+/).filter((s) => s.trim().length > 10);
   if (sentences.length > 0) {
     return sentences[0].trim() + ".";
   }
@@ -1502,7 +1733,7 @@ function craftOpening(topic: string, fact: string, query?: string, history?: Arr
 function weaveSupportingFacts(facts: string[]): string {
   if (facts.length === 0) return "";
   if (facts.length === 1) return facts[0];
-  
+
   // Use connectors to weave facts together
   const connectors = [
     " Additionally, ",
@@ -1512,28 +1743,29 @@ function weaveSupportingFacts(facts: string[]): string {
     " For example, ",
     " This includes ",
   ];
-  
+
   let woven = facts[0];
   for (let i = 1; i < Math.min(facts.length, 4); i++) {
     const connector = connectors[(i - 1) % connectors.length];
-    woven += connector + facts[i].toLowerCase().replace(/^./, c => c.toUpperCase());
+    woven +=
+      connector + facts[i].toLowerCase().replace(/^./, (c) => c.toUpperCase());
   }
-  
+
   return woven;
 }
 
 function findConnectedFacts(fact: string, candidates: string[]): string[] {
-  return candidates.filter(c => sharesKeyTerms(fact, c, 1)).slice(0, 2);
+  return candidates.filter((c) => sharesKeyTerms(fact, c, 1)).slice(0, 2);
 }
 
 function combineRelatedFacts(primary: string, supporting: string[]): string {
   if (supporting.length === 0) return primary;
-  
+
   const combined = [primary, ...supporting].join(" ");
-  
+
   // Keep it concise (under 200 chars)
   if (combined.length <= 200) return combined;
-  
+
   // Truncate gracefully
   const sentences = combined.split(/[.!?]+/);
   let result = sentences[0];
@@ -1562,22 +1794,25 @@ function buildClosing(query: string, character: CharacterState): string {
  */
 function enforceAIIdentity(text: string, character: CharacterState): string {
   let result = text;
-  
+
   // Replace any "I am [USER_NAME]" patterns with Omni identity
   // This catches edge cases where the AI might accidentally adopt user identity
   const userIdentityPatterns = [
-    /\bi am (?!omni\b)[A-Z][a-z]+/gi,  // "I am Emmanuel" but not "I am Omni"
-    /\bi'm (?!omni\b)[A-Z][a-z]+/gi,   // "I'm Sarah" but not "I'm Omni"
+    /\bi am (?!omni\b)[A-Z][a-z]+/gi, // "I am Emmanuel" but not "I am Omni"
+    /\bi'm (?!omni\b)[A-Z][a-z]+/gi, // "I'm Sarah" but not "I'm Omni"
   ];
-  
+
   for (const pattern of userIdentityPatterns) {
     if (pattern.test(result)) {
       // Don't replace - just log warning and let it pass
       // (This shouldn't happen if identity filtering works correctly)
-      logger.warn({ text: result.slice(0, 100) }, "Potential identity confusion in response");
+      logger.warn(
+        { text: result.slice(0, 100) },
+        "Potential identity confusion in response",
+      );
     }
   }
-  
+
   return result;
 }
 
@@ -1629,7 +1864,23 @@ function extractLearnings(
   const keyTerms = query
     .toLowerCase()
     .split(/\s+/)
-    .filter(w => w.length > 3 && !['what', 'where', 'when', 'who', 'why', 'how', 'does', 'is', 'are', 'was', 'were'].includes(w));
+    .filter(
+      (w) =>
+        w.length > 3 &&
+        ![
+          "what",
+          "where",
+          "when",
+          "who",
+          "why",
+          "how",
+          "does",
+          "is",
+          "are",
+          "was",
+          "were",
+        ].includes(w),
+    );
 
   // SAFEGUARD: Meta-text patterns that indicate system messages (DO NOT LEARN)
   const metaPatterns = [
@@ -1673,17 +1924,17 @@ function extractLearnings(
 
   // Helper: Check if content is safe to learn
   const isSafeToLearn = (text: string): boolean => {
-    if (metaPatterns.some(p => p.test(text))) return false;
-    
+    if (metaPatterns.some((p) => p.test(text))) return false;
+
     // SECURITY: Block identity poisoning attempts
-    if (identityPoisonPatterns.some(p => p.test(text))) {
+    if (identityPoisonPatterns.some((p) => p.test(text))) {
       logger.warn(
         { text: text.slice(0, 200) },
-        "Blocked identity poisoning attempt - false identity claim"
+        "Blocked identity poisoning attempt - false identity claim",
       );
       return false;
     }
-    
+
     if (text.trim().length < 20) return false;
     if (text.length > 500) return false;
     if (text === text.toUpperCase() && text.length > 30) return false;
@@ -1699,8 +1950,11 @@ function extractLearnings(
           .replace(/https?:\/\/\S+/g, "")
           .replace(/[*_`]/g, "")
           .trim();
-        
-        if (isSafeToLearn(clean) && !facts.some(f => f.content.includes(clean.slice(0, 20)))) {
+
+        if (
+          isSafeToLearn(clean) &&
+          !facts.some((f) => f.content.includes(clean.slice(0, 20)))
+        ) {
           facts.push({
             content: clean,
             type: "fact",

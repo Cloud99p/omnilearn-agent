@@ -1,10 +1,21 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from "@clerk/react";
+import {
+  ClerkProvider,
+  SignIn,
+  SignUp,
+  Show,
+  useClerk,
+  useUser,
+} from "@clerk/react";
 import { shadcn } from "@clerk/themes";
 import { initSentry, setUser } from "@/lib/sentry";
 import * as Sentry from "@sentry/react";
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Toaster } from "@/components/ui/toaster";
@@ -39,9 +50,13 @@ const queryClient = new QueryClient();
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-const clerkPubKey = (import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ?? import.meta.env.CLERK_PUBLISHABLE_KEY) as string;
+const clerkPubKey = (import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ??
+  import.meta.env.CLERK_PUBLISHABLE_KEY) as string;
 
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL as string | undefined;
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL as
+  | string
+  | undefined;
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
@@ -72,7 +87,8 @@ const clerkAppearance = {
   },
   elements: {
     rootBox: "w-full flex justify-center",
-    cardBox: "bg-[#0f172a] border border-[#334155]/60 rounded-2xl w-[440px] max-w-full overflow-hidden shadow-2xl",
+    cardBox:
+      "bg-[#0f172a] border border-[#334155]/60 rounded-2xl w-[440px] max-w-full overflow-hidden shadow-2xl",
     card: "!shadow-none !border-0 !bg-transparent !rounded-none",
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
     headerTitle: "text-[#f1f5f9] font-mono font-bold",
@@ -87,13 +103,17 @@ const clerkAppearance = {
     alertText: "text-[#f87171] font-mono text-xs",
     logoBox: "flex justify-center py-2",
     logoImage: "w-10 h-10",
-    socialButtonsBlockButton: "border border-[#334155] bg-[#1e293b] hover:bg-[#1e293b]/80 rounded-xl transition-colors",
-    formButtonPrimary: "bg-[#22d3ee] text-[#0f172a] hover:bg-[#22d3ee]/90 font-mono font-bold rounded-xl",
-    formFieldInput: "bg-[#1e293b] border-[#334155] text-[#f1f5f9] font-mono rounded-xl focus:border-[#22d3ee]",
+    socialButtonsBlockButton:
+      "border border-[#334155] bg-[#1e293b] hover:bg-[#1e293b]/80 rounded-xl transition-colors",
+    formButtonPrimary:
+      "bg-[#22d3ee] text-[#0f172a] hover:bg-[#22d3ee]/90 font-mono font-bold rounded-xl",
+    formFieldInput:
+      "bg-[#1e293b] border-[#334155] text-[#f1f5f9] font-mono rounded-xl focus:border-[#22d3ee]",
     footerAction: "border-t border-[#1e293b]",
     dividerLine: "bg-[#1e293b]",
     alert: "bg-[#1e293b] border border-[#f87171]/20 rounded-xl",
-    otpCodeFieldInput: "bg-[#1e293b] border-[#334155] text-[#f1f5f9] font-mono rounded-xl",
+    otpCodeFieldInput:
+      "bg-[#1e293b] border-[#334155] text-[#f1f5f9] font-mono rounded-xl",
     formFieldRow: "gap-2",
     main: "gap-5",
   },
@@ -107,7 +127,10 @@ function ClerkQueryClientCacheInvalidator() {
   useEffect(() => {
     const unsubscribe = addListener(({ user }) => {
       const userId = user?.id ?? null;
-      if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
+      if (
+        prevUserIdRef.current !== undefined &&
+        prevUserIdRef.current !== userId
+      ) {
         qc.clear();
       }
       prevUserIdRef.current = userId;
@@ -148,7 +171,9 @@ function AuthLoader() {
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
         <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-        <span className="font-mono text-xs text-muted-foreground tracking-widest">INITIALISING</span>
+        <span className="font-mono text-xs text-muted-foreground tracking-widest">
+          INITIALISING
+        </span>
       </div>
     </div>
   );

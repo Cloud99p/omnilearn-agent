@@ -9,11 +9,14 @@ export const learningLog = pgTable("learning_log", {
   details: text("details").notNull().default(""),
   nodesAdded: real("nodes_added").notNull().default(0),
   source: text("source").notNull().default("conversation"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const insertLearningLogSchema = createInsertSchema(learningLog).omit({
-  id: true, createdAt: true,
+  id: true,
+  createdAt: true,
 });
 export type LearningLog = typeof learningLog.$inferSelect;
 export type InsertLearningLog = z.infer<typeof insertLearningLogSchema>;

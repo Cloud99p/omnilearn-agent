@@ -23,15 +23,20 @@ import benchmarkRouter from "./benchmark.js";
 import storageRouter from "./storage.js";
 import repositoriesRouter from "./repositories.js";
 import documentsRouter from "./documents.js";
-import { defaultLimiter, chatLimiter, skillCreateLimiter, githubLimiter } from "../middlewares/rateLimit";
+import {
+  defaultLimiter,
+  chatLimiter,
+  skillCreateLimiter,
+  githubLimiter,
+} from "../middlewares/rateLimit";
 
 const router: IRouter = Router();
 
 // Apply rate limiters to routes
 router.use(healthRouter); // No rate limit on health checks
 router.use(debugRouter); // Debug/test endpoints (no rate limit)
-router.use("/anthropic", chatLimiter, chatRouter);  // Main chat (30 req/hour)
-router.use("/local", chatLimiter, localChatRouter);  // Local chat (30 req/hour)
+router.use("/anthropic", chatLimiter, chatRouter); // Main chat (30 req/hour)
+router.use("/local", chatLimiter, localChatRouter); // Local chat (30 req/hour)
 router.use("/skills", defaultLimiter, skillsRouter); // Default limit (100 req/15min)
 router.use(meRouter); // Default limit
 router.use(githubLimiter, githubRouter); // GitHub API (10 req/hour)

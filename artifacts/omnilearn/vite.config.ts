@@ -19,7 +19,11 @@ const effectiveBasePath = basePath || "/";
 export default defineConfig({
   base: effectiveBasePath,
   define: {
-    'import.meta.env.npm_package_version': JSON.stringify(process.env.npm_package_version || process.env.VITE_SENTRY_RELEASE || '1.0.0'),
+    "import.meta.env.npm_package_version": JSON.stringify(
+      process.env.npm_package_version ||
+        process.env.VITE_SENTRY_RELEASE ||
+        "1.0.0",
+    ),
   },
   plugins: [
     react(),
@@ -42,7 +46,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
-      "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
+      "@assets": path.resolve(
+        import.meta.dirname,
+        "..",
+        "..",
+        "attached_assets",
+      ),
     },
     dedupe: ["react", "react-dom"],
   },
@@ -53,12 +62,18 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'wouter'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-tooltip'],
-          forms: ['react-hook-form', '@hookform/resolvers', 'zod'],
-          charts: ['recharts'],
-          queries: ['@tanstack/react-query'],
-          motion: ['framer-motion'],
+          vendor: ["react", "react-dom", "wouter"],
+          ui: [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-select",
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-tooltip",
+          ],
+          forms: ["react-hook-form", "@hookform/resolvers", "zod"],
+          charts: ["recharts"],
+          queries: ["@tanstack/react-query"],
+          motion: ["framer-motion"],
         },
       },
     },

@@ -25,7 +25,7 @@ router.get("/", async (req, res) => {
         maxWorkers: 10,
       },
     };
-    
+
     res.json(config);
   } catch (err) {
     req.log.error(err, "Failed to get config");
@@ -37,7 +37,7 @@ router.get("/", async (req, res) => {
 router.put("/", async (req, res) => {
   try {
     const config = req.body;
-    
+
     // In production, this would persist to config file
     res.json({ success: true, message: "Configuration updated" });
   } catch (err) {

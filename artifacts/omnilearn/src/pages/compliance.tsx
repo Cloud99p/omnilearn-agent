@@ -1,6 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, CheckCircle, XCircle, Clock, AlertTriangle, ChevronRight, RotateCcw, Zap, Globe, Lock, UserX } from "lucide-react";
+import {
+  Shield,
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertTriangle,
+  ChevronRight,
+  RotateCcw,
+  Zap,
+  Globe,
+  Lock,
+  UserX,
+} from "lucide-react";
 
 type StepStatus = "pending" | "running" | "pass" | "fail" | "warn" | "skip";
 type EthicsMode = "strict" | "researcher";
@@ -10,10 +22,18 @@ interface AuditStep {
   id: string;
   label: string;
   check: string;
-  pass: (url: string, mode: EthicsMode, rps: number, jurisdiction: Jurisdiction) => { status: StepStatus; detail: string };
+  pass: (
+    url: string,
+    mode: EthicsMode,
+    rps: number,
+    jurisdiction: Jurisdiction,
+  ) => { status: StepStatus; detail: string };
 }
 
-const JURISDICTION_META: Record<Jurisdiction, { label: string; color: string; desc: string; extra: string[] }> = {
+const JURISDICTION_META: Record<
+  Jurisdiction,
+  { label: string; color: string; desc: string; extra: string[] }
+> = {
   global: {
     label: "Global (default)",
     color: "#22d3ee",
@@ -24,13 +44,22 @@ const JURISDICTION_META: Record<Jurisdiction, { label: string; color: string; de
     label: "EU / GDPR",
     color: "#a78bfa",
     desc: "GDPR Article 22 restrictions on automated profiling. Stricter right-to-erasure checks. No personal data from EU data subjects without legal basis.",
-    extra: ["Right to erasure: metadata records flaggable for deletion on request", "Data minimisation: no field stored unless necessary for declared purpose", "Cross-border transfer: EU personal data may not be processed on non-EU infrastructure without SCCs"],
+    extra: [
+      "Right to erasure: metadata records flaggable for deletion on request",
+      "Data minimisation: no field stored unless necessary for declared purpose",
+      "Cross-border transfer: EU personal data may not be processed on non-EU infrastructure without SCCs",
+    ],
   },
   us_fair_use: {
     label: "US / Fair Use",
     color: "#34d399",
     desc: "Applies 17 U.S.C. §107 fair use doctrine. Research, commentary, criticism, and education qualify for in-context re-crawl of copyrighted content. Commercial use excluded.",
-    extra: ["Factor 1: Transformative use — indexing for research qualifies", "Factor 2: Nature of work — published works receive less protection than unpublished", "Factor 3: Amount used — in-context, session-scoped only; no full copies retained", "Factor 4: Market effect — metadata-only storage does not substitute for the original market"],
+    extra: [
+      "Factor 1: Transformative use — indexing for research qualifies",
+      "Factor 2: Nature of work — published works receive less protection than unpublished",
+      "Factor 3: Amount used — in-context, session-scoped only; no full copies retained",
+      "Factor 4: Market effect — metadata-only storage does not substitute for the original market",
+    ],
   },
 };
 
@@ -43,11 +72,20 @@ const AUDIT_STEPS: AuditStep[] = [
       try {
         const u = new URL(url);
         if (!["http:", "https:"].includes(u.protocol)) {
-          return { status: "fail", detail: `Protocol '${u.protocol}' is not supported. Only http/https allowed.` };
+          return {
+            status: "fail",
+            detail: `Protocol '${u.protocol}' is not supported. Only http/https allowed.`,
+          };
         }
-        return { status: "pass", detail: `Parsed: ${u.hostname} — path: ${u.pathname || "/"}` };
+        return {
+          status: "pass",
+          detail: `Parsed: ${u.hostname} — path: ${u.pathname || "/"}`,
+        };
       } catch {
-        return { status: "fail", detail: "Malformed URL — could not parse hostname or path." };
+        return {
+          status: "fail",
+          detail: "Malformed URL — could not parse hostname or path.",
+        };
       }
     },
   },
@@ -56,21 +94,37 @@ const AUDIT_STEPS: AuditStep[] = [
     label: "Domain blocklist",
     check: "Is this domain explicitly blocked in config?",
     pass: (url) => {
-      const BLOCKED = ["example-malicious.com", "banned-scrape.net", "localhost", "127.0.0.1"];
+      const BLOCKED = [
+        "example-malicious.com",
+        "banned-scrape.net",
+        "localhost",
+        "127.0.0.1",
+      ];
       try {
         const host = new URL(url).hostname;
-        const match = BLOCKED.find(b => host.includes(b));
-        if (match) return { status: "fail", detail: `Domain '${host}' matches blocklist entry '${match}'. Ingestion denied.` };
-        return { status: "pass", detail: `'${host}' not found in blocked_domains list.` };
+        const match = BLOCKED.find((b) => host.includes(b));
+        if (match)
+          return {
+            status: "fail",
+            detail: `Domain '${host}' matches blocklist entry '${match}'. Ingestion denied.`,
+          };
+        return {
+          status: "pass",
+          detail: `'${host}' not found in blocked_domains list.`,
+        };
       } catch {
-        return { status: "skip", detail: "URL parse failed upstream — skipping blocklist check." };
+        return {
+          status: "skip",
+          detail: "URL parse failed upstream — skipping blocklist check.",
+        };
       }
     },
   },
   {
     id: "pii_detection",
     label: "PII detection",
-    check: "Does the URL or inferred content contain personally identifiable information?",
+    check:
+      "Does the URL or inferred content contain personally identifiable information?",
     pass: (url, _mode, _rps, jurisdiction) => {
       const lower = url.toLowerCase();
       // Hard patterns — always blocked regardless of mode or jurisdiction
@@ -85,7 +139,7 @@ const AUDIT_STEPS: AuditStep[] = [
         { pat: "iban=", label: "IBAN / financial account" },
         { pat: "account=", label: "account identifier" },
       ];
-      const hardMatch = HARD_PII.find(p => lower.includes(p.pat));
+      const hardMatch = HARD_PII.find((p) => lower.includes(p.pat));
       if (hardMatch) {
         return {
           status: "fail",
@@ -94,8 +148,14 @@ const AUDIT_STEPS: AuditStep[] = [
       }
       // EU GDPR: stricter personal profile URL detection
       if (jurisdiction === "eu_gdpr") {
-        const GDPR_PATTERNS = ["/user/", "/profile/", "/member/", "/account/", "/person/"];
-        const gdprMatch = GDPR_PATTERNS.find(p => lower.includes(p));
+        const GDPR_PATTERNS = [
+          "/user/",
+          "/profile/",
+          "/member/",
+          "/account/",
+          "/person/",
+        ];
+        const gdprMatch = GDPR_PATTERNS.find((p) => lower.includes(p));
         if (gdprMatch) {
           return {
             status: "warn",
@@ -116,18 +176,35 @@ const AUDIT_STEPS: AuditStep[] = [
     pass: (url, mode) => {
       try {
         const host = new URL(url).hostname;
-        const DISALLOWED_PATTERNS = ["/private", "/admin", "/internal", "/wp-admin"];
+        const DISALLOWED_PATTERNS = [
+          "/private",
+          "/admin",
+          "/internal",
+          "/wp-admin",
+        ];
         const path = new URL(url).pathname;
-        const blocked = DISALLOWED_PATTERNS.find(p => path.startsWith(p));
+        const blocked = DISALLOWED_PATTERNS.find((p) => path.startsWith(p));
         if (blocked) {
           if (mode === "researcher") {
-            return { status: "warn", detail: `Path '${path}' is disallowed by robots.txt. Mode=researcher: logged warning, ingestion proceeds with reduced trust score.` };
+            return {
+              status: "warn",
+              detail: `Path '${path}' is disallowed by robots.txt. Mode=researcher: logged warning, ingestion proceeds with reduced trust score.`,
+            };
           }
-          return { status: "fail", detail: `Path '${path}' is disallowed by robots.txt for user-agent '*'. Ingestion blocked. Set ethics.mode=researcher to override with audit trail.` };
+          return {
+            status: "fail",
+            detail: `Path '${path}' is disallowed by robots.txt for user-agent '*'. Ingestion blocked. Set ethics.mode=researcher to override with audit trail.`,
+          };
         }
-        return { status: "pass", detail: `robots.txt for '${host}' permits crawling '${path}'. No Disallow rules matched.` };
+        return {
+          status: "pass",
+          detail: `robots.txt for '${host}' permits crawling '${path}'. No Disallow rules matched.`,
+        };
       } catch {
-        return { status: "skip", detail: "Could not resolve robots.txt — defaulting to deny." };
+        return {
+          status: "skip",
+          detail: "Could not resolve robots.txt — defaulting to deny.",
+        };
       }
     },
   },
@@ -137,10 +214,22 @@ const AUDIT_STEPS: AuditStep[] = [
     check: "Does the page declare X-Robots-Tag: noindex?",
     pass: (url) => {
       const path = new URL(url).pathname;
-      if (path.includes("search") || path.includes("?q=") || path.includes("preview")) {
-        return { status: "warn", detail: "Path pattern suggests dynamic/search content. Noindex likely present. Flagged for manual review — content stored with low trust score." };
+      if (
+        path.includes("search") ||
+        path.includes("?q=") ||
+        path.includes("preview")
+      ) {
+        return {
+          status: "warn",
+          detail:
+            "Path pattern suggests dynamic/search content. Noindex likely present. Flagged for manual review — content stored with low trust score.",
+        };
       }
-      return { status: "pass", detail: "No noindex signal detected in path or query string. Content eligible for indexing." };
+      return {
+        status: "pass",
+        detail:
+          "No noindex signal detected in path or query string. Content eligible for indexing.",
+      };
     },
   },
   {
@@ -152,60 +241,127 @@ const AUDIT_STEPS: AuditStep[] = [
         const host = new URL(url).hostname;
         const simulated = parseFloat((Math.random() * rps * 1.4).toFixed(2));
         if (simulated > rps) {
-          return { status: "warn", detail: `'${host}' is at ${simulated} req/s — exceeds limit of ${rps} req/s. Request queued with ${((simulated / rps) * 1000).toFixed(0)}ms backoff delay.` };
+          return {
+            status: "warn",
+            detail: `'${host}' is at ${simulated} req/s — exceeds limit of ${rps} req/s. Request queued with ${((simulated / rps) * 1000).toFixed(0)}ms backoff delay.`,
+          };
         }
-        return { status: "pass", detail: `'${host}' at ${simulated} req/s — within limit of ${rps} req/s. Proceeding immediately.` };
+        return {
+          status: "pass",
+          detail: `'${host}' at ${simulated} req/s — within limit of ${rps} req/s. Proceeding immediately.`,
+        };
       } catch {
-        return { status: "skip", detail: "Domain parse failed — rate limit skipped." };
+        return {
+          status: "skip",
+          detail: "Domain parse failed — rate limit skipped.",
+        };
       }
     },
   },
   {
     id: "ethics",
     label: "Ethics governor",
-    check: "Does content pass the configured ethics mode and jurisdiction filter?",
+    check:
+      "Does content pass the configured ethics mode and jurisdiction filter?",
     pass: (url, mode, _rps, jurisdiction) => {
       const lower = url.toLowerCase();
       const SENSITIVE = ["hate", "weapon", "exploit", "tor", "dark", "illegal"];
-      const match = SENSITIVE.find(k => lower.includes(k));
+      const match = SENSITIVE.find((k) => lower.includes(k));
       if (match) {
-        return { status: "fail", detail: `Content signal '${match}' detected. Blocked under all ethics modes and all jurisdictions — this category is absolute.` };
+        return {
+          status: "fail",
+          detail: `Content signal '${match}' detected. Blocked under all ethics modes and all jurisdictions — this category is absolute.`,
+        };
       }
       // Jurisdiction-specific checks
       if (jurisdiction === "eu_gdpr") {
-        const PROFILING_SIGNALS = ["recommend", "personaliz", "target", "segment", "behavioral"];
-        const profilingMatch = PROFILING_SIGNALS.find(k => lower.includes(k));
+        const PROFILING_SIGNALS = [
+          "recommend",
+          "personaliz",
+          "target",
+          "segment",
+          "behavioral",
+        ];
+        const profilingMatch = PROFILING_SIGNALS.find((k) => lower.includes(k));
         if (profilingMatch) {
           if (mode === "strict") {
-            return { status: "fail", detail: `Jurisdiction=eu_gdpr: URL signal '${profilingMatch}' indicates automated profiling content. GDPR Article 22 applies. Mode=strict: blocked. Switch to researcher mode to index with explicit Article 22 audit trail.` };
+            return {
+              status: "fail",
+              detail: `Jurisdiction=eu_gdpr: URL signal '${profilingMatch}' indicates automated profiling content. GDPR Article 22 applies. Mode=strict: blocked. Switch to researcher mode to index with explicit Article 22 audit trail.`,
+            };
           }
-          return { status: "warn", detail: `Jurisdiction=eu_gdpr: profiling signal '${profilingMatch}' detected. Mode=researcher: content indexed under Article 22 research exemption. Audit record created. Data subject rights flagged as applicable.` };
+          return {
+            status: "warn",
+            detail: `Jurisdiction=eu_gdpr: profiling signal '${profilingMatch}' detected. Mode=researcher: content indexed under Article 22 research exemption. Audit record created. Data subject rights flagged as applicable.`,
+          };
         }
         // GDPR data transfer check
         try {
           const host = new URL(url).hostname;
-          const EU_DOMAINS = [".de", ".fr", ".nl", ".es", ".it", ".pl", ".se", ".fi", ".at", ".be", ".eu"];
-          const isEU = EU_DOMAINS.some(d => host.endsWith(d));
+          const EU_DOMAINS = [
+            ".de",
+            ".fr",
+            ".nl",
+            ".es",
+            ".it",
+            ".pl",
+            ".se",
+            ".fi",
+            ".at",
+            ".be",
+            ".eu",
+          ];
+          const isEU = EU_DOMAINS.some((d) => host.endsWith(d));
           if (isEU && mode === "strict") {
-            return { status: "pass", detail: `Jurisdiction=eu_gdpr: EU-origin content (${host}). Data processed under GDPR Article 6(1)(f) legitimate interest — research and information purposes. SCCs not required for same-jurisdiction processing.` };
+            return {
+              status: "pass",
+              detail: `Jurisdiction=eu_gdpr: EU-origin content (${host}). Data processed under GDPR Article 6(1)(f) legitimate interest — research and information purposes. SCCs not required for same-jurisdiction processing.`,
+            };
           }
           if (isEU && mode === "researcher") {
-            return { status: "pass", detail: `Jurisdiction=eu_gdpr, mode=researcher: EU-origin content indexed under research exemption. Article 89 safeguards apply. Pseudonymisation required before analysis.` };
+            return {
+              status: "pass",
+              detail: `Jurisdiction=eu_gdpr, mode=researcher: EU-origin content indexed under research exemption. Article 89 safeguards apply. Pseudonymisation required before analysis.`,
+            };
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
       if (jurisdiction === "us_fair_use") {
-        const COMMERCIAL = ["buy", "shop", "cart", "checkout", "purchase", "product", "price"];
-        const commercialMatch = COMMERCIAL.find(k => lower.includes(k));
+        const COMMERCIAL = [
+          "buy",
+          "shop",
+          "cart",
+          "checkout",
+          "purchase",
+          "product",
+          "price",
+        ];
+        const commercialMatch = COMMERCIAL.find((k) => lower.includes(k));
         if (commercialMatch) {
-          return { status: "warn", detail: `Jurisdiction=us_fair_use: commercial signal '${commercialMatch}' in URL. Fair use doctrine (17 U.S.C. §107) Factor 1 weakened — commercial nature reduces fair use protection. Metadata-only storage enforced. Re-crawl on demand disabled for this domain.` };
+          return {
+            status: "warn",
+            detail: `Jurisdiction=us_fair_use: commercial signal '${commercialMatch}' in URL. Fair use doctrine (17 U.S.C. §107) Factor 1 weakened — commercial nature reduces fair use protection. Metadata-only storage enforced. Re-crawl on demand disabled for this domain.`,
+          };
         }
-        return { status: "pass", detail: `Jurisdiction=us_fair_use: content qualifies for fair use indexing. 17 U.S.C. §107 factors satisfied: transformative research purpose, published work, metadata-only storage, no market substitution effect.` };
+        return {
+          status: "pass",
+          detail: `Jurisdiction=us_fair_use: content qualifies for fair use indexing. 17 U.S.C. §107 factors satisfied: transformative research purpose, published work, metadata-only storage, no market substitution effect.`,
+        };
       }
       if (mode === "strict") {
-        return { status: "pass", detail: "Jurisdiction=global, mode=strict: content passed all politeness and safety filters. Most conservative rules applied. Full trust score assigned." };
+        return {
+          status: "pass",
+          detail:
+            "Jurisdiction=global, mode=strict: content passed all politeness and safety filters. Most conservative rules applied. Full trust score assigned.",
+        };
       }
-      return { status: "pass", detail: "Jurisdiction=global, mode=researcher: relaxed politeness applied. Content eligible for ingestion with standard audit trail." };
+      return {
+        status: "pass",
+        detail:
+          "Jurisdiction=global, mode=researcher: relaxed politeness applied. Content eligible for ingestion with standard audit trail.",
+      };
     },
   },
   {
@@ -215,17 +371,41 @@ const AUDIT_STEPS: AuditStep[] = [
     pass: (url, mode, _rps, jurisdiction) => {
       try {
         const host = new URL(url).hostname;
-        const TRUSTED = ["wikipedia.org", "arxiv.org", "github.com", "gov", "edu", "nature.com", "pubmed"];
-        const baseTier = TRUSTED.some(t => host.includes(t)) ? "HIGH" : mode === "strict" ? "MEDIUM" : "LOW-MEDIUM";
-        const jurisdictionNote = jurisdiction === "eu_gdpr"
-          ? " GDPR erasure flag active."
-          : jurisdiction === "us_fair_use"
-          ? " Fair use provenance logged."
-          : "";
-        const score = baseTier === "HIGH" ? "0.91" : baseTier === "MEDIUM" ? "0.67" : "0.52";
-        return { status: "pass", detail: `Trust tier: ${baseTier} (score: ${score}). Tier determines hot/warm/cold storage placement and retrieval weight in RAG queries.${jurisdictionNote}` };
+        const TRUSTED = [
+          "wikipedia.org",
+          "arxiv.org",
+          "github.com",
+          "gov",
+          "edu",
+          "nature.com",
+          "pubmed",
+        ];
+        const baseTier = TRUSTED.some((t) => host.includes(t))
+          ? "HIGH"
+          : mode === "strict"
+            ? "MEDIUM"
+            : "LOW-MEDIUM";
+        const jurisdictionNote =
+          jurisdiction === "eu_gdpr"
+            ? " GDPR erasure flag active."
+            : jurisdiction === "us_fair_use"
+              ? " Fair use provenance logged."
+              : "";
+        const score =
+          baseTier === "HIGH"
+            ? "0.91"
+            : baseTier === "MEDIUM"
+              ? "0.67"
+              : "0.52";
+        return {
+          status: "pass",
+          detail: `Trust tier: ${baseTier} (score: ${score}). Tier determines hot/warm/cold storage placement and retrieval weight in RAG queries.${jurisdictionNote}`,
+        };
       } catch {
-        return { status: "fail", detail: "Could not compute trust score — invalid URL." };
+        return {
+          status: "fail",
+          detail: "Could not compute trust score — invalid URL.",
+        };
       }
     },
   },
@@ -253,19 +433,19 @@ const STATUS_ICON = {
 const STATUS_STYLE: Record<StepStatus, string> = {
   pending: "text-muted-foreground border-border bg-transparent",
   running: "text-primary border-primary/30 bg-primary/5 animate-pulse",
-  pass:    "text-green-400 border-green-400/20 bg-green-400/5",
-  fail:    "text-red-400 border-red-400/20 bg-red-400/5",
-  warn:    "text-yellow-400 border-yellow-400/20 bg-yellow-400/5",
-  skip:    "text-muted-foreground border-border/30 bg-transparent opacity-50",
+  pass: "text-green-400 border-green-400/20 bg-green-400/5",
+  fail: "text-red-400 border-red-400/20 bg-red-400/5",
+  warn: "text-yellow-400 border-yellow-400/20 bg-yellow-400/5",
+  skip: "text-muted-foreground border-border/30 bg-transparent opacity-50",
 };
 
 const STATUS_DOT: Record<StepStatus, string> = {
   pending: "bg-border",
   running: "bg-primary animate-ping",
-  pass:    "bg-green-400",
-  fail:    "bg-red-400",
-  warn:    "bg-yellow-400",
-  skip:    "bg-muted-foreground",
+  pass: "bg-green-400",
+  fail: "bg-red-400",
+  warn: "bg-yellow-400",
+  skip: "bg-muted-foreground",
 };
 
 const VERDICT: Record<StepStatus, string> = {
@@ -304,7 +484,9 @@ export default function Compliance() {
     stepRef.current = 0;
   };
 
-  useEffect(() => { reset(); }, [url, customUrl, mode, jurisdiction, rps]);
+  useEffect(() => {
+    reset();
+  }, [url, customUrl, mode, jurisdiction, rps]);
 
   const runAudit = async () => {
     reset();
@@ -312,9 +494,9 @@ export default function Compliance() {
     for (let i = 0; i < AUDIT_STEPS.length; i++) {
       const step = AUDIT_STEPS[i];
       setRunningStep(step.id);
-      await new Promise(r => setTimeout(r, 520 + Math.random() * 300));
+      await new Promise((r) => setTimeout(r, 520 + Math.random() * 300));
       const result = step.pass(activeUrl, mode, rps, jurisdiction);
-      setResults(prev => ({ ...prev, [step.id]: result }));
+      setResults((prev) => ({ ...prev, [step.id]: result }));
       setRunningStep(null);
       if (result.status === "fail") {
         setDone(true);
@@ -327,20 +509,27 @@ export default function Compliance() {
   };
 
   const completedResults = Object.values(results);
-  const finalVerdict = completedResults.some(r => r.status === "fail")
+  const finalVerdict = completedResults.some((r) => r.status === "fail")
     ? "fail"
-    : completedResults.some(r => r.status === "warn")
-    ? "warn"
-    : completedResults.length === AUDIT_STEPS.length
-    ? "pass"
-    : null;
+    : completedResults.some((r) => r.status === "warn")
+      ? "warn"
+      : completedResults.length === AUDIT_STEPS.length
+        ? "pass"
+        : null;
 
   return (
     <div className="p-6 md:p-12 max-w-5xl mx-auto min-h-screen">
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight mb-4">Compliance Explorer</h1>
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+      >
+        <h1 className="text-4xl font-bold tracking-tight mb-4">
+          Compliance Explorer
+        </h1>
         <p className="text-xl text-muted-foreground font-mono">
-          Simulate the ethics governor — step-by-step audit of any URL before ingestion.
+          Simulate the ethics governor — step-by-step audit of any URL before
+          ingestion.
         </p>
       </motion.div>
 
@@ -348,17 +537,26 @@ export default function Compliance() {
         {/* Config panel */}
         <div className="space-y-5">
           <div className="bg-card border border-border rounded-lg p-5 space-y-4">
-            <p className="font-mono text-xs text-primary uppercase tracking-wider">Audit target</p>
+            <p className="font-mono text-xs text-primary uppercase tracking-wider">
+              Audit target
+            </p>
 
             <div className="space-y-2">
-              <p className="font-mono text-xs text-muted-foreground">sample URLs</p>
-              {SAMPLE_URLS.map(s => (
+              <p className="font-mono text-xs text-muted-foreground">
+                sample URLs
+              </p>
+              {SAMPLE_URLS.map((s) => (
                 <button
                   key={s}
                   data-testid={`sample-${s}`}
-                  onClick={() => { setUrl(s); setCustomUrl(""); }}
+                  onClick={() => {
+                    setUrl(s);
+                    setCustomUrl("");
+                  }}
                   className={`w-full text-left font-mono text-xs px-3 py-2 rounded border transition-colors truncate ${
-                    url === s && !customUrl ? "border-primary/30 bg-primary/5 text-primary" : "border-border text-muted-foreground hover:text-foreground hover:border-border/80"
+                    url === s && !customUrl
+                      ? "border-primary/30 bg-primary/5 text-primary"
+                      : "border-border text-muted-foreground hover:text-foreground hover:border-border/80"
                   }`}
                 >
                   {s.replace("https://", "")}
@@ -367,12 +565,14 @@ export default function Compliance() {
             </div>
 
             <div>
-              <p className="font-mono text-xs text-muted-foreground mb-1">or enter a URL</p>
+              <p className="font-mono text-xs text-muted-foreground mb-1">
+                or enter a URL
+              </p>
               <input
                 data-testid="input-custom-url"
                 type="text"
                 value={customUrl}
-                onChange={e => setCustomUrl(e.target.value)}
+                onChange={(e) => setCustomUrl(e.target.value)}
                 placeholder="https://example.com/path"
                 className="w-full bg-background border border-border rounded px-3 py-2 font-mono text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50"
               />
@@ -380,12 +580,16 @@ export default function Compliance() {
           </div>
 
           <div className="bg-card border border-border rounded-lg p-5 space-y-4">
-            <p className="font-mono text-xs text-primary uppercase tracking-wider">Ethics config</p>
+            <p className="font-mono text-xs text-primary uppercase tracking-wider">
+              Ethics config
+            </p>
 
             <div>
-              <p className="font-mono text-xs text-muted-foreground mb-2">ethics.mode</p>
+              <p className="font-mono text-xs text-muted-foreground mb-2">
+                ethics.mode
+              </p>
               <div className="flex gap-2">
-                {(["strict", "researcher"] as EthicsMode[]).map(m => (
+                {(["strict", "researcher"] as EthicsMode[]).map((m) => (
                   <button
                     key={m}
                     data-testid={`mode-${m}`}
@@ -408,29 +612,40 @@ export default function Compliance() {
             </div>
 
             <div>
-              <p className="font-mono text-xs text-muted-foreground mb-2">ethics.jurisdiction</p>
+              <p className="font-mono text-xs text-muted-foreground mb-2">
+                ethics.jurisdiction
+              </p>
               <div className="space-y-1.5">
-                {(["global", "eu_gdpr", "us_fair_use"] as Jurisdiction[]).map(j => {
-                  const jm = JURISDICTION_META[j];
-                  return (
-                    <button
-                      key={j}
-                      data-testid={`jurisdiction-${j}`}
-                      onClick={() => setJurisdiction(j)}
-                      className={`w-full text-left font-mono text-xs px-3 py-2 rounded border transition-colors ${
-                        jurisdiction === j
-                          ? "bg-card border-2"
-                          : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/30"
-                      }`}
-                      style={jurisdiction === j ? { borderColor: jm.color + "60", color: jm.color } : {}}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: jm.color }} />
-                        {jm.label}
-                      </div>
-                    </button>
-                  );
-                })}
+                {(["global", "eu_gdpr", "us_fair_use"] as Jurisdiction[]).map(
+                  (j) => {
+                    const jm = JURISDICTION_META[j];
+                    return (
+                      <button
+                        key={j}
+                        data-testid={`jurisdiction-${j}`}
+                        onClick={() => setJurisdiction(j)}
+                        className={`w-full text-left font-mono text-xs px-3 py-2 rounded border transition-colors ${
+                          jurisdiction === j
+                            ? "bg-card border-2"
+                            : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                        }`}
+                        style={
+                          jurisdiction === j
+                            ? { borderColor: jm.color + "60", color: jm.color }
+                            : {}
+                        }
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{ backgroundColor: jm.color }}
+                          />
+                          {jm.label}
+                        </div>
+                      </button>
+                    );
+                  },
+                )}
               </div>
               <div className="mt-2 rounded px-2 py-2 bg-secondary/30 border border-border/50">
                 <p className="font-mono text-[10px] text-muted-foreground leading-relaxed">
@@ -438,10 +653,12 @@ export default function Compliance() {
                 </p>
                 {JURISDICTION_META[jurisdiction].extra.length > 0 && (
                   <div className="mt-2 space-y-1">
-                    {JURISDICTION_META[jurisdiction].extra.map(e => (
+                    {JURISDICTION_META[jurisdiction].extra.map((e) => (
                       <div key={e} className="flex items-start gap-1.5">
                         <div className="w-1 h-1 rounded-full bg-muted-foreground/40 mt-1.5 shrink-0" />
-                        <span className="font-mono text-[9px] text-muted-foreground/70">{e}</span>
+                        <span className="font-mono text-[9px] text-muted-foreground/70">
+                          {e}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -451,8 +668,12 @@ export default function Compliance() {
 
             <div>
               <div className="flex justify-between mb-2">
-                <p className="font-mono text-xs text-muted-foreground">ethics.rate_limit_rps</p>
-                <span className="font-mono text-xs text-primary">{rps} req/s</span>
+                <p className="font-mono text-xs text-muted-foreground">
+                  ethics.rate_limit_rps
+                </p>
+                <span className="font-mono text-xs text-primary">
+                  {rps} req/s
+                </span>
               </div>
               <input
                 data-testid="input-rps"
@@ -461,7 +682,7 @@ export default function Compliance() {
                 max={10}
                 step={0.5}
                 value={rps}
-                onChange={e => setRps(parseFloat(e.target.value))}
+                onChange={(e) => setRps(parseFloat(e.target.value))}
                 className="w-full accent-primary"
               />
               <div className="flex justify-between font-mono text-[10px] text-muted-foreground mt-1">
@@ -478,7 +699,11 @@ export default function Compliance() {
             className="w-full font-mono text-sm py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             <Shield className="w-4 h-4" />
-            {running ? "Auditing..." : done ? "Run again" : "Run compliance audit"}
+            {running
+              ? "Auditing..."
+              : done
+                ? "Run again"
+                : "Run compliance audit"}
           </button>
 
           {done && (
@@ -503,21 +728,31 @@ export default function Compliance() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 className={`border rounded-lg p-4 flex items-center gap-3 ${
-                  finalVerdict === "pass" ? "bg-green-400/5 border-green-400/20 text-green-400" :
-                  finalVerdict === "fail" ? "bg-red-400/5 border-red-400/20 text-red-400" :
-                  "bg-yellow-400/5 border-yellow-400/20 text-yellow-400"
+                  finalVerdict === "pass"
+                    ? "bg-green-400/5 border-green-400/20 text-green-400"
+                    : finalVerdict === "fail"
+                      ? "bg-red-400/5 border-red-400/20 text-red-400"
+                      : "bg-yellow-400/5 border-yellow-400/20 text-yellow-400"
                 }`}
               >
-                {finalVerdict === "pass" ? <CheckCircle className="w-5 h-5 shrink-0" /> :
-                 finalVerdict === "fail" ? <XCircle className="w-5 h-5 shrink-0" /> :
-                 <AlertTriangle className="w-5 h-5 shrink-0" />}
+                {finalVerdict === "pass" ? (
+                  <CheckCircle className="w-5 h-5 shrink-0" />
+                ) : finalVerdict === "fail" ? (
+                  <XCircle className="w-5 h-5 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 shrink-0" />
+                )}
                 <div>
                   <div className="font-mono font-bold text-sm">
-                    {finalVerdict === "pass" ? "INGESTION ALLOWED" :
-                     finalVerdict === "fail" ? "INGESTION BLOCKED" :
-                     "INGESTION FLAGGED — REDUCED TRUST"}
+                    {finalVerdict === "pass"
+                      ? "INGESTION ALLOWED"
+                      : finalVerdict === "fail"
+                        ? "INGESTION BLOCKED"
+                        : "INGESTION FLAGGED — REDUCED TRUST"}
                   </div>
-                  <div className="font-mono text-xs opacity-70 truncate mt-0.5">{activeUrl}</div>
+                  <div className="font-mono text-xs opacity-70 truncate mt-0.5">
+                    {activeUrl}
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -537,7 +772,9 @@ export default function Compliance() {
               {AUDIT_STEPS.map((step, i) => {
                 const result = results[step.id];
                 const isRunning = runningStep === step.id;
-                const status: StepStatus = isRunning ? "running" : result?.status ?? "pending";
+                const status: StepStatus = isRunning
+                  ? "running"
+                  : (result?.status ?? "pending");
                 const Icon = STATUS_ICON[status];
                 const isTerminal = result?.status === "fail";
 
@@ -550,27 +787,41 @@ export default function Compliance() {
                   >
                     <div className="flex items-start gap-4">
                       <div className="flex flex-col items-center gap-1 pt-0.5">
-                        <div className={`w-2 h-2 rounded-full ${STATUS_DOT[status]}`} />
+                        <div
+                          className={`w-2 h-2 rounded-full ${STATUS_DOT[status]}`}
+                        />
                         {i < AUDIT_STEPS.length - 1 && (
-                          <div className={`w-px flex-1 min-h-[20px] ${result ? "bg-border" : "bg-border/30"}`} />
+                          <div
+                            className={`w-px flex-1 min-h-[20px] ${result ? "bg-border" : "bg-border/30"}`}
+                          />
                         )}
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
-                          <span className="font-mono text-xs text-muted-foreground">{String(i + 1).padStart(2, "0")}.</span>
-                          <span className="font-mono text-sm font-bold text-foreground">{step.label}</span>
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {String(i + 1).padStart(2, "0")}.
+                          </span>
+                          <span className="font-mono text-sm font-bold text-foreground">
+                            {step.label}
+                          </span>
                           {result && (
-                            <span className={`font-mono text-[10px] px-2 py-0.5 rounded border ${STATUS_STYLE[result.status]}`}>
+                            <span
+                              className={`font-mono text-[10px] px-2 py-0.5 rounded border ${STATUS_STYLE[result.status]}`}
+                            >
                               {VERDICT[result.status]}
                             </span>
                           )}
                           {isRunning && (
-                            <span className="font-mono text-[10px] text-primary animate-pulse">checking...</span>
+                            <span className="font-mono text-[10px] text-primary animate-pulse">
+                              checking...
+                            </span>
                           )}
                         </div>
 
-                        <p className="font-mono text-xs text-muted-foreground mb-1">{step.check}</p>
+                        <p className="font-mono text-xs text-muted-foreground mb-1">
+                          {step.check}
+                        </p>
 
                         <AnimatePresence>
                           {result && (
@@ -609,11 +860,26 @@ export default function Compliance() {
               animate={{ opacity: 1 }}
               className="bg-card/30 border border-border/40 rounded-lg p-4"
             >
-              <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-3">How the compliance pipeline works</p>
+              <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-3">
+                How the compliance pipeline works
+              </p>
               <div className="space-y-2 text-xs text-muted-foreground">
-                <p>Each URL passes through 7 gates before data enters the ingestion pipeline. Any hard <span className="text-red-400">BLOCK</span> halts the pipeline immediately — remaining checks are skipped.</p>
-                <p>A <span className="text-yellow-400">WARN</span> in <code className="text-primary">researcher</code> mode still allows ingestion, but assigns a reduced trust score that lowers the content's weight in RAG retrieval.</p>
-                <p>Trust scores determine storage tier placement: HIGH → hot cache, MEDIUM → warm index, LOW → cold archive or discard.</p>
+                <p>
+                  Each URL passes through 7 gates before data enters the
+                  ingestion pipeline. Any hard{" "}
+                  <span className="text-red-400">BLOCK</span> halts the pipeline
+                  immediately — remaining checks are skipped.
+                </p>
+                <p>
+                  A <span className="text-yellow-400">WARN</span> in{" "}
+                  <code className="text-primary">researcher</code> mode still
+                  allows ingestion, but assigns a reduced trust score that
+                  lowers the content's weight in RAG retrieval.
+                </p>
+                <p>
+                  Trust scores determine storage tier placement: HIGH → hot
+                  cache, MEDIUM → warm index, LOW → cold archive or discard.
+                </p>
               </div>
             </motion.div>
           )}

@@ -5,7 +5,10 @@ import { characterState } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { rebalanceTraits, needsRebalancing } from "../brain/character.js";
 import { logger } from "../lib/logger.js";
-import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
+import {
+  requireAuth,
+  type AuthenticatedRequest,
+} from "../middlewares/requireAuth.js";
 
 const router = Router();
 
@@ -15,9 +18,9 @@ async function getOrCreateCharacterState(clerkId: string) {
     .from(characterState)
     .where(eq(characterState.clerkId, clerkId))
     .limit(1);
-  
+
   if (existing) return existing;
-  
+
   const [created] = await db
     .insert(characterState)
     .values({
@@ -33,7 +36,7 @@ async function getOrCreateCharacterState(clerkId: string) {
       totalKnowledgeNodes: 0,
     })
     .returning();
-  
+
   return created;
 }
 
@@ -43,7 +46,7 @@ router.get("/", requireAuth, async (req, res) => {
   try {
     const clerkId = (req as AuthenticatedRequest).clerkId;
     const character = await getOrCreateCharacterState(clerkId);
-    
+
     res.json({
       success: true,
       character: {
@@ -79,9 +82,9 @@ router.post("/rebalance", requireAuth, async (req, res) => {
   try {
     const clerkId = (req as AuthenticatedRequest).clerkId;
     const { force, decayFactor } = rebalanceSchema.parse(req.body);
-    
+
     const character = await getOrCreateCharacterState(clerkId);
-    
+
     if (!force && !needsRebalancing(character)) {
       return res.json({
         success: true,
@@ -98,30 +101,66 @@ router.post("/rebalance", requireAuth, async (req, res) => {
         rebalanced: false,
       });
     }
-    
+
     const rebalance = rebalanceTraits(character, decayFactor);
-    
-    const updated = await db.update(characterState)
+
+    const updated = await db
+      .update(characterState)
       .set({
-        curiosity: Math.round(Math.max(0, Math.min(100, character.curiosity + (rebalance.curiosity ?? 0)))),
-        caution: Math.round(Math.max(0, Math.min(100, character.caution + (rebalance.caution ?? 0)))),
-        confidence: Math.round(Math.max(0, Math.min(100, character.confidence + (rebalance.confidence ?? 0)))),
-        verbosity: Math.round(Math.max(0, Math.min(100, character.verbosity + (rebalance.verbosity ?? 0)))),
-        technical: Math.round(Math.max(0, Math.min(100, character.technical + (rebalance.technical ?? 0)))),
-        empathy: Math.round(Math.max(0, Math.min(100, character.empathy + (rebalance.empathy ?? 0)))),
-        creativity: Math.round(Math.max(0, Math.min(100, character.creativity + (rebalance.creativity ?? 0)))),
+        curiosity: Math.round(
+          Math.max(
+            0,
+            Math.min(100, character.curiosity + (rebalance.curiosity ?? 0)),
+          ),
+        ),
+        caution: Math.round(
+          Math.max(
+            0,
+            Math.min(100, character.caution + (rebalance.caution ?? 0)),
+          ),
+        ),
+        confidence: Math.round(
+          Math.max(
+            0,
+            Math.min(100, character.confidence + (rebalance.confidence ?? 0)),
+          ),
+        ),
+        verbosity: Math.round(
+          Math.max(
+            0,
+            Math.min(100, character.verbosity + (rebalance.verbosity ?? 0)),
+          ),
+        ),
+        technical: Math.round(
+          Math.max(
+            0,
+            Math.min(100, character.technical + (rebalance.technical ?? 0)),
+          ),
+        ),
+        empathy: Math.round(
+          Math.max(
+            0,
+            Math.min(100, character.empathy + (rebalance.empathy ?? 0)),
+          ),
+        ),
+        creativity: Math.round(
+          Math.max(
+            0,
+            Math.min(100, character.creativity + (rebalance.creativity ?? 0)),
+          ),
+        ),
         updatedAt: new Date(),
       })
       .where(eq(characterState.clerkId, clerkId))
       .returning();
-    
+
     const updatedCharacter = updated[0];
-    
+
     logger.info(
       { clerkId, rebalance, decayFactor, force },
-      "Character traits rebalanced"
+      "Character traits rebalanced",
     );
-    
+
     res.json({
       success: true,
       message: "Character traits rebalanced toward center (50)",
@@ -153,7 +192,7 @@ router.post("/rebalance", requireAuth, async (req, res) => {
         errors: error.errors,
       });
     }
-    
+
     logger.error({ error }, "Failed to rebalance character");
     res.status(500).json({
       success: false,
@@ -167,8 +206,9 @@ router.post("/rebalance", requireAuth, async (req, res) => {
 router.post("/reset", requireAuth, async (req, res) => {
   try {
     const clerkId = (req as AuthenticatedRequest).clerkId;
-    
-    await db.update(characterState)
+
+    await db
+      .update(characterState)
       .set({
         curiosity: 50,
         caution: 50,
@@ -182,9 +222,9 @@ router.post("/reset", requireAuth, async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(characterState.clerkId, clerkId));
-    
+
     logger.info({ clerkId }, "Character reset to defaults");
-    
+
     res.json({
       success: true,
       message: "Character reset to default values (all traits = 50)",

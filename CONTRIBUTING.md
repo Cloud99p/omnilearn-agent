@@ -5,6 +5,7 @@ Thank you for your interest in contributing! This guide helps you make effective
 ## 🚦 Before You Start
 
 ### 1. Check Existing Issues
+
 Search [open issues](https://github.com/Cloud99p/omnilearn-agent/issues) for related discussions.
 
 ### 2. Set Up Development Environment
@@ -40,6 +41,7 @@ Before submitting your PR:
 ## 🎯 Good First Contributions
 
 Look for issues labeled:
+
 - `good first issue` — Beginner-friendly tasks
 - `help wanted` — Need community help
 - `bug` — Fix something broken
@@ -116,16 +118,19 @@ chore: update pnpm-lock.yaml
 ## 💡 Ideas for Contributions
 
 ### Beginner
+
 - Fix typos in documentation
 - Add TypeScript types to untyped code
 - Improve error messages
 
 ### Intermediate
+
 - Add new knowledge extraction patterns
 - Create UI improvements
 - Add API route tests
 
 ### Advanced
+
 - Implement new Hebbian edge types
 - Optimize TF-IDF retrieval
 - Add multi-agent sync protocols
@@ -139,6 +144,7 @@ chore: update pnpm-lock.yaml
 ## 🎉 Recognition
 
 Contributors will be acknowledged in:
+
 - README.md contributors section
 - Release notes for significant contributions
 

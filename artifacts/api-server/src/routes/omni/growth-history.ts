@@ -31,7 +31,7 @@ router.get("/growth-history", async (req, res) => {
     const rows = await db
       .select({
         bucket: bucketExpr,
-        count:  sql<number>`count(*)`,
+        count: sql<number>`count(*)`,
       })
       .from(knowledgeNodes)
       .groupBy(bucketExpr)
@@ -42,9 +42,7 @@ router.get("/growth-history", async (req, res) => {
     const series = rows.map((r, i) => {
       cumulative += Number(r.count);
       const d = new Date(r.bucket);
-      const label = useHours
-        ? `H${i + 1}`
-        : `D${i + 1}`;
+      const label = useHours ? `H${i + 1}` : `D${i + 1}`;
       return {
         label,
         bucket: r.bucket,
@@ -64,12 +62,12 @@ router.get("/growth-history", async (req, res) => {
     // 4. Real learning-log milestones — most recent first, up to 8
     const logs = await db
       .select({
-        id:         learningLog.id,
-        event:      learningLog.event,
-        details:    learningLog.details,
+        id: learningLog.id,
+        event: learningLog.event,
+        details: learningLog.details,
         nodesAdded: learningLog.nodesAdded,
-        source:     learningLog.source,
-        createdAt:  learningLog.createdAt,
+        source: learningLog.source,
+        createdAt: learningLog.createdAt,
       })
       .from(learningLog)
       .orderBy(desc(learningLog.createdAt))

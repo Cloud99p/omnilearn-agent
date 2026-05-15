@@ -25,7 +25,12 @@ router.post("/execute", async (req, res) => {
     return;
   }
 
-  const { message, history = [], systemPrompt, requestId } = req.body as {
+  const {
+    message,
+    history = [],
+    systemPrompt,
+    requestId,
+  } = req.body as {
     message: string;
     history?: Array<{ role: "user" | "assistant"; content: string }>;
     systemPrompt?: string;
@@ -49,11 +54,13 @@ router.post("/execute", async (req, res) => {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 8192,
-      system: systemPrompt || "You are Omni, the AI agent built by Emmanuel Nenpan Hosea, creator of OmniLearn. You are running as a distributed ghost node.",
+      system:
+        systemPrompt ||
+        "You are Omni, the AI agent built by Emmanuel Nenpan Hosea, creator of OmniLearn. You are running as a distributed ghost node.",
       messages: msgs,
     });
 
-    const text = response.content.find(c => c.type === "text")?.text ?? "";
+    const text = response.content.find((c) => c.type === "text")?.text ?? "";
     const processingMs = Date.now() - startTime;
 
     req.log.info({ requestId, processingMs }, "Ghost node task completed");

@@ -1,11 +1,42 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  CheckCircle, Circle, Terminal, FolderOpen, File,
-  GitBranch, Package, Cpu, Ghost, Server, Key, Radio, Globe,
-  Shield, Users, Plus, Trash2, RefreshCw,
-  CheckCircle2, XCircle, Loader2, Link2, Eye, EyeOff,
-  AlertCircle, ExternalLink, Github, ChevronDown, ChevronRight,
-  Zap, Monitor, Cloud, Rocket, Target, History, Sparkles, Info,
+  CheckCircle,
+  Circle,
+  Terminal,
+  FolderOpen,
+  File,
+  GitBranch,
+  Package,
+  Cpu,
+  Ghost,
+  Server,
+  Key,
+  Radio,
+  Globe,
+  Shield,
+  Users,
+  Plus,
+  Trash2,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Link2,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  ExternalLink,
+  Github,
+  ChevronDown,
+  ChevronRight,
+  Zap,
+  Monitor,
+  Cloud,
+  Rocket,
+  Target,
+  History,
+  Sparkles,
+  Info,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
@@ -49,35 +80,82 @@ const LOCAL_STEPS = [
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
-            { label: "Node.js 18+", note: "Runs the frontend and backend (we'll install it with you)", required: true },
-            { label: "4 GB RAM", note: "Minimum — 8 GB recommended for smooth multitasking", required: true },
-            { label: "10 GB free disk", note: "For the app, dependencies, and local data", required: true },
-            { label: "Git", note: "To download the code from GitHub", required: true },
-            { label: "pnpm", note: "Package manager (we'll show you how to install)", required: true },
-            { label: "GPU / CUDA", note: "Not needed — AI runs locally with our synthesizer", required: false },
-          ].map(r => (
-            <div key={r.label} className="flex items-start gap-3 p-3 bg-background border border-border rounded-lg">
-              <CheckCircle className={cn("w-4 h-4 mt-0.5 shrink-0", r.required ? "text-primary" : "text-muted-foreground/40")} />
+            {
+              label: "Node.js 18+",
+              note: "Runs the frontend and backend (we'll install it with you)",
+              required: true,
+            },
+            {
+              label: "4 GB RAM",
+              note: "Minimum — 8 GB recommended for smooth multitasking",
+              required: true,
+            },
+            {
+              label: "10 GB free disk",
+              note: "For the app, dependencies, and local data",
+              required: true,
+            },
+            {
+              label: "Git",
+              note: "To download the code from GitHub",
+              required: true,
+            },
+            {
+              label: "pnpm",
+              note: "Package manager (we'll show you how to install)",
+              required: true,
+            },
+            {
+              label: "GPU / CUDA",
+              note: "Not needed — AI runs locally with our synthesizer",
+              required: false,
+            },
+          ].map((r) => (
+            <div
+              key={r.label}
+              className="flex items-start gap-3 p-3 bg-background border border-border rounded-lg"
+            >
+              <CheckCircle
+                className={cn(
+                  "w-4 h-4 mt-0.5 shrink-0",
+                  r.required ? "text-primary" : "text-muted-foreground/40",
+                )}
+              />
               <div>
-                <span className="font-mono text-sm font-bold text-foreground">{r.label}</span>
-                {!r.required && <span className="ml-2 text-[10px] text-muted-foreground bg-secondary/40 px-1.5 py-0.5 rounded">optional</span>}
+                <span className="font-mono text-sm font-bold text-foreground">
+                  {r.label}
+                </span>
+                {!r.required && (
+                  <span className="ml-2 text-[10px] text-muted-foreground bg-secondary/40 px-1.5 py-0.5 rounded">
+                    optional
+                  </span>
+                )}
                 <p className="text-xs text-muted-foreground mt-0.5">{r.note}</p>
               </div>
             </div>
           ))}
         </div>
         <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
-          <p className="text-xs text-muted-foreground mb-2">Quick check — run these in your terminal:</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            Quick check — run these in your terminal:
+          </p>
           <pre className="text-xs font-mono text-primary/80 leading-6">
             <code>{`node --version      # Should say v18.x or higher
 git --version       # Should say 2.x or higher
 pnpm --version      # If installed, shows version number`}</code>
           </pre>
-          <p className="text-xs text-muted-foreground mt-2">Don't have Node.js or pnpm? We'll install them together in the next step.</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Don't have Node.js or pnpm? We'll install them together in the next
+            step.
+          </p>
         </div>
         <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
           <p className="text-xs text-muted-foreground">
-            <strong className="text-foreground">Good news:</strong> OmniLearn uses a <strong className="text-emerald-400">local AI synthesizer</strong> — no API keys, no cloud costs, no data leaving your machine. Your conversations stay private, forever.
+            <strong className="text-foreground">Good news:</strong> OmniLearn
+            uses a{" "}
+            <strong className="text-emerald-400">local AI synthesizer</strong> —
+            no API keys, no cloud costs, no data leaving your machine. Your
+            conversations stay private, forever.
           </p>
         </div>
       </div>
@@ -105,7 +183,9 @@ pnpm install
         <div className="flex items-start gap-3 p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg">
           <Info className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
           <p className="text-sm text-muted-foreground">
-            <strong className="text-foreground">No Python needed!</strong> OmniLearn is built with Node.js + TypeScript. The AI runs locally with our synthesizer, so no heavy models or API costs.
+            <strong className="text-foreground">No Python needed!</strong>{" "}
+            OmniLearn is built with Node.js + TypeScript. The AI runs locally
+            with our synthesizer, so no heavy models or API costs.
           </p>
         </div>
       </div>
@@ -117,7 +197,9 @@ pnpm install
     desc: "OmniLearn needs auth and database setup. The AI runs locally — no API keys needed!",
     content: (
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">Copy the example env file and fill in your keys:</p>
+        <p className="text-sm text-muted-foreground">
+          Copy the example env file and fill in your keys:
+        </p>
         <pre className="bg-background border border-border rounded-lg p-4 text-xs font-mono text-muted-foreground leading-6">
           <code>{`# Copy the template
 cp .env.example .env
@@ -136,15 +218,35 @@ DATABASE_URL=postgresql://xxx
               <strong className="text-foreground">Where to get keys:</strong>
             </p>
             <ul className="text-xs text-muted-foreground mt-1 space-y-1">
-              <li>• Clerk (auth): <a href="https://clerk.com" target="_blank" className="text-primary hover:underline">clerk.com</a></li>
-              <li>• Supabase (database): <a href="https://supabase.com" target="_blank" className="text-primary hover:underline">supabase.com</a></li>
+              <li>
+                • Clerk (auth):{" "}
+                <a
+                  href="https://clerk.com"
+                  target="_blank"
+                  className="text-primary hover:underline"
+                >
+                  clerk.com
+                </a>
+              </li>
+              <li>
+                • Supabase (database):{" "}
+                <a
+                  href="https://supabase.com"
+                  target="_blank"
+                  className="text-primary hover:underline"
+                >
+                  supabase.com
+                </a>
+              </li>
             </ul>
           </div>
         </div>
         <div className="flex items-start gap-3 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
           <p className="text-sm text-muted-foreground">
-            <strong className="text-foreground">No AI costs!</strong> OmniLearn uses a local synthesizer. No API bills, no rate limits, no data sent to OpenAI/Anthropic.
+            <strong className="text-foreground">No AI costs!</strong> OmniLearn
+            uses a local synthesizer. No API bills, no rate limits, no data sent
+            to OpenAI/Anthropic.
           </p>
         </div>
       </div>
@@ -166,7 +268,8 @@ pnpm --filter @workspace/db run push
         <div className="flex items-start gap-3 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
           <p className="text-sm text-muted-foreground">
-            <strong className="text-foreground">Done?</strong> Your database is ready. You only do this once unless you change the schema.
+            <strong className="text-foreground">Done?</strong> Your database is
+            ready. You only do this once unless you change the schema.
           </p>
         </div>
       </div>
@@ -193,17 +296,26 @@ pnpm dev
               <strong className="text-foreground">Open in your browser:</strong>
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Frontend: <code className="text-primary bg-primary/10 px-1 rounded">http://localhost:5173</code>
+              Frontend:{" "}
+              <code className="text-primary bg-primary/10 px-1 rounded">
+                http://localhost:5173
+              </code>
             </p>
             <p className="text-xs text-muted-foreground">
-              Backend API: <code className="text-primary bg-primary/10 px-1 rounded">http://localhost:3001</code>
+              Backend API:{" "}
+              <code className="text-primary bg-primary/10 px-1 rounded">
+                http://localhost:3001
+              </code>
             </p>
           </div>
         </div>
         <div className="flex items-start gap-3 p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
           <AlertCircle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
           <p className="text-sm text-muted-foreground">
-            First build takes <strong className="text-foreground">1–2 minutes</strong>. If something fails, check that all env vars are set correctly in <code className="text-primary">.env</code>.
+            First build takes{" "}
+            <strong className="text-foreground">1–2 minutes</strong>. If
+            something fails, check that all env vars are set correctly in{" "}
+            <code className="text-primary">.env</code>.
           </p>
         </div>
       </div>
@@ -241,11 +353,16 @@ function timeSince(dateStr: string | null): string {
 
 function StatusDot({ status }: { status: "online" | "offline" | "unknown" }) {
   return (
-    <span className={cn(
-      "inline-block w-2 h-2 rounded-full shrink-0 mt-1",
-      status === "online" ? "bg-emerald-400 animate-pulse" :
-      status === "offline" ? "bg-red-400" : "bg-yellow-400/60"
-    )} />
+    <span
+      className={cn(
+        "inline-block w-2 h-2 rounded-full shrink-0 mt-1",
+        status === "online"
+          ? "bg-emerald-400 animate-pulse"
+          : status === "offline"
+            ? "bg-red-400"
+            : "bg-yellow-400/60",
+      )}
+    />
   );
 }
 
@@ -254,14 +371,24 @@ function StatusDot({ status }: { status: "online" | "offline" | "unknown" }) {
 function AddNodeForm({ onAdd }: { onAdd: (node: GhostNode) => void }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: "", endpoint: "", secretKey: "", region: "" });
+  const [form, setForm] = useState({
+    name: "",
+    endpoint: "",
+    secretKey: "",
+    region: "",
+  });
   const [showSecret, setShowSecret] = useState(false);
-  const [pingResult, setPingResult] = useState<{ status: "online" | "offline" | null; ms: number | null }>({ status: null, ms: null });
+  const [pingResult, setPingResult] = useState<{
+    status: "online" | "offline" | null;
+    ms: number | null;
+  }>({ status: null, ms: null });
   const [error, setError] = useState("");
 
   const submit = async () => {
     if (!form.name.trim() || !form.endpoint.trim() || !form.secretKey.trim()) {
-      setError("Give the node a name, paste its URL, and enter the secret key.");
+      setError(
+        "Give the node a name, paste its URL, and enter the secret key.",
+      );
       return;
     }
     setLoading(true);
@@ -274,7 +401,11 @@ function AddNodeForm({ onAdd }: { onAdd: (node: GhostNode) => void }) {
         body: JSON.stringify({ ...form, region: form.region || "unknown" }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Failed to register node"); setLoading(false); return; }
+      if (!res.ok) {
+        setError(data.error ?? "Failed to register node");
+        setLoading(false);
+        return;
+      }
       setPingResult({ status: data.pingStatus, ms: data.pingMs });
       onAdd(data);
       setForm({ name: "", endpoint: "", secretKey: "", region: "" });
@@ -298,55 +429,99 @@ function AddNodeForm({ onAdd }: { onAdd: (node: GhostNode) => void }) {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
       className="rounded-xl border border-primary/20 bg-card/50 p-5 space-y-4"
     >
       <div className="flex items-center justify-between">
         <div>
           <p className="font-bold text-sm text-foreground">Connect a node</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Fill in details from the machine running the ghost node server.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Fill in details from the machine running the ghost node server.
+          </p>
         </div>
-        <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground p-1">
+        <button
+          onClick={() => setOpen(false)}
+          className="text-muted-foreground hover:text-foreground p-1"
+        >
           <XCircle className="w-4 h-4" />
         </button>
       </div>
 
       <div className="space-y-3">
         <div>
-          <label className="text-xs text-muted-foreground font-medium mb-1 block">Node nickname</label>
-          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+          <label className="text-xs text-muted-foreground font-medium mb-1 block">
+            Node nickname
+          </label>
+          <input
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="e.g. Home Server, Work Laptop, AWS"
-            className="w-full px-3 py-2.5 rounded-lg border border-border/60 bg-background font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors" />
+            className="w-full px-3 py-2.5 rounded-lg border border-border/60 bg-background font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors"
+          />
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground font-medium mb-1 block">Machine URL</label>
-          <input value={form.endpoint} onChange={e => setForm(f => ({ ...f, endpoint: e.target.value }))}
+          <label className="text-xs text-muted-foreground font-medium mb-1 block">
+            Machine URL
+          </label>
+          <input
+            value={form.endpoint}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, endpoint: e.target.value }))
+            }
             placeholder="https://your-server.com  or  http://192.168.1.x:3001"
-            className="w-full px-3 py-2.5 rounded-lg border border-border/60 bg-background font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors" />
-          <p className="text-[10px] text-muted-foreground/60 mt-1">The public address of the machine — must be reachable from the internet.</p>
+            className="w-full px-3 py-2.5 rounded-lg border border-border/60 bg-background font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors"
+          />
+          <p className="text-[10px] text-muted-foreground/60 mt-1">
+            The public address of the machine — must be reachable from the
+            internet.
+          </p>
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground font-medium mb-1 block">Secret key</label>
+          <label className="text-xs text-muted-foreground font-medium mb-1 block">
+            Secret key
+          </label>
           <div className="relative">
-            <input type={showSecret ? "text" : "password"} value={form.secretKey}
-              onChange={e => setForm(f => ({ ...f, secretKey: e.target.value }))}
+            <input
+              type={showSecret ? "text" : "password"}
+              value={form.secretKey}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, secretKey: e.target.value }))
+              }
               placeholder="The GHOST_NODE_SECRET you set in the .env file"
-              className="w-full px-3 py-2.5 pr-10 rounded-lg border border-border/60 bg-background font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors" />
-            <button type="button" onClick={() => setShowSecret(s => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              className="w-full px-3 py-2.5 pr-10 rounded-lg border border-border/60 bg-background font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors"
+            />
+            <button
+              type="button"
+              onClick={() => setShowSecret((s) => !s)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showSecret ? (
+                <EyeOff className="w-3.5 h-3.5" />
+              ) : (
+                <Eye className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
-          <p className="text-[10px] text-muted-foreground/60 mt-1">This proves the request is coming from you. Must match exactly what's on the server.</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-1">
+            This proves the request is coming from you. Must match exactly
+            what's on the server.
+          </p>
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground font-medium mb-1 block">Label <span className="text-muted-foreground/40">(optional)</span></label>
-          <input value={form.region} onChange={e => setForm(f => ({ ...f, region: e.target.value }))}
+          <label className="text-xs text-muted-foreground font-medium mb-1 block">
+            Label <span className="text-muted-foreground/40">(optional)</span>
+          </label>
+          <input
+            value={form.region}
+            onChange={(e) => setForm((f) => ({ ...f, region: e.target.value }))}
             placeholder="e.g. home-lab, eu-west, office"
-            className="w-full px-3 py-2.5 rounded-lg border border-border/60 bg-background font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors" />
+            className="w-full px-3 py-2.5 rounded-lg border border-border/60 bg-background font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors"
+          />
         </div>
       </div>
 
@@ -357,25 +532,49 @@ function AddNodeForm({ onAdd }: { onAdd: (node: GhostNode) => void }) {
       )}
 
       {pingResult.status && (
-        <div className={cn("flex items-center gap-2 text-sm rounded-lg px-3 py-2.5",
-          pingResult.status === "online"
-            ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-            : "bg-red-500/10 border border-red-500/20 text-red-400"
-        )}>
-          {pingResult.status === "online"
-            ? <><CheckCircle2 className="w-4 h-4 shrink-0" /> Connected successfully — responded in {pingResult.ms}ms</>
-            : <><XCircle className="w-4 h-4 shrink-0" /> Could not reach the node — saved as offline. You can still add it and ping later.</>}
+        <div
+          className={cn(
+            "flex items-center gap-2 text-sm rounded-lg px-3 py-2.5",
+            pingResult.status === "online"
+              ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+              : "bg-red-500/10 border border-red-500/20 text-red-400",
+          )}
+        >
+          {pingResult.status === "online" ? (
+            <>
+              <CheckCircle2 className="w-4 h-4 shrink-0" /> Connected
+              successfully — responded in {pingResult.ms}ms
+            </>
+          ) : (
+            <>
+              <XCircle className="w-4 h-4 shrink-0" /> Could not reach the node
+              — saved as offline. You can still add it and ping later.
+            </>
+          )}
         </div>
       )}
 
       <div className="flex items-center gap-3">
-        <button onClick={submit} disabled={loading}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Link2 className="w-4 h-4" />
+          )}
           {loading ? "Connecting…" : "Connect"}
         </button>
-        <button onClick={() => { setOpen(false); setError(""); setPingResult({ status: null, ms: null }); }}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <button
+          onClick={() => {
+            setOpen(false);
+            setError("");
+            setPingResult({ status: null, ms: null });
+          }}
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
           Cancel
         </button>
       </div>
@@ -387,7 +586,11 @@ function AddNodeForm({ onAdd }: { onAdd: (node: GhostNode) => void }) {
 
 function GitHubRepoSection() {
   const [creating, setCreating] = useState(false);
-  const [result, setResult] = useState<{ htmlUrl?: string; fullName?: string; error?: string } | null>(null);
+  const [result, setResult] = useState<{
+    htmlUrl?: string;
+    fullName?: string;
+    error?: string;
+  } | null>(null);
 
   const create = async () => {
     setCreating(true);
@@ -396,12 +599,21 @@ function GitHubRepoSection() {
       const res = await fetch(`${BASE}/api/github/create-repo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repoName: "omnilearn-ghost-node", isPrivate: false }),
+        body: JSON.stringify({
+          repoName: "omnilearn-ghost-node",
+          isPrivate: false,
+        }),
       });
       const data = await res.json();
-      setResult(res.ok ? { htmlUrl: data.repo?.htmlUrl, fullName: data.repo?.fullName } : { error: data.error });
+      setResult(
+        res.ok
+          ? { htmlUrl: data.repo?.htmlUrl, fullName: data.repo?.fullName }
+          : { error: data.error },
+      );
     } catch {
-      setResult({ error: "Network error — check your connection and try again." });
+      setResult({
+        error: "Network error — check your connection and try again.",
+      });
     } finally {
       setCreating(false);
     }
@@ -412,9 +624,13 @@ function GitHubRepoSection() {
       <div className="flex items-start gap-3">
         <Github className="w-4 h-4 text-foreground mt-0.5 shrink-0" />
         <div>
-          <p className="font-bold text-sm text-foreground">Get the ghost node code</p>
+          <p className="font-bold text-sm text-foreground">
+            Get the ghost node code
+          </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Creates a ready-to-run GitHub repository with everything you need to set up a ghost node on another machine — the server code, Docker setup, config files, and step-by-step instructions.
+            Creates a ready-to-run GitHub repository with everything you need to
+            set up a ghost node on another machine — the server code, Docker
+            setup, config files, and step-by-step instructions.
           </p>
         </div>
       </div>
@@ -423,12 +639,21 @@ function GitHubRepoSection() {
         <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <p className="text-sm text-emerald-400 font-bold">Repository created!</p>
-            <a href={result.htmlUrl} target="_blank" rel="noopener noreferrer"
-              className="font-mono text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-0.5">
+            <p className="text-sm text-emerald-400 font-bold">
+              Repository created!
+            </p>
+            <a
+              href={result.htmlUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-0.5"
+            >
               {result.htmlUrl} <ExternalLink className="w-2.5 h-2.5 shrink-0" />
             </a>
-            <p className="text-xs text-muted-foreground mt-1">Clone it on the machine you want to use as a node, then follow the README.</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Clone it on the machine you want to use as a node, then follow the
+              README.
+            </p>
           </div>
         </div>
       ) : (
@@ -438,13 +663,23 @@ function GitHubRepoSection() {
               <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {result.error}
             </div>
           )}
-          <button onClick={create} disabled={creating}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border/60 text-foreground hover:border-primary/40 hover:text-primary text-sm transition-all disabled:opacity-50">
-            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Github className="w-4 h-4" />}
-            {creating ? "Creating repository…" : "Create omnilearn-ghost-node repo"}
+          <button
+            onClick={create}
+            disabled={creating}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border/60 text-foreground hover:border-primary/40 hover:text-primary text-sm transition-all disabled:opacity-50"
+          >
+            {creating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Github className="w-4 h-4" />
+            )}
+            {creating
+              ? "Creating repository…"
+              : "Create omnilearn-ghost-node repo"}
           </button>
           <p className="text-[10px] text-muted-foreground/50">
-            Requires your GitHub account to be connected — go to Account settings to link it.
+            Requires your GitHub account to be connected — go to Account
+            settings to link it.
           </p>
         </>
       )}
@@ -476,19 +711,32 @@ function LiveNodeManager() {
         const nodesData = await nr.json();
         setNodes(nodesData);
         // Calculate online count from actual node statuses (fallback)
-        const onlineCount = nodesData.filter((n: GhostNode) => n.status === "online").length;
+        const onlineCount = nodesData.filter(
+          (n: GhostNode) => n.status === "online",
+        ).length;
         if (sr.ok) {
           const statusData = await sr.json();
           // Use the higher of the two counts (API vs calculated)
-          setStatus({ ...statusData, online: Math.max(statusData.online, onlineCount) });
+          setStatus({
+            ...statusData,
+            online: Math.max(statusData.online, onlineCount),
+          });
         } else {
-          setStatus({ total: nodesData.length, online: onlineCount, offline: nodesData.length - onlineCount, totalTasksProcessed: 0, selfEndpoint: "" });
+          setStatus({
+            total: nodesData.length,
+            online: onlineCount,
+            offline: nodesData.length - onlineCount,
+            totalTasksProcessed: 0,
+            selfEndpoint: "",
+          });
         }
       } else if (sr.ok) {
         setStatus(await sr.json());
       }
       setLastRefresh(new Date());
-    } catch { /* offline */ } finally {
+    } catch {
+      /* offline */
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -509,23 +757,29 @@ function LiveNodeManager() {
 
   const pingOne = async (id: number) => {
     setPingingId(id);
-    const res = await fetch(`${BASE}/api/ghost/nodes/${id}/ping`, { method: "POST" });
+    const res = await fetch(`${BASE}/api/ghost/nodes/${id}/ping`, {
+      method: "POST",
+    });
     if (res.ok) {
       const data = await res.json();
-      setNodes(prev => prev.map(n => n.id === id ? { ...n, ...data.node, secretKey: n.secretKey } : n));
+      setNodes((prev) =>
+        prev.map((n) =>
+          n.id === id ? { ...n, ...data.node, secretKey: n.secretKey } : n,
+        ),
+      );
     }
     setPingingId(null);
   };
 
   const deleteNode = async (id: number) => {
     await fetch(`${BASE}/api/ghost/nodes/${id}`, { method: "DELETE" });
-    setNodes(prev => prev.filter(n => n.id !== id));
+    setNodes((prev) => prev.filter((n) => n.id !== id));
     setConfirmDelete(null);
     fetchData();
   };
 
   const addNode = (node: GhostNode) => {
-    setNodes(prev => [...prev, node]);
+    setNodes((prev) => [...prev, node]);
     fetchData();
   };
 
@@ -540,14 +794,22 @@ function LiveNodeManager() {
           </p>
           {lastRefresh && (
             <p className="text-[10px] text-muted-foreground/50 mt-1 flex items-center gap-1">
-              <RefreshCw className="w-2.5 h-2.5" /> Auto-refreshing every 30s • Last updated {lastRefresh.toLocaleTimeString()}
+              <RefreshCw className="w-2.5 h-2.5" /> Auto-refreshing every 30s •
+              Last updated {lastRefresh.toLocaleTimeString()}
             </p>
           )}
         </div>
         {nodes.length > 0 && (
-          <button onClick={() => fetchData(true)} disabled={pingingAll || loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground text-xs transition-all disabled:opacity-50">
-            {pingingAll || loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+          <button
+            onClick={() => fetchData(true)}
+            disabled={pingingAll || loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 text-muted-foreground hover:text-foreground text-xs transition-all disabled:opacity-50"
+          >
+            {pingingAll || loading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="w-3.5 h-3.5" />
+            )}
             Refresh now
           </button>
         )}
@@ -557,13 +819,32 @@ function LiveNodeManager() {
       {status && status.total > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: "Nodes registered", value: status.total, color: "text-foreground" },
-            { label: "Online now", value: status.online, color: "text-emerald-400" },
-            { label: "Tasks handled", value: status.totalTasksProcessed, color: "text-primary" },
-          ].map(s => (
-            <div key={s.label} className="rounded-lg border border-border/40 bg-card/20 p-3 text-center">
-              <p className={cn("font-mono text-2xl font-bold", s.color)}>{s.value}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{s.label}</p>
+            {
+              label: "Nodes registered",
+              value: status.total,
+              color: "text-foreground",
+            },
+            {
+              label: "Online now",
+              value: status.online,
+              color: "text-emerald-400",
+            },
+            {
+              label: "Tasks handled",
+              value: status.totalTasksProcessed,
+              color: "text-primary",
+            },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="rounded-lg border border-border/40 bg-card/20 p-3 text-center"
+            >
+              <p className={cn("font-mono text-2xl font-bold", s.color)}>
+                {s.value}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {s.label}
+              </p>
             </div>
           ))}
         </div>
@@ -577,17 +858,30 @@ function LiveNodeManager() {
       ) : nodes.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-border/30 p-10 text-center">
           <Ghost className="w-8 h-8 text-muted-foreground/15 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground/50 font-medium">No nodes connected yet</p>
-          <p className="text-xs text-muted-foreground/30 mt-1">Follow the steps above to set one up, then connect it below.</p>
+          <p className="text-sm text-muted-foreground/50 font-medium">
+            No nodes connected yet
+          </p>
+          <p className="text-xs text-muted-foreground/30 mt-1">
+            Follow the steps above to set one up, then connect it below.
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
           <AnimatePresence>
-            {nodes.map(node => (
-              <motion.div key={node.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }}
-                className={cn("rounded-xl border p-4 bg-card/30 transition-colors",
-                  node.status === "online" ? "border-emerald-500/25" :
-                  node.status === "offline" ? "border-red-500/20" : "border-border/40"
+            {nodes.map((node) => (
+              <motion.div
+                key={node.id}
+                layout
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.97 }}
+                className={cn(
+                  "rounded-xl border p-4 bg-card/30 transition-colors",
+                  node.status === "online"
+                    ? "border-emerald-500/25"
+                    : node.status === "offline"
+                      ? "border-red-500/20"
+                      : "border-border/40",
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -595,55 +889,93 @@ function LiveNodeManager() {
                     <StatusDot status={node.status} />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-foreground">{node.name}</span>
+                        <span className="font-bold text-sm text-foreground">
+                          {node.name}
+                        </span>
                         {node.region && node.region !== "unknown" && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary/40 text-muted-foreground">{node.region}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary/40 text-muted-foreground">
+                            {node.region}
+                          </span>
                         )}
-                        <span className={cn("text-xs font-medium",
-                          node.status === "online" ? "text-emerald-400" :
-                          node.status === "offline" ? "text-red-400" : "text-yellow-400"
-                        )}>
-                          {node.status === "online" ? "Online" : node.status === "offline" ? "Offline" : "Unknown"}
+                        <span
+                          className={cn(
+                            "text-xs font-medium",
+                            node.status === "online"
+                              ? "text-emerald-400"
+                              : node.status === "offline"
+                                ? "text-red-400"
+                                : "text-yellow-400",
+                          )}
+                        >
+                          {node.status === "online"
+                            ? "Online"
+                            : node.status === "offline"
+                              ? "Offline"
+                              : "Unknown"}
                         </span>
                       </div>
-                      <a href={node.endpoint} target="_blank" rel="noopener noreferrer"
-                        className="font-mono text-xs text-muted-foreground/40 hover:text-primary flex items-center gap-1 mt-0.5 truncate">
-                        {node.endpoint} <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                      <a
+                        href={node.endpoint}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-xs text-muted-foreground/40 hover:text-primary flex items-center gap-1 mt-0.5 truncate"
+                      >
+                        {node.endpoint}{" "}
+                        <ExternalLink className="w-2.5 h-2.5 shrink-0" />
                       </a>
                       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                         {node.lastSeen && (
-                          <span className="text-[11px] text-muted-foreground/50">Last seen {timeSince(node.lastSeen)}</span>
+                          <span className="text-[11px] text-muted-foreground/50">
+                            Last seen {timeSince(node.lastSeen)}
+                          </span>
                         )}
-                        <span className="text-[11px] text-muted-foreground/50">{node.tasksProcessed} tasks handled</span>
+                        <span className="text-[11px] text-muted-foreground/50">
+                          {node.tasksProcessed} tasks handled
+                        </span>
                         {node.avgResponseMs && (
-                          <span className="text-[11px] text-muted-foreground/50">avg {Math.round(node.avgResponseMs)}ms response</span>
+                          <span className="text-[11px] text-muted-foreground/50">
+                            avg {Math.round(node.avgResponseMs)}ms response
+                          </span>
                         )}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => pingOne(node.id)} disabled={pingingId === node.id}
+                    <button
+                      onClick={() => pingOne(node.id)}
+                      disabled={pingingId === node.id}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border/50 text-muted-foreground hover:text-foreground text-xs transition-all disabled:opacity-50"
-                      title="Check if this node is reachable">
-                      {pingingId === node.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                      title="Check if this node is reachable"
+                    >
+                      {pingingId === node.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
                       <span className="hidden sm:inline">Ping</span>
                     </button>
                     {confirmDelete === node.id ? (
                       <div className="flex items-center gap-1.5">
-                        <button onClick={() => deleteNode(node.id)}
-                          className="px-2.5 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-xs hover:bg-red-500/30 transition-all">
+                        <button
+                          onClick={() => deleteNode(node.id)}
+                          className="px-2.5 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-xs hover:bg-red-500/30 transition-all"
+                        >
                           Remove
                         </button>
-                        <button onClick={() => setConfirmDelete(null)}
-                          className="px-2.5 py-1.5 rounded-lg border border-border/40 text-muted-foreground text-xs">
+                        <button
+                          onClick={() => setConfirmDelete(null)}
+                          className="px-2.5 py-1.5 rounded-lg border border-border/40 text-muted-foreground text-xs"
+                        >
                           Cancel
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => setConfirmDelete(node.id)}
+                      <button
+                        onClick={() => setConfirmDelete(node.id)}
                         className="p-1.5 rounded-lg border border-border/40 text-muted-foreground/40 hover:text-red-400 hover:border-red-500/30 transition-all"
-                        title="Remove this node">
+                        title="Remove this node"
+                      >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -666,32 +998,88 @@ function TechDetails() {
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-xl border border-border/30 overflow-hidden">
-      <button onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-secondary/10 transition-colors">
-        <span className="text-sm font-medium text-muted-foreground">How it works under the hood</span>
-        {open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-secondary/10 transition-colors"
+      >
+        <span className="text-sm font-medium text-muted-foreground">
+          How it works under the hood
+        </span>
+        {open ? (
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        )}
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }} className="overflow-hidden">
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
             <div className="px-5 pb-5 space-y-4 border-t border-border/20">
               <div className="grid sm:grid-cols-2 gap-3 pt-4">
                 {[
-                  { icon: Key, color: "#22d3ee", label: "Shard key", desc: "Your identity is encrypted with a key only you hold, derived using Shamir secret sharing. The network holds nothing." },
-                  { icon: Ghost, color: "#a78bfa", label: "Ghost node", desc: "Stateless execution unit. It runs a task, returns the result, and evaporates — no data is stored on it." },
-                  { icon: Globe, color: "#34d399", label: "IPFS / Arweave", desc: "Encrypted state is sharded across a content-addressed store. Reconstructable on any machine with your key." },
-                  { icon: Radio, color: "#fb923c", label: "Rendezvous relay", desc: "Peer discovery bootstrap only. The relay never sees your state or your messages." },
-                  { icon: Users, color: "#facc15", label: "Federation", desc: "Opt-in only. You choose what learning signals to share with the wider network. Personality stays private." },
-                  { icon: Shield, color: "#f43f5e", label: "Compliance", desc: "Each node enforces robots.txt and rate limits independently. The distributed design makes it more respectful, not less." },
-                ].map(item => (
-                  <div key={item.label} className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border/40">
-                    <div className="p-1.5 rounded shrink-0" style={{ backgroundColor: item.color + "18" }}>
-                      <item.icon className="w-3.5 h-3.5" style={{ color: item.color }} />
+                  {
+                    icon: Key,
+                    color: "#22d3ee",
+                    label: "Shard key",
+                    desc: "Your identity is encrypted with a key only you hold, derived using Shamir secret sharing. The network holds nothing.",
+                  },
+                  {
+                    icon: Ghost,
+                    color: "#a78bfa",
+                    label: "Ghost node",
+                    desc: "Stateless execution unit. It runs a task, returns the result, and evaporates — no data is stored on it.",
+                  },
+                  {
+                    icon: Globe,
+                    color: "#34d399",
+                    label: "IPFS / Arweave",
+                    desc: "Encrypted state is sharded across a content-addressed store. Reconstructable on any machine with your key.",
+                  },
+                  {
+                    icon: Radio,
+                    color: "#fb923c",
+                    label: "Rendezvous relay",
+                    desc: "Peer discovery bootstrap only. The relay never sees your state or your messages.",
+                  },
+                  {
+                    icon: Users,
+                    color: "#facc15",
+                    label: "Federation",
+                    desc: "Opt-in only. You choose what learning signals to share with the wider network. Personality stays private.",
+                  },
+                  {
+                    icon: Shield,
+                    color: "#f43f5e",
+                    label: "Compliance",
+                    desc: "Each node enforces robots.txt and rate limits independently. The distributed design makes it more respectful, not less.",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border/40"
+                  >
+                    <div
+                      className="p-1.5 rounded shrink-0"
+                      style={{ backgroundColor: item.color + "18" }}
+                    >
+                      <item.icon
+                        className="w-3.5 h-3.5"
+                        style={{ color: item.color }}
+                      />
                     </div>
                     <div>
-                      <p className="font-mono text-xs font-bold text-foreground">{item.label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
+                      <p className="font-mono text-xs font-bold text-foreground">
+                        {item.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                        {item.desc}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -781,47 +1169,91 @@ function Roadmap() {
 
   return (
     <div className="rounded-xl border border-border/30 overflow-hidden mt-8">
-      <button onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-secondary/10 transition-colors">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-secondary/10 transition-colors"
+      >
         <div className="flex items-center gap-2">
           <Rocket className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium text-muted-foreground">Project Roadmap</span>
+          <span className="text-sm font-medium text-muted-foreground">
+            Project Roadmap
+          </span>
         </div>
-        {open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+        {open ? (
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        )}
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }} className="overflow-hidden">
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
             <div className="px-5 pb-5 space-y-4 border-t border-border/20 pt-4">
               <p className="text-sm text-muted-foreground mb-4">
-                Follow our journey from production launch to intelligent, evolving AI agents.
+                Follow our journey from production launch to intelligent,
+                evolving AI agents.
               </p>
               <div className="space-y-3">
                 {timeline.map((phase, i) => (
-                  <div key={phase.period} className={cn("rounded-lg border p-4", phase.border, phase.bg)}>
+                  <div
+                    key={phase.period}
+                    className={cn(
+                      "rounded-lg border p-4",
+                      phase.border,
+                      phase.bg,
+                    )}
+                  >
                     <div className="flex items-center gap-3 mb-3">
                       <div className={cn("p-2 rounded-lg", phase.bg)}>
                         <phase.icon className={cn("w-4 h-4", phase.color)} />
                       </div>
                       <div>
-                        <p className={cn("font-mono text-xs font-bold", phase.color)}>{phase.period}</p>
-                        <p className="font-bold text-sm text-foreground">{phase.title}</p>
+                        <p
+                          className={cn(
+                            "font-mono text-xs font-bold",
+                            phase.color,
+                          )}
+                        >
+                          {phase.period}
+                        </p>
+                        <p className="font-bold text-sm text-foreground">
+                          {phase.title}
+                        </p>
                       </div>
                       {phase.status === "completed" && (
-                        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">DONE</span>
+                        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
+                          DONE
+                        </span>
                       )}
                       {phase.status === "active" && (
-                        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold animate-pulse">IN PROGRESS</span>
+                        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold animate-pulse">
+                          IN PROGRESS
+                        </span>
                       )}
                       {phase.status === "planned" && (
-                        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-bold">PLANNED</span>
+                        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-bold">
+                          PLANNED
+                        </span>
                       )}
                     </div>
                     <ul className="space-y-1.5">
                       {phase.items.map((item, j) => (
-                        <li key={j} className="text-xs text-muted-foreground flex items-start gap-2">
-                          <span className={cn("w-1 h-1 rounded-full mt-1 shrink-0", phase.color.replace("text-", "bg-"))} />
+                        <li
+                          key={j}
+                          className="text-xs text-muted-foreground flex items-start gap-2"
+                        >
+                          <span
+                            className={cn(
+                              "w-1 h-1 rounded-full mt-1 shrink-0",
+                              phase.color.replace("text-", "bg-"),
+                            )}
+                          />
                           {item}
                         </li>
                       ))}
@@ -845,11 +1277,13 @@ export default function Onboarding() {
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<Mode>("local");
 
-  const toggle = (id: number) => setCompleted(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
+  const toggle = (id: number) =>
+    setCompleted((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   useEffect(() => {
     if (completed.size === LOCAL_STEPS.length) {
@@ -861,7 +1295,11 @@ export default function Onboarding() {
 
   return (
     <div className="p-6 md:p-12 max-w-5xl mx-auto min-h-screen">
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+      <motion.div
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+      >
         <h1 className="text-4xl font-bold tracking-tight mb-2">Get Started</h1>
         <p className="text-muted-foreground">
           Choose your path. Use OmniLearn now, or set up your own instance.
@@ -870,58 +1308,97 @@ export default function Onboarding() {
 
       {/* Mode tabs */}
       <div className="flex gap-3 mb-10 flex-wrap">
-        <button onClick={() => setMode("local")}
-          className={cn("flex items-center gap-2.5 px-5 py-3 rounded-xl border text-sm transition-all",
+        <button
+          onClick={() => setMode("local")}
+          className={cn(
+            "flex items-center gap-2.5 px-5 py-3 rounded-xl border text-sm transition-all",
             mode === "local"
               ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold"
-              : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/20"
-          )}>
+              : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/20",
+          )}
+        >
           <Zap className="w-4 h-4" />
           Use OmniLearn
-          <span className={cn("text-[10px] px-1.5 py-0.5 rounded-md border",
-            mode === "local" ? "text-emerald-400/60 border-emerald-500/20" : "text-muted-foreground/50 border-border/40"
-          )}>~2 min</span>
+          <span
+            className={cn(
+              "text-[10px] px-1.5 py-0.5 rounded-md border",
+              mode === "local"
+                ? "text-emerald-400/60 border-emerald-500/20"
+                : "text-muted-foreground/50 border-border/40",
+            )}
+          >
+            ~2 min
+          </span>
         </button>
-        <button onClick={() => setMode("ghost")}
-          className={cn("flex items-center gap-2.5 px-5 py-3 rounded-xl border text-sm transition-all",
+        <button
+          onClick={() => setMode("ghost")}
+          className={cn(
+            "flex items-center gap-2.5 px-5 py-3 rounded-xl border text-sm transition-all",
             mode === "ghost"
               ? "bg-violet-500/10 border-violet-500/40 text-violet-300 font-bold"
-              : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/20"
-          )}>
+              : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/20",
+          )}
+        >
           <Monitor className="w-4 h-4" />
           Self-Host
-          <span className={cn("text-[10px] px-1.5 py-0.5 rounded-md border",
-            mode === "ghost" ? "text-violet-400/60 border-violet-500/20" : "text-muted-foreground/50 border-border/40"
-          )}>~30 min</span>
+          <span
+            className={cn(
+              "text-[10px] px-1.5 py-0.5 rounded-md border",
+              mode === "ghost"
+                ? "text-violet-400/60 border-violet-500/20"
+                : "text-muted-foreground/50 border-border/40",
+            )}
+          >
+            ~30 min
+          </span>
         </button>
-        <button onClick={() => setMode("roadmap")}
-          className={cn("flex items-center gap-2.5 px-5 py-3 rounded-xl border text-sm transition-all",
+        <button
+          onClick={() => setMode("roadmap")}
+          className={cn(
+            "flex items-center gap-2.5 px-5 py-3 rounded-xl border text-sm transition-all",
             mode === "roadmap"
               ? "bg-cyan-500/10 border-cyan-500/40 text-cyan-300 font-bold"
-              : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/20"
-          )}>
+              : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/20",
+          )}
+        >
           <Rocket className="w-4 h-4" />
           Roadmap
-          <span className={cn("text-[10px] px-1.5 py-0.5 rounded-md border",
-            mode === "roadmap" ? "text-cyan-400/60 border-cyan-500/20" : "text-muted-foreground/50 border-border/40"
-          )}>Vision</span>
+          <span
+            className={cn(
+              "text-[10px] px-1.5 py-0.5 rounded-md border",
+              mode === "roadmap"
+                ? "text-cyan-400/60 border-cyan-500/20"
+                : "text-muted-foreground/50 border-border/40",
+            )}
+          >
+            Vision
+          </span>
         </button>
       </div>
 
       <AnimatePresence mode="wait">
-
         {/* ── Use OmniLearn ─────────────────────────────────────────────────── */}
         {mode === "local" && (
-          <motion.div key="local" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-
+          <motion.div
+            key="local"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
             {/* Plain-English callout */}
             <div className="mb-8 p-5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-start gap-4">
               <Zap className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
               <div>
-                <p className="font-bold text-foreground mb-1">You're all set!</p>
+                <p className="font-bold text-foreground mb-1">
+                  You're all set!
+                </p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  OmniLearn is already running. Just sign in and start chatting. 
-                  <strong className="text-foreground"> No setup needed</strong> — everything is configured and ready to go.
+                  OmniLearn is already running. Just sign in and start chatting.
+                  <strong className="text-foreground">
+                    {" "}
+                    No setup needed
+                  </strong>{" "}
+                  — everything is configured and ready to go.
                 </p>
               </div>
             </div>
@@ -950,7 +1427,7 @@ export default function Onboarding() {
                   icon: Ghost,
                   color: "text-violet-400",
                 },
-              ].map(step => (
+              ].map((step) => (
                 <motion.div
                   key={step.num}
                   initial={{ opacity: 0, x: -10 }}
@@ -958,12 +1435,18 @@ export default function Onboarding() {
                   transition={{ delay: step.num * 0.1 }}
                   className="flex items-start gap-4 p-5 rounded-xl border border-border/40 bg-card/40"
                 >
-                  <div className={cn("p-2 rounded-lg bg-background", step.color)}>
+                  <div
+                    className={cn("p-2 rounded-lg bg-background", step.color)}
+                  >
                     <step.icon className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="font-bold text-sm text-foreground">{step.title}</p>
-                    <p className="text-muted-foreground text-sm mt-0.5">{step.desc}</p>
+                    <p className="font-bold text-sm text-foreground">
+                      {step.title}
+                    </p>
+                    <p className="text-muted-foreground text-sm mt-0.5">
+                      {step.desc}
+                    </p>
                   </div>
                 </motion.div>
               ))}
@@ -987,14 +1470,20 @@ export default function Onboarding() {
               <div className="flex items-start gap-3">
                 <Ghost className="w-5 h-5 text-violet-400 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-bold text-sm text-foreground">Want more control?</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Connect your own computer as a Ghost Node to run AI processing locally. 
-                    Great for privacy, custom setups, or if you have a powerful home server.
+                  <p className="font-bold text-sm text-foreground">
+                    Want more control?
                   </p>
-                  <button onClick={() => setMode("ghost")}
-                    className="mt-3 text-xs text-violet-400 hover:text-violet-300 font-medium flex items-center gap-1">
-                    See how to self-host or connect a Ghost Node <ChevronRight className="w-3 h-3" />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Connect your own computer as a Ghost Node to run AI
+                    processing locally. Great for privacy, custom setups, or if
+                    you have a powerful home server.
+                  </p>
+                  <button
+                    onClick={() => setMode("ghost")}
+                    className="mt-3 text-xs text-violet-400 hover:text-violet-300 font-medium flex items-center gap-1"
+                  >
+                    See how to self-host or connect a Ghost Node{" "}
+                    <ChevronRight className="w-3 h-3" />
                   </button>
                 </div>
               </div>
@@ -1004,17 +1493,24 @@ export default function Onboarding() {
 
         {/* ── Ghost Deployment ───────────────────────────────────────────────── */}
         {mode === "ghost" && (
-          <motion.div key="ghost" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
-
+          <motion.div
+            key="ghost"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="space-y-8"
+          >
             {/* Plain-English intro */}
             <div className="mb-8 p-5 rounded-xl border border-violet-500/20 bg-violet-500/5 flex items-start gap-4">
               <Monitor className="w-5 h-5 text-violet-400 mt-0.5 shrink-0" />
               <div>
-                <p className="font-bold text-foreground mb-1">Self-Host OmniLearn</p>
+                <p className="font-bold text-foreground mb-1">
+                  Self-Host OmniLearn
+                </p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Run your own instance of OmniLearn on your computer or server. 
-                  Full control, complete privacy, no dependencies on our infrastructure. 
-                  Takes about 30 minutes to set up.
+                  Run your own instance of OmniLearn on your computer or server.
+                  Full control, complete privacy, no dependencies on our
+                  infrastructure. Takes about 30 minutes to set up.
                 </p>
               </div>
             </div>
@@ -1027,7 +1523,9 @@ export default function Onboarding() {
                   Option A: Full Self-Host
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Run everything yourself — frontend, backend, database. Complete control, maximum privacy. For developers who want full ownership.
+                  Run everything yourself — frontend, backend, database.
+                  Complete control, maximum privacy. For developers who want
+                  full ownership.
                 </p>
               </div>
               <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
@@ -1036,14 +1534,17 @@ export default function Onboarding() {
                   Option B: Ghost Node Only
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Use our hosted app but run AI processing on your own machine. Best of both worlds — easy setup + local AI.
+                  Use our hosted app but run AI processing on your own machine.
+                  Best of both worlds — easy setup + local AI.
                 </p>
               </div>
             </div>
 
             {/* Visual 3-step flow for Full Self-Host */}
             <div>
-              <h2 className="font-mono text-xs text-violet-400 uppercase tracking-wider mb-4">Full Self-Host Setup</h2>
+              <h2 className="font-mono text-xs text-violet-400 uppercase tracking-wider mb-4">
+                Full Self-Host Setup
+              </h2>
               <div className="grid sm:grid-cols-3 gap-4">
                 {[
                   {
@@ -1077,18 +1578,33 @@ export default function Onboarding() {
                     action: "pnpm dev",
                   },
                 ].map((s, i) => (
-                  <div key={s.num} className={cn("rounded-xl border p-5 space-y-3", s.border, s.bg)}>
+                  <div
+                    key={s.num}
+                    className={cn(
+                      "rounded-xl border p-5 space-y-3",
+                      s.border,
+                      s.bg,
+                    )}
+                  >
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-3xl font-black text-border/40">{s.num}</span>
+                      <span className="font-mono text-3xl font-black text-border/40">
+                        {s.num}
+                      </span>
                       <div className={cn("p-2 rounded-lg", s.bg)}>
                         <s.icon className={cn("w-4 h-4", s.color)} />
                       </div>
                     </div>
                     <div>
-                      <p className="font-bold text-sm text-foreground">{s.title}</p>
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{s.desc}</p>
+                      <p className="font-bold text-sm text-foreground">
+                        {s.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        {s.desc}
+                      </p>
                     </div>
-                    <p className="text-[10px] text-muted-foreground/40 font-mono">{s.action}</p>
+                    <p className="text-[10px] text-muted-foreground/40 font-mono">
+                      {s.action}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -1097,8 +1613,12 @@ export default function Onboarding() {
             {/* Step 1: Clone repo */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded">STEP 1</span>
-                <h3 className="font-bold text-foreground">Clone the repository</h3>
+                <span className="font-mono text-xs text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded">
+                  STEP 1
+                </span>
+                <h3 className="font-bold text-foreground">
+                  Clone the repository
+                </h3>
               </div>
               <div className="rounded-xl border border-border/40 bg-card/20 p-5 space-y-4">
                 <p className="text-sm text-muted-foreground">
@@ -1124,8 +1644,12 @@ pnpm install`}</code>
             {/* Step 2: Configure */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded">STEP 2</span>
-                <h3 className="font-bold text-foreground">Configure environment variables</h3>
+                <span className="font-mono text-xs text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded">
+                  STEP 2
+                </span>
+                <h3 className="font-bold text-foreground">
+                  Configure environment variables
+                </h3>
               </div>
               <div className="rounded-xl border border-border/40 bg-card/20 p-5 space-y-4">
                 <p className="text-sm text-muted-foreground">
@@ -1145,18 +1669,42 @@ GHOST_NODE_SECRET=ghost_sk_xxx        # Generate random string`}</code>
                 </pre>
                 <div className="grid sm:grid-cols-3 gap-3">
                   <div className="p-3 rounded-lg bg-background border border-border/40">
-                    <p className="text-xs font-bold text-foreground mb-1">Clerk</p>
-                    <a href="https://clerk.com" target="_blank" className="text-xs text-primary hover:underline">clerk.com →</a>
-                    <p className="text-[10px] text-muted-foreground mt-1">Free tier: 10K users/month</p>
+                    <p className="text-xs font-bold text-foreground mb-1">
+                      Clerk
+                    </p>
+                    <a
+                      href="https://clerk.com"
+                      target="_blank"
+                      className="text-xs text-primary hover:underline"
+                    >
+                      clerk.com →
+                    </a>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Free tier: 10K users/month
+                    </p>
                   </div>
                   <div className="p-3 rounded-lg bg-background border border-border/40">
-                    <p className="text-xs font-bold text-foreground mb-1">Supabase</p>
-                    <a href="https://supabase.com" target="_blank" className="text-xs text-primary hover:underline">supabase.com →</a>
-                    <p className="text-[10px] text-muted-foreground mt-1">Free tier: 500MB database</p>
+                    <p className="text-xs font-bold text-foreground mb-1">
+                      Supabase
+                    </p>
+                    <a
+                      href="https://supabase.com"
+                      target="_blank"
+                      className="text-xs text-primary hover:underline"
+                    >
+                      supabase.com →
+                    </a>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Free tier: 500MB database
+                    </p>
                   </div>
                   <div className="p-3 rounded-lg bg-background border border-border/40">
-                    <p className="text-xs font-bold text-foreground mb-1">Ghost Node</p>
-                    <p className="text-xs text-muted-foreground">Optional — for local AI</p>
+                    <p className="text-xs font-bold text-foreground mb-1">
+                      Ghost Node
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Optional — for local AI
+                    </p>
                   </div>
                 </div>
                 <pre className="bg-black/40 rounded-xl border border-border/30 p-4 font-mono text-sm text-primary/90 overflow-x-auto leading-7">
@@ -1171,7 +1719,9 @@ pnpm --filter @workspace/db run push
             {/* Step 3: Run */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">STEP 3</span>
+                <span className="font-mono text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                  STEP 3
+                </span>
                 <h3 className="font-bold text-foreground">Run OmniLearn</h3>
               </div>
               <div className="rounded-xl border border-border/40 bg-card/20 p-5 space-y-4">
@@ -1189,12 +1739,20 @@ pnpm dev
                 <div className="flex items-start gap-3 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
                   <Zap className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-sm text-foreground font-bold">Access OmniLearn:</p>
+                    <p className="text-sm text-foreground font-bold">
+                      Access OmniLearn:
+                    </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Frontend: <code className="text-emerald-400 bg-emerald-500/10 px-1 rounded">http://localhost:5173</code>
+                      Frontend:{" "}
+                      <code className="text-emerald-400 bg-emerald-500/10 px-1 rounded">
+                        http://localhost:5173
+                      </code>
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Backend: <code className="text-emerald-400 bg-emerald-500/10 px-1 rounded">http://localhost:3001</code>
+                      Backend:{" "}
+                      <code className="text-emerald-400 bg-emerald-500/10 px-1 rounded">
+                        http://localhost:3001
+                      </code>
                     </p>
                   </div>
                 </div>
@@ -1205,30 +1763,38 @@ pnpm dev
             <div className="mt-8 space-y-4">
               <div className="flex items-center gap-2">
                 <Ghost className="w-4 h-4 text-violet-400" />
-                <h3 className="font-bold text-foreground">Optional: Set up Ghost Node</h3>
+                <h3 className="font-bold text-foreground">
+                  Optional: Set up Ghost Node
+                </h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                Want to run AI processing on your own hardware instead of the server? Set up a Ghost Node:
+                Want to run AI processing on your own hardware instead of the
+                server? Set up a Ghost Node:
               </p>
-              
+
               {/* Expose to Internet Section */}
               <div className="p-4 rounded-xl border border-violet-500/20 bg-violet-500/5">
-                  <h4 className="font-bold text-sm text-foreground mb-3 flex items-center gap-2">
-                    <Cloud className="w-4 h-4 text-violet-400" />
-                    Expose your node to the internet
-                  </h4>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Your Ghost Node needs a public URL so OmniLearn can reach it. Use one of these methods (no router configuration needed):
-                  </p>
-                  
-                  {/* Option A: Cloudflare Tunnel */}
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded">OPTION A</span>
-                      <span className="text-sm font-bold text-foreground">Cloudflare Tunnel (Recommended — Free, No Account)</span>
-                    </div>
-                    <pre className="bg-black/40 rounded-lg border border-border/30 p-3 font-mono text-xs text-primary/90 overflow-x-auto leading-6">
-                      <code>{`# Install cloudflared (one-time)
+                <h4 className="font-bold text-sm text-foreground mb-3 flex items-center gap-2">
+                  <Cloud className="w-4 h-4 text-violet-400" />
+                  Expose your node to the internet
+                </h4>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Your Ghost Node needs a public URL so OmniLearn can reach it.
+                  Use one of these methods (no router configuration needed):
+                </p>
+
+                {/* Option A: Cloudflare Tunnel */}
+                <div className="space-y-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded">
+                      OPTION A
+                    </span>
+                    <span className="text-sm font-bold text-foreground">
+                      Cloudflare Tunnel (Recommended — Free, No Account)
+                    </span>
+                  </div>
+                  <pre className="bg-black/40 rounded-lg border border-border/30 p-3 font-mono text-xs text-primary/90 overflow-x-auto leading-6">
+                    <code>{`# Install cloudflared (one-time)
 # Windows (PowerShell as Admin):
 winget install cloudflare.cloudflared
 
@@ -1240,92 +1806,150 @@ brew install cloudflared
 
 # Start the tunnel (run in a NEW terminal, keep ghost node running)
 cloudflared tunnel --url http://localhost:8080`}</code>
-                    </pre>
-                    <p className="text-xs text-muted-foreground">
-                      You'll see output like: <code className="text-violet-400 bg-violet-500/10 px-1 rounded">https://abc123-xyz456.trycloudflare.com</code> — copy that URL!
-                    </p>
+                  </pre>
+                  <p className="text-xs text-muted-foreground">
+                    You'll see output like:{" "}
+                    <code className="text-violet-400 bg-violet-500/10 px-1 rounded">
+                      https://abc123-xyz456.trycloudflare.com
+                    </code>{" "}
+                    — copy that URL!
+                  </p>
+                </div>
+
+                {/* Option B: ngrok */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded">
+                      OPTION B
+                    </span>
+                    <span className="text-sm font-bold text-foreground">
+                      ngrok (Free tier — Requires Account)
+                    </span>
                   </div>
-                  
-                  {/* Option B: ngrok */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded">OPTION B</span>
-                      <span className="text-sm font-bold text-foreground">ngrok (Free tier — Requires Account)</span>
-                    </div>
-                    <pre className="bg-black/40 rounded-lg border border-border/30 p-3 font-mono text-xs text-primary/90 overflow-x-auto leading-6">
-                      <code>{`# Install ngrok (one-time)
+                  <pre className="bg-black/40 rounded-lg border border-border/30 p-3 font-mono text-xs text-primary/90 overflow-x-auto leading-6">
+                    <code>{`# Install ngrok (one-time)
 # See: https://ngrok.com/download
 
 # Start the tunnel (run in a NEW terminal)
 ngrok http 8080`}</code>
-                    </pre>
-                    <p className="text-xs text-muted-foreground">
-                      You'll see a URL like: <code className="text-violet-400 bg-violet-500/10 px-1 rounded">https://abc123.ngrok.io</code> — copy that URL!
-                    </p>
+                  </pre>
+                  <p className="text-xs text-muted-foreground">
+                    You'll see a URL like:{" "}
+                    <code className="text-violet-400 bg-violet-500/10 px-1 rounded">
+                      https://abc123.ngrok.io
+                    </code>{" "}
+                    — copy that URL!
+                  </p>
+                </div>
+
+                {/* Option C: Cloudflare Permanent Tunnel */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                      OPTION C
+                    </span>
+                    <span className="text-sm font-bold text-foreground">
+                      Cloudflare Permanent Tunnel (Free — Requires Cloudflare
+                      Account)
+                    </span>
                   </div>
-                  
-                  {/* Option C: Cloudflare Permanent Tunnel */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">OPTION C</span>
-                      <span className="text-sm font-bold text-foreground">Cloudflare Permanent Tunnel (Free — Requires Cloudflare Account)</span>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    This gives you a permanent URL that never changes, even
+                    after restarts.
+                  </p>
+                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 space-y-2">
+                    <div className="text-xs font-bold text-emerald-400 mb-2">
+                      Step 1: Login
                     </div>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      This gives you a permanent URL that never changes, even after restarts.
+                    <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90">
+                      <code>{`cloudflared tunnel login`}</code>
+                    </pre>
+
+                    <div className="text-xs font-bold text-emerald-400 mb-2">
+                      Step 2: Create tunnel
+                    </div>
+                    <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90">
+                      <code>{`cloudflared tunnel create omnilearn-ghost`}</code>
+                    </pre>
+                    <p className="text-[10px] text-muted-foreground">
+                      Note the tunnel ID it gives you!
                     </p>
-                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 space-y-2">
-                      <div className="text-xs font-bold text-emerald-400 mb-2">Step 1: Login</div>
-                      <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90"><code>{`cloudflared tunnel login`}</code></pre>
-                      
-                      <div className="text-xs font-bold text-emerald-400 mb-2">Step 2: Create tunnel</div>
-                      <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90"><code>{`cloudflared tunnel create omnilearn-ghost`}</code></pre>
-                      <p className="text-[10px] text-muted-foreground">Note the tunnel ID it gives you!</p>
-                      
-                      <div className="text-xs font-bold text-emerald-400 mb-2">Step 3: Create config (Windows)</div>
-                      <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90"><code>{`@"tunnel: omnilearn-ghost
+
+                    <div className="text-xs font-bold text-emerald-400 mb-2">
+                      Step 3: Create config (Windows)
+                    </div>
+                    <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90">
+                      <code>{`@"tunnel: omnilearn-ghost
 credentials-file: C:\Users\<YourUser>\.cloudflared\<TUNNEL_ID>.json
 ingress:
   - hostname: ghost.omnilearn.dpdns.org
     service: http://localhost:8080
   - service: http_status:404
-"@ | Out-File $env:USERPROFILE\.cloudflared\config.yml`}</code></pre>
-                      
-                      <div className="text-xs font-bold text-emerald-400 mb-2">Step 4: Route hostname</div>
-                      <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90"><code>{`cloudflared tunnel route dns omnilearn-ghost ghost.omnilearn.dpdns.org`}</code></pre>
-                      
-                      <div className="text-xs font-bold text-emerald-400 mb-2">Step 5: Run tunnel</div>
-                      <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90"><code>{`cloudflared tunnel run omnilearn-ghost`}</code></pre>
-                      
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Your permanent URL: <code className="text-emerald-400 bg-emerald-500/10 px-1 rounded">https://ghost.omnilearn.dpdns.org</code>
-                      </p>
-                      
-                      <p className="text-[10px] text-muted-foreground">
-                        <strong>Survive reboots:</strong> <code className="text-primary">cloudflared service install omnilearn-ghost</code>
-                      </p>
+"@ | Out-File $env:USERPROFILE\.cloudflared\config.yml`}</code>
+                    </pre>
+
+                    <div className="text-xs font-bold text-emerald-400 mb-2">
+                      Step 4: Route hostname
                     </div>
+                    <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90">
+                      <code>{`cloudflared tunnel route dns omnilearn-ghost ghost.omnilearn.dpdns.org`}</code>
+                    </pre>
+
+                    <div className="text-xs font-bold text-emerald-400 mb-2">
+                      Step 5: Run tunnel
+                    </div>
+                    <pre className="bg-black/40 rounded p-2 font-mono text-xs text-primary/90">
+                      <code>{`cloudflared tunnel run omnilearn-ghost`}</code>
+                    </pre>
+
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Your permanent URL:{" "}
+                      <code className="text-emerald-400 bg-emerald-500/10 px-1 rounded">
+                        https://ghost.omnilearn.dpdns.org
+                      </code>
+                    </p>
+
+                    <p className="text-[10px] text-muted-foreground">
+                      <strong>Survive reboots:</strong>{" "}
+                      <code className="text-primary">
+                        cloudflared service install omnilearn-ghost
+                      </code>
+                    </p>
                   </div>
                 </div>
               </div>
-              
-              {/* Additional info */}
-              <div className="grid sm:grid-cols-2 gap-3 mt-6">
+            </div>
+
+            {/* Additional info */}
+            <div className="grid sm:grid-cols-2 gap-3 mt-6">
               <div className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border/40">
                 <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">The machine must be reachable</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">It needs a public URL or IP. For home use, try Cloudflare Tunnel or ngrok to get a public address without opening router ports.</p>
+                  <p className="text-xs font-bold text-foreground">
+                    The machine must be reachable
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    It needs a public URL or IP. For home use, try Cloudflare
+                    Tunnel or ngrok to get a public address without opening
+                    router ports.
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border/40">
                 <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">Keep the secret key safe</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">The <code className="text-primary">GHOST_NODE_SECRET</code> you set is like a password — it proves the request came from you. Make it long and random.</p>
+                  <p className="text-xs font-bold text-foreground">
+                    Keep the secret key safe
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    The <code className="text-primary">GHOST_NODE_SECRET</code>{" "}
+                    you set is like a password — it proves the request came from
+                    you. Make it long and random.
+                  </p>
                 </div>
               </div>
             </div>
-            
+
             {/* Troubleshooting */}
             <div className="mt-6 p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
               <h5 className="font-bold text-xs text-foreground mb-2 flex items-center gap-2">
@@ -1333,49 +1957,77 @@ ingress:
                 Troubleshooting
               </h5>
               <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside">
-                <li>If the tunnel won't start, make sure nothing else is using port 8080</li>
-                <li>Keep both terminals open — one for the ghost node, one for the tunnel</li>
-                <li>Test the URL in your browser first: you should see a health check response</li>
-                <li>Firewall issues? Try disabling temporarily or allow Node.js through</li>
+                <li>
+                  If the tunnel won't start, make sure nothing else is using
+                  port 8080
+                </li>
+                <li>
+                  Keep both terminals open — one for the ghost node, one for the
+                  tunnel
+                </li>
+                <li>
+                  Test the URL in your browser first: you should see a health
+                  check response
+                </li>
+                <li>
+                  Firewall issues? Try disabling temporarily or allow Node.js
+                  through
+                </li>
               </ul>
             </div>
 
             {/* Connect Ghost Node */}
             <div className="mt-8 space-y-3">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">STEP 4</span>
-                <h3 className="font-bold text-foreground">Connect Ghost Node (Optional)</h3>
+                <span className="font-mono text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                  STEP 4
+                </span>
+                <h3 className="font-bold text-foreground">
+                  Connect Ghost Node (Optional)
+                </h3>
               </div>
               <div className="rounded-xl border border-border/40 bg-card/20 p-5 space-y-5">
                 <p className="text-sm text-muted-foreground">
-                  If you set up a Ghost Node (running AI on your own hardware), connect it here:
+                  If you set up a Ghost Node (running AI on your own hardware),
+                  connect it here:
                 </p>
                 <LiveNodeManager />
                 <p className="text-xs text-muted-foreground">
-                  After connecting, go to <strong className="text-foreground">Chat → Ghost mode</strong> to use your node for AI processing.
+                  After connecting, go to{" "}
+                  <strong className="text-foreground">Chat → Ghost mode</strong>{" "}
+                  to use your node for AI processing.
                 </p>
               </div>
             </div>
 
             {/* Technical details (collapsed) */}
             <TechDetails />
-
           </motion.div>
         )}
 
         {/* ── Roadmap Tab ───────────────────────────────────────────────────── */}
         {mode === "roadmap" && (
-          <motion.div key="roadmap" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+          <motion.div
+            key="roadmap"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
             <div className="max-w-3xl mx-auto">
               {/* Header */}
               <div className="text-center mb-8">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 mb-4">
                   <Rocket className="w-4 h-4 text-cyan-400" />
-                  <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Our Vision</span>
+                  <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                    Our Vision
+                  </span>
                 </div>
-                <h2 className="text-3xl font-bold text-foreground mb-3">Building AI for Everyone</h2>
+                <h2 className="text-3xl font-bold text-foreground mb-3">
+                  Building AI for Everyone
+                </h2>
                 <p className="text-muted-foreground text-lg">
-                  Everything you need to know, at your beck and call. A global brain — connected, distributed, owned by everyone.
+                  Everything you need to know, at your beck and call. A global
+                  brain — connected, distributed, owned by everyone.
                 </p>
               </div>
 
@@ -1394,8 +2046,10 @@ ingress:
                       Start Using OmniLearn
                     </button>
                   </Link>
-                  <button onClick={() => setMode("ghost")}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border/60 text-foreground hover:border-primary/40 hover:text-primary text-sm transition-all">
+                  <button
+                    onClick={() => setMode("ghost")}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border/60 text-foreground hover:border-primary/40 hover:text-primary text-sm transition-all"
+                  >
                     <Monitor className="w-4 h-4" />
                     Self-Host
                   </button>

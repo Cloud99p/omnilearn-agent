@@ -42,14 +42,19 @@ router.post("/chat", async (req, res) => {
         .where(eq(messages.conversationId, convId))
         .orderBy(desc(messages.createdAt))
         .limit(10);
-      history = hist.reverse().map(m => ({ role: m.role, content: m.content }));
+      history = hist
+        .reverse()
+        .map((m) => ({ role: m.role, content: m.content }));
     } else {
       // Create a new conversation
       const title = content.slice(0, 60);
-      const [conv] = await db.insert(conversations).values({
-        title,
-        mode: "native",
-      }).returning();
+      const [conv] = await db
+        .insert(conversations)
+        .values({
+          title,
+          mode: "native",
+        })
+        .returning();
       convId = conv.id;
       sendEvent({ conversationId: convId });
     }
@@ -64,24 +69,41 @@ router.post("/chat", async (req, res) => {
     const clerkId = null; // Future: extract from auth
 
     // Activity callback — streams search/fetch events to the client in real time
-    const onActivity = (event: { type: string; query?: string; url?: string; resultCount?: number; title?: string }) => {
-      if (event.type === "searching")   sendEvent({ searching: event.query });
-      if (event.type === "fetching")    sendEvent({ fetching: event.url });
-      if (event.type === "search_done") sendEvent({ searchDone: true, resultCount: event.resultCount });
-      if (event.type === "fetch_done")  sendEvent({ fetchDone: true, pageTitle: event.title });
+    const onActivity = (event: {
+      type: string;
+      query?: string;
+      url?: string;
+      resultCount?: number;
+      title?: string;
+    }) => {
+      if (event.type === "searching") sendEvent({ searching: event.query });
+      if (event.type === "fetching") sendEvent({ fetching: event.url });
+      if (event.type === "search_done")
+        sendEvent({ searchDone: true, resultCount: event.resultCount });
+      if (event.type === "fetch_done")
+        sendEvent({ fetchDone: true, pageTitle: event.title });
     };
 
     // Process through brain (now uses Claude with tool_use + web access)
-    const result = await processMessage(content.trim(), clerkId, history, onActivity);
+    const result = await processMessage(
+      content.trim(),
+      clerkId,
+      history,
+      onActivity,
+    );
 
     // Stream the response token-by-token
     const words = result.text.split(/(\s+)/);
     for (const word of words) {
       sendEvent({ content: word });
-      const delay = word.match(/[.!?]$/) ? 80 :
-                    word.match(/[,;:]$/) ? 40 :
-                    word.trim().length === 0 ? 15 : 25;
-      await new Promise(r => setTimeout(r, delay));
+      const delay = word.match(/[.!?]$/)
+        ? 80
+        : word.match(/[,;:]$/)
+          ? 40
+          : word.trim().length === 0
+            ? 15
+            : 25;
+      await new Promise((r) => setTimeout(r, delay));
     }
 
     // Send metadata event

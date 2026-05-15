@@ -12,11 +12,11 @@ OmniLearn uses **Semantic Versioning** (SemVer): `MAJOR.MINOR.PATCH`
 
 ### Version Components
 
-| Component | When to Increment | Example |
-|-----------|------------------|---------|
+| Component | When to Increment                      | Example           |
+| --------- | -------------------------------------- | ----------------- |
 | **MAJOR** | Breaking changes, architecture changes | `1.0.0` → `2.0.0` |
-| **MINOR** | New features, backward-compatible | `1.0.0` → `1.1.0` |
-| **PATCH** | Bug fixes, performance improvements | `1.0.0` → `1.0.1` |
+| **MINOR** | New features, backward-compatible      | `1.0.0` → `1.1.0` |
+| **PATCH** | Bug fixes, performance improvements    | `1.0.0` → `1.0.1` |
 
 ---
 
@@ -24,11 +24,11 @@ OmniLearn uses **Semantic Versioning** (SemVer): `MAJOR.MINOR.PATCH`
 
 All packages are versioned together (monorepo):
 
-| Package | Version | Description |
-|---------|---------|-------------|
-| `omnilearn-agent` (root) | `1.0.0` | Main repository |
-| `@omnilearn/frontend` | `1.0.0` | React + Vite frontend |
-| `@omnilearn/api-server` | `1.0.0` | Express 5 API server |
+| Package                        | Version | Description                |
+| ------------------------------ | ------- | -------------------------- |
+| `omnilearn-agent` (root)       | `1.0.0` | Main repository            |
+| `@omnilearn/frontend`          | `1.0.0` | React + Vite frontend      |
+| `@omnilearn/api-server`        | `1.0.0` | Express 5 API server       |
 | `@omnilearn/network-hierarchy` | `0.1.0` | 7-tier mesh network (beta) |
 
 ---
@@ -38,6 +38,7 @@ All packages are versioned together (monorepo):
 ### v1.0.0 (May 9, 2026) - **Stable Release** 🎉
 
 **Major Features:**
+
 - ✅ Production deployment (Vercel + Railway + Supabase)
 - ✅ Google OAuth authentication
 - ✅ Hebbian learning with SHA-256 proof chains
@@ -49,12 +50,14 @@ All packages are versioned together (monorepo):
 - ✅ Local AI synthesizer (no external API costs)
 
 **Infrastructure:**
+
 - Frontend: Vercel (https://omnilearn.dpdns.org)
 - Backend: Railway (https://workspaceapi-server-production-29ee.up.railway.app)
 - Database: Supabase (PostgreSQL, free tier)
 - Ghost Node: Cloudflare Tunnel (https://ghost.omnilearn.dpdns.org)
 
 **Network Architecture:**
+
 - Tier 1: Individual Node (1 agent)
 - Tier 2: Local Cluster (50 nodes, 50km)
 - Tier 3: Metro Network (250 nodes, 200km)
@@ -68,6 +71,7 @@ All packages are versioned together (monorepo):
 ### v0.9.0-rc.4 (May 8, 2026) - Release Candidate 4
 
 **Last RC before stable:**
+
 - Fixed identity detection across sessions
 - Enhanced health monitoring
 - CI/CD pipeline complete
@@ -78,6 +82,7 @@ All packages are versioned together (monorepo):
 ### v0.8.0 (May 7, 2026) - Beta
 
 **Production deployment:**
+
 - Deployed to Vercel + Railway + Supabase
 - Google OAuth configured
 - Health check endpoints
@@ -88,6 +93,7 @@ All packages are versioned together (monorepo):
 ### v0.7.0 (May 6, 2026) - Alpha
 
 **Build pipeline:**
+
 - Fixed monorepo build issues
 - Added code splitting
 - TypeScript errors resolved
@@ -98,6 +104,7 @@ All packages are versioned together (monorepo):
 ### v0.1.0-v0.6.0 (May 5, 2026) - Early Development
 
 **Initial development:**
+
 - Core architecture designed
 - Hebbian learning implemented
 - Character engine built
@@ -110,6 +117,7 @@ All packages are versioned together (monorepo):
 ### Current API Version: **v1** (unversioned - default)
 
 API endpoints are currently unversioned (default to v1):
+
 ```
 GET /api/healthz
 GET /api/omni/knowledge/stats
@@ -119,12 +127,14 @@ POST /api/omni/chat
 ### Future API Versioning (v2+)
 
 When breaking changes are needed, we'll version the API:
+
 ```
 GET /api/v1/healthz
 GET /api/v2/healthz  (breaking changes)
 ```
 
 **Version negotiation:**
+
 - Default: v1 (unversioned endpoints)
 - Header: `Accept: application/vnd.omnilearn.v2+json`
 - URL prefix: `/api/v2/...`
@@ -133,13 +143,13 @@ GET /api/v2/healthz  (breaking changes)
 
 ## Feature Flags
 
-| Feature | Version Introduced | Status |
-|---------|-------------------|--------|
-| Hebbian Learning | v0.5.0 | ✅ Stable |
-| Ontology Reflection | v0.6.0 | ⚠️ Disabled (needs DB schema) |
-| Ghost Network | v0.9.0 | ✅ Stable |
-| 7-Tier Hierarchy | v1.0.0 | 🟡 Beta (0.1.0 package) |
-| Local AI Synthesizer | v1.0.0 | ✅ Stable |
+| Feature              | Version Introduced | Status                        |
+| -------------------- | ------------------ | ----------------------------- |
+| Hebbian Learning     | v0.5.0             | ✅ Stable                     |
+| Ontology Reflection  | v0.6.0             | ⚠️ Disabled (needs DB schema) |
+| Ghost Network        | v0.9.0             | ✅ Stable                     |
+| 7-Tier Hierarchy     | v1.0.0             | 🟡 Beta (0.1.0 package)       |
+| Local AI Synthesizer | v1.0.0             | ✅ Stable                     |
 
 ---
 
@@ -150,11 +160,13 @@ GET /api/v2/healthz  (breaking changes)
 **Breaking Changes:** None (first stable release)
 
 **New Requirements:**
+
 - Node.js 24.x (was 18.x)
 - pnpm 10.x (was 9.x)
 - PostgreSQL 15+ (Supabase free tier)
 
 **Migration Steps:**
+
 ```bash
 # 1. Update dependencies
 pnpm install
@@ -167,6 +179,7 @@ git push origin main
 ```
 
 **Environment Variables:**
+
 ```bash
 # Required
 DATABASE_URL=postgresql://...
@@ -183,6 +196,7 @@ GHOST_NODE_SECRET=your-secret-key
 ## Release Process
 
 ### 1. Development → Release Candidate
+
 ```bash
 # Update version in package.json files
 # Update VERSION.md
@@ -192,12 +206,14 @@ git push origin v1.1.0-rc.1
 ```
 
 ### 2. Testing (1-2 weeks)
+
 - Test on staging
 - Monitor error rates (Sentry)
 - Check uptime (UptimeRobot)
 - User feedback
 
 ### 3. Release Candidate → Stable
+
 ```bash
 # Update version to stable
 # Update VERSION.md with release notes
@@ -207,6 +223,7 @@ git push origin v1.1.0
 ```
 
 ### 4. Deploy
+
 - Vercel auto-deploys on push
 - Railway auto-deploys on push
 - Update documentation
@@ -216,6 +233,7 @@ git push origin v1.1.0
 ## Version Display
 
 The version is displayed in the UI:
+
 - **Home page:** Top badge shows `v1.0.0 / Stable Release`
 - **API health:** `/api/healthz` returns version in response
 - **Footer:** Copyright with version number
@@ -225,13 +243,14 @@ The version is displayed in the UI:
 ## Support Policy
 
 | Version | Support Status | End of Life |
-|---------|---------------|-------------|
-| v1.0.x | ✅ Current | N/A |
-| v0.9.x | ⚠️ Deprecated | June 2026 |
-| v0.8.x | ❌ End of Life | May 2026 |
-| <v0.8 | ❌ Unsupported | N/A |
+| ------- | -------------- | ----------- |
+| v1.0.x  | ✅ Current     | N/A         |
+| v0.9.x  | ⚠️ Deprecated  | June 2026   |
+| v0.8.x  | ❌ End of Life | May 2026    |
+| <v0.8   | ❌ Unsupported | N/A         |
 
 **Support includes:**
+
 - Security patches
 - Critical bug fixes
 - Documentation updates
@@ -241,16 +260,19 @@ The version is displayed in the UI:
 ## Roadmap
 
 ### v1.1.0 (Q3 2026)
+
 - Hierarchical network Phase 2 (Metro clustering)
 - Knowledge aggregation up the hierarchy
 - Visual network topology diagram
 
 ### v1.2.0 (Q4 2026)
+
 - Regional network formation
 - Cross-cluster routing
 - Load balancing
 
 ### v2.0.0 (2027)
+
 - Continental backbone (Tier 5)
 - Global mesh (Tier 6)
 - Planetary intelligence emergence (Tier 7)

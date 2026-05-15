@@ -4,7 +4,7 @@ import { logger } from "../lib/logger";
 /**
  * Rate limiting configuration for API endpoints.
  * Prevents abuse and protects free-tier infrastructure.
- * 
+ *
  * NOTE: These limits are generous for development/testing.
  * For production, consider reducing:
  * - chatLimiter: 100 → 30 requests/hour
@@ -67,7 +67,8 @@ export const chatLimiter = rateLimit({
     );
     res.status(429).json({
       error: "Too many chat requests",
-      message: "You have exceeded the hourly chat limit. Please try again later.",
+      message:
+        "You have exceeded the hourly chat limit. Please try again later.",
       retryAfter: "3600 seconds",
     });
   },
@@ -80,7 +81,8 @@ export const skillCreateLimiter = rateLimit({
   trustProxy: true, // Required when app.set('trust proxy', true)
   message: {
     error: "Too many skill creation attempts",
-    message: "You have exceeded the skill creation limit. Please try again later.",
+    message:
+      "You have exceeded the skill creation limit. Please try again later.",
     retryAfter: "3600 seconds",
   },
   standardHeaders: true,
@@ -97,7 +99,8 @@ export const skillCreateLimiter = rateLimit({
     );
     res.status(429).json({
       error: "Too many skill creation attempts",
-      message: "You have exceeded the skill creation limit. Please try again later.",
+      message:
+        "You have exceeded the skill creation limit. Please try again later.",
       retryAfter: "3600 seconds",
     });
   },
@@ -110,7 +113,8 @@ export const githubLimiter = rateLimit({
   trustProxy: true, // Required when app.set('trust proxy', true)
   message: {
     error: "Too many GitHub requests",
-    message: "You have exceeded the GitHub API rate limit. Please try again later.",
+    message:
+      "You have exceeded the GitHub API rate limit. Please try again later.",
     retryAfter: "3600 seconds",
   },
   standardHeaders: true,
@@ -127,7 +131,8 @@ export const githubLimiter = rateLimit({
     );
     res.status(429).json({
       error: "Too many GitHub requests",
-      message: "You have exceeded the GitHub API rate limit. Please try again later.",
+      message:
+        "You have exceeded the GitHub API rate limit. Please try again later.",
       retryAfter: "3600 seconds",
     });
   },
@@ -145,7 +150,9 @@ export function createLimiter(options: {
     max: options.max,
     message: {
       error: "Too many requests",
-      message: options.message || "You have exceeded the rate limit. Please try again later.",
+      message:
+        options.message ||
+        "You have exceeded the rate limit. Please try again later.",
       retryAfter: `${Math.floor(options.windowMs / 1000)} seconds`,
     },
     standardHeaders: true,
@@ -162,7 +169,9 @@ export function createLimiter(options: {
       );
       res.status(429).json({
         error: "Too many requests",
-        message: options.message || "You have exceeded the rate limit. Please try again later.",
+        message:
+          options.message ||
+          "You have exceeded the rate limit. Please try again later.",
         retryAfter: `${Math.floor(options.windowMs / 1000)} seconds`,
       });
     },

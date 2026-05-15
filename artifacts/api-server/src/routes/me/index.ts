@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { createClerkClient } from "@clerk/express";
-import { requireAuth, type AuthenticatedRequest } from "../../middlewares/requireAuth.js";
+import {
+  requireAuth,
+  type AuthenticatedRequest,
+} from "../../middlewares/requireAuth.js";
 import { db } from "../../lib/db.js";
 import { users } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
@@ -23,16 +26,17 @@ router.get("/me", requireAuth, async (req, res) => {
       (a) => a.provider === "oauth_google",
     );
 
-    const existing = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
+    const existing = await db
+      .select()
+      .from(users)
+      .where(eq(users.clerkId, clerkId))
+      .limit(1);
 
     const userData = {
       clerkId,
       email: clerkUser.primaryEmailAddress?.emailAddress ?? null,
       displayName:
-        clerkUser.fullName ??
-        clerkUser.username ??
-        clerkUser.firstName ??
-        null,
+        clerkUser.fullName ?? clerkUser.username ?? clerkUser.firstName ?? null,
       avatarUrl: clerkUser.imageUrl ?? null,
       githubUsername: githubAccount?.username ?? null,
     };
@@ -40,7 +44,10 @@ router.get("/me", requireAuth, async (req, res) => {
     if (existing.length === 0) {
       await db.insert(users).values(userData);
     } else {
-      await db.update(users).set({ ...userData, updatedAt: new Date() }).where(eq(users.clerkId, clerkId));
+      await db
+        .update(users)
+        .set({ ...userData, updatedAt: new Date() })
+        .where(eq(users.clerkId, clerkId));
     }
 
     res.json({

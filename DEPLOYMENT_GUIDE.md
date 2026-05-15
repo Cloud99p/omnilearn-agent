@@ -23,6 +23,7 @@ Tier 1: Individual Node (1 agent)
 ### Network Infrastructure Package
 
 The `@omnilearn/network-hierarchy` package provides:
+
 - **Auto-clustering**: Nodes form clusters by geographic proximity
 - **Self-fusion**: Clusters merge into higher tiers when thresholds met
 - **Hierarchical routing**: Queries routed through appropriate tier
@@ -44,12 +45,14 @@ pnpm --filter @omnilearn/network-hierarchy run build
 ## Quick Deploy Checklist
 
 ### 1. Push Changes to GitHub
+
 ```bash
 cd /mnt/data/openclaw/workspace/.openclaw/workspace/omnilearn-agent
 git push origin main
 ```
 
 ### 2. Deploy Backend (Railway)
+
 1. Go to https://railway.app/
 2. Import your GitHub repo: `Cloud99p/omnilearn-agent`
 3. Set environment variables:
@@ -60,6 +63,7 @@ git push origin main
 4. Deploy → Railway will auto-detect the app
 
 ### 3. Deploy Frontend (Vercel)
+
 1. Go to https://vercel.com/new
 2. Import your GitHub repo: `Cloud99p/omnilearn-agent`
 3. Set environment variable:
@@ -67,12 +71,15 @@ git push origin main
 4. Deploy
 
 ### 4. Verify Health Check
+
 After deployment, test the health endpoint:
+
 ```bash
 curl https://workspaceapi-server-production-29ee.up.railway.app/api/healthz
 ```
 
 Expected response:
+
 ```json
 {
   "status": "ok",
@@ -87,6 +94,7 @@ Expected response:
 ## CI/CD Status
 
 Your GitHub Actions CI pipeline now includes:
+
 - ✅ Format check (Prettier)
 - ✅ Type checking (TypeScript)
 - ✅ Build verification
@@ -97,22 +105,26 @@ Your GitHub Actions CI pipeline now includes:
 ## Troubleshooting
 
 ### Railway Build Fails
+
 - Check Railway logs for specific errors
 - Ensure `DATABASE_URL` and `CLERK_*` keys are set
 - Try `PORT=8080` in Railway settings
 
 ### Vercel Build Fails
+
 - Check Vercel logs
 - Ensure `VITE_API_URL` is set correctly
 - Try `pnpm build` locally first
 
 ### Health Check Returns "degraded"
+
 - `database.status: error` → Check DATABASE_URL connection string
 - `clerk.status: missing` → Add Clerk keys to Railway env vars
 
 ## Monitoring
 
 ### Add Sentry (Optional)
+
 ```bash
 pnpm add @sentry/node
 ```
@@ -120,5 +132,6 @@ pnpm add @sentry/node
 Configure in `artifacts/api-server/src/lib/logger.ts` for error tracking.
 
 ### Add Uptime Monitoring
+
 - Use UptimeRobot (free tier) to monitor `/api/healthz`
 - Set alerts for downtime

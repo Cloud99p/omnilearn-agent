@@ -8,13 +8,7 @@ router.get("/rules", async (req, res) => {
     const rules = {
       piiDetection: {
         enabled: true,
-        patterns: [
-          "email",
-          "phone",
-          "ssn",
-          "credit_card",
-          "address",
-        ],
+        patterns: ["email", "phone", "ssn", "credit_card", "address"],
       },
       ethicsGovernance: {
         enabled: true,
@@ -27,15 +21,10 @@ router.get("/rules", async (req, res) => {
       },
       contentFiltering: {
         enabled: true,
-        categories: [
-          "hate_speech",
-          "violence",
-          "self_harm",
-          "sexual_content",
-        ],
+        categories: ["hate_speech", "violence", "self_harm", "sexual_content"],
       },
     };
-    
+
     res.json(rules);
   } catch (err) {
     req.log.error(err, "Failed to get compliance rules");
@@ -47,7 +36,7 @@ router.get("/rules", async (req, res) => {
 router.put("/rules", async (req, res) => {
   try {
     const { rules } = req.body;
-    
+
     // In production, this would persist to config
     res.json({ success: true, message: "Compliance rules updated" });
   } catch (err) {
