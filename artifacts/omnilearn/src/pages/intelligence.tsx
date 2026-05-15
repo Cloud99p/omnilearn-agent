@@ -690,7 +690,6 @@ export default function IntelligencePage() {
           body: JSON.stringify(payload),
         });
         // }
-        }
         
         console.log("[TRAIN] Response status:", res.status, res.ok);
         
