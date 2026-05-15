@@ -251,8 +251,9 @@ function isNonLearnable(text: string): boolean {
   if (trimmed.endsWith("?")) return true;
 
   // Direct questions (what, who, where, when, why, how, etc.)
+  // NOTE: Removed 'is' and 'are' - they appear in statements like 'Dogs are domesticated'
   const questionStarts =
-    /^(what|who|where|when|why|how|is|are|can|could|does|do|will|would|should|tell|explain|describe|show|give|help)/i;
+    /^(what|who|where|when|why|how|can|could|does|do|will|would|should|tell|explain|describe|show|give|help)/i;
   if (questionStarts.test(trimmed)) return true;
 
   // Commands/requests (imperative mood)
