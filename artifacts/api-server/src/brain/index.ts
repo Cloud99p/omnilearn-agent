@@ -270,6 +270,14 @@ async function insertNode(
   const idf = computeIdfFromVectors(existingVecs);
   const tfidfVector = buildTfidfVector(tokens, idf);
 
+  // Generate embedding for semantic search
+  let embedding: number[] | null = null;
+  try {
+    embedding = await embedText(content);
+  } catch (err) {
+    logger.warn({ err, content: content.slice(0, 100) }, "Failed to generate embedding");
+  }
+
   const [node] = await db
     .insert(knowledgeNodes)
     .values({
@@ -280,6 +288,7 @@ async function insertNode(
       confidence,
       tokens,
       tfidfVector,
+      embedding,
       clerkId: userIdentity ? clerkId : clerkId, // Identity facts MUST have clerkId
     })
     .returning();
