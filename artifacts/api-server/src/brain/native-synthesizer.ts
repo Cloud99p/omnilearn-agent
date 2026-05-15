@@ -803,19 +803,43 @@ export async function synthesizeNative(
         onActivity({ type: "search_done", resultCount: searchResults.length });
       }
 
-      // Fetch top result if it looks promising
-      if (searchResults.length > 0 && searchResults[0].url) {
+      // Fetch top results until we find good content (skip low-quality URLs)
+      const skipPatterns = [
+        /linkedin\.com.*\/legal\//, // LinkedIn legal pages
+        /\/terms(\/|$)/, /\/privacy(\/|$)/, /\/legal(\/|$)/,
+        /\/login(\/|$)/, /\/signin(\/|$)/, /\/auth(\/|$)/,
+        /\/cookies?/i, /\/gdpr/i, /\/consent/i,
+        /facebook\.com.*\/policy/i, /twitter\.com.*\/privacy/i,
+        /\.pdf($|\?)/, // Skip PDFs for now
+      ];
+      
+      for (const result of searchResults.slice(0, 5)) { // Try top 5 results
+        if (!result.url) continue;
+        
+        // Skip low-quality URLs
+        if (skipPatterns.some(p => p.test(result.url))) {
+          logger.debug({ url: result.url, title: result.title }, "Skipping low-quality URL");
+          continue;
+        }
+        
         if (onActivity) {
-          onActivity({ type: "fetching", url: searchResults[0].url });
+          onActivity({ type: "fetching", url: result.url });
         }
         try {
-          const fetched = await fetchUrl(searchResults[0].url);
-          fetchedContent = { title: fetched.title, text: fetched.text };
+          const fetched = await fetchUrl(result.url);
+          // Validate content quality
+          const text = fetched.text?.trim() || "";
+          if (text.length < 200 || text.includes("sign in") || text.includes("log in")) {
+            logger.debug({ url: result.url, textLen: text.length }, "Skipping low-quality content");
+            continue;
+          }
+          fetchedContent = { title: fetched.title, text };
           if (onActivity) {
             onActivity({ type: "fetch_done", title: fetched.title });
           }
+          break; // Success, stop trying
         } catch (err) {
-          logger.warn({ err, url: searchResults[0].url }, "Failed to fetch URL");
+          logger.warn({ err, url: result.url }, "Failed to fetch URL, trying next");
         }
       }
     } catch (err) {
@@ -1075,7 +1099,7 @@ function synthesizeFromWeb(
   
   // Process fetched content first (full page = more reliable)
   if (fetchedContent) {
-    // AGGRESSIVE CLEANING: Remove Wikipedia/navigation garbage
+    // AGGRESSIVE CLEANING: Remove Wikipedia/navigation/legal garbage
     let cleanedText = fetchedContent.text
       // Remove Wikipedia navigation elements
       .replace(/\[Jump to content\].*/gi, "")
@@ -1087,6 +1111,12 @@ function synthesizeFromWeb(
       .replace(/Visit the main page \[z\]/gi, "")
       // Remove markdown links that are navigation
       .replace(/\*\s*\[.*?\]\(.*?\)\s*".*?"/gi, "")
+      // Remove legal/terms text (LinkedIn, etc.)
+      .replace(/By clicking (Continue|Join|Sign).*?(user agreement|privacy policy|terms).*?\./gi, "")
+      .replace(/\[?(User Agreement|Privacy Policy|Terms of Service|Cookie Policy)\]?.*?\)?/gi, "")
+      .replace(/agree to.*?(terms|policy|agreement)/gi, "")
+      // Remove login/signup prompts
+      .replace(/Sign in|Log in|Sign up|Create account|Join .*? for free/gi, "")
       // Remove short lines (likely navigation)
       .split('\n')
       .filter(line => line.trim().length > 30)
