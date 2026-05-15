@@ -188,11 +188,14 @@ export function detectIdentityStatement(text: string): string | null {
 export function hasKnowledgeQuality(text: string): boolean {
   const trimmed = text.trim();
 
+  // Strip citation markers for quality checks (but keep original text)
+  const cleanText = trimmed.replace(/\[\d+\]/g, "").replace(/\[\d+,\s*\d+\]/g, "");
+
   // Too short (likely truncated)
-  if (trimmed.length < 25) return false;
+  if (cleanText.length < 25) return false;
 
   // Too long (likely a full document, not atomic fact)
-  if (trimmed.length > 500) return false;
+  if (cleanText.length > 500) return false;
 
   // Check for obvious garbage patterns
   const garbagePatterns = [
@@ -201,10 +204,9 @@ export function hasKnowledgeQuality(text: string): boolean {
     /a a\s+/i, // Repeated articles
     /\n\n\n+/, // Multiple blank lines
     /^\s*[A-Z]\.$/, // Single letter sentences
-    /et al\.?/i, // Academic citations
   ];
 
-  if (garbagePatterns.some((p) => p.test(trimmed))) return false;
+  if (garbagePatterns.some((p) => p.test(cleanText))) return false;
 
   // AI shouldn't claim agency (working on features, building things)
   const agencyPatterns = [
@@ -225,12 +227,13 @@ export function hasKnowledgeQuality(text: string): boolean {
   if (!hasVerb && trimmed.length > 40) return false; // Long text without verb is suspicious
 
   // Check for proper sentence structure (capital letter start, punctuation end)
-  const hasProperStructure = /^[A-Z]/.test(trimmed) && /[.!?]$/.test(trimmed);
-  if (!hasProperStructure && trimmed.length > 60) return false; // Long text should be properly structured
+  // Allow citation markers at end like .[28] or .[28, 29]
+  const hasProperStructure = /^[A-Z]/.test(cleanText) && /[.!?]\s*(\[\d+[\d,\s]*\])?$/.test(trimmed);
+  if (!hasProperStructure && cleanText.length > 60) return false; // Long text should be properly structured
 
-  // Reject if it's mostly numbers/symbols
-  const alphaChars = trimmed.replace(/[^a-zA-Z]/g, "").length;
-  if (alphaChars / trimmed.length < 0.6) return false; // Less than 60% letters is suspicious
+  // Reject if it's mostly numbers/symbols (but ignore citation markers)
+  const alphaChars = cleanText.replace(/[^a-zA-Z]/g, "").length;
+  if (alphaChars / cleanText.length < 0.6) return false; // Less than 60% letters is suspicious
 
   return true;
 }
@@ -387,12 +390,12 @@ export function extractFacts(text: string): ExtractedFact[] {
   }
 
   // 2. If bulk text (>200 chars), extract sentences as facts (more aggressive)
-  // For long educational content (>500 chars), always extract sentences regardless of pattern matches
-  if (text.length > 200 && (facts.length < 10 || text.length > 500)) {
+  // For long educational content (>300 chars), always extract sentences regardless of pattern matches
+  if (text.length > 200) {
     // Split into sentences
     const sentences = text
       .split(/[.!?]+\s+/)
-      .filter((s) => s.trim().length > 20 && s.trim().length < 400);
+      .filter((s) => s.trim().length > 15 && s.trim().length < 500);
 
     for (const sentence of sentences) {
       const clean = sentence.trim();
