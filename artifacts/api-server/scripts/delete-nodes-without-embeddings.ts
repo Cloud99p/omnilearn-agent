@@ -16,56 +16,58 @@ if (!DATABASE_URL) {
 }
 
 async function main() {
-  console.log("⚠️  WARNING: This will DELETE all knowledge nodes WITHOUT embeddings!");
+  console.log(
+    "⚠️  WARNING: This will DELETE all knowledge nodes WITHOUT embeddings!",
+  );
   console.log("   Make sure you ran backup-knowledge-nodes.ts first!");
   console.log("");
-  
+
   const db = drizzle(DATABASE_URL);
-  
+
   // Count nodes without embeddings
   const allNodes = await db.select().from(knowledgeNodes);
-  const withoutEmbeddings = allNodes.filter(n => 
-    !n.embedding || 
-    !Array.isArray(n.embedding) || 
-    n.embedding.length === 0
+  const withoutEmbeddings = allNodes.filter(
+    (n) =>
+      !n.embedding || !Array.isArray(n.embedding) || n.embedding.length === 0,
   );
-  
+
   console.log(`📊 Total nodes: ${allNodes.length}`);
   console.log(`📊 Nodes WITHOUT embeddings: ${withoutEmbeddings.length}`);
-  console.log(`📊 Nodes WITH embeddings: ${allNodes.length - withoutEmbeddings.length}`);
+  console.log(
+    `📊 Nodes WITH embeddings: ${allNodes.length - withoutEmbeddings.length}`,
+  );
   console.log("");
-  
+
   if (withoutEmbeddings.length === 0) {
     console.log("✅ All nodes already have embeddings. Nothing to delete.");
     return;
   }
-  
+
   console.log("🗑️  Deleting nodes without embeddings...");
-  
+
   // Delete nodes where embedding is NULL or empty array
-  const result = await db.delete(knowledgeNodes).where(
-    or(
-      isNull(knowledgeNodes.embedding),
-      eq(knowledgeNodes.embedding, [])
-    )
-  );
-  
+  const result = await db
+    .delete(knowledgeNodes)
+    .where(
+      or(isNull(knowledgeNodes.embedding), eq(knowledgeNodes.embedding, [])),
+    );
+
   console.log(`✅ Deleted ${withoutEmbeddings.length} nodes`);
   console.log("");
-  
+
   // Verify remaining nodes
   const remaining = await db.select().from(knowledgeNodes);
-  const remainingWithEmbeddings = remaining.filter(n => 
-    n.embedding && 
-    Array.isArray(n.embedding) && 
-    n.embedding.length > 0
+  const remainingWithEmbeddings = remaining.filter(
+    (n) => n.embedding && Array.isArray(n.embedding) && n.embedding.length > 0,
   );
-  
+
   console.log(`📊 Remaining nodes: ${remaining.length}`);
-  console.log(`📊 All remaining have embeddings: ${remainingWithEmbeddings.length === remaining.length ? "✅ YES" : "❌ NO"}`);
+  console.log(
+    `📊 All remaining have embeddings: ${remainingWithEmbeddings.length === remaining.length ? "✅ YES" : "❌ NO"}`,
+  );
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error("❌ Delete failed:", err);
   process.exit(1);
 });

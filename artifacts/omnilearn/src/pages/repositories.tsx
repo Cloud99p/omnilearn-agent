@@ -2,9 +2,23 @@ import { useState, useEffect, useCallback } from "react";
 import { Show } from "@clerk/react";
 import { Redirect, Link } from "wouter";
 import {
-  Github, Star, GitFork, Lock, Globe, Plus, Search,
-  RefreshCw, ExternalLink, Copy, Check, X, BookOpen,
-  Code2, Zap, Share2, AlertCircle,
+  Github,
+  Star,
+  GitFork,
+  Lock,
+  Globe,
+  Plus,
+  Search,
+  RefreshCw,
+  ExternalLink,
+  Copy,
+  Check,
+  X,
+  BookOpen,
+  Code2,
+  Zap,
+  Share2,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,13 +67,16 @@ function ConnectGitHubPrompt() {
         <Github className="w-8 h-8 text-muted-foreground" />
       </div>
       <div>
-        <h2 className="font-mono text-lg font-semibold text-foreground mb-2">Connect GitHub</h2>
+        <h2 className="font-mono text-lg font-semibold text-foreground mb-2">
+          Connect GitHub
+        </h2>
         <p className="font-mono text-sm text-muted-foreground max-w-sm">
-          Sign in with GitHub to browse, create, fork, and share repositories directly from OmniLearn.
+          Sign in with GitHub to browse, create, fork, and share repositories
+          directly from OmniLearn.
         </p>
       </div>
       <a
-        href="https://dashboard.clerk.com/" 
+        href="https://dashboard.clerk.com/"
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-2 font-mono text-sm bg-primary text-background px-5 py-2.5 rounded-lg hover:bg-primary/90 transition-colors font-semibold"
@@ -68,13 +85,19 @@ function ConnectGitHubPrompt() {
         Connect via Clerk Dashboard
       </a>
       <p className="font-mono text-xs text-muted-foreground">
-        Open Clerk dashboard in new tab → Sign in → Connected Accounts → Add GitHub
+        Open Clerk dashboard in new tab → Sign in → Connected Accounts → Add
+        GitHub
       </p>
     </div>
   );
 }
 
-function RepoCard({ repo, onFork, onShare, onCopy }: {
+function RepoCard({
+  repo,
+  onFork,
+  onShare,
+  onCopy,
+}: {
   repo: Repo;
   onFork: (owner: string, name: string) => void;
   onShare: (repo: Repo) => void;
@@ -88,7 +111,9 @@ function RepoCard({ repo, onFork, onShare, onCopy }: {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const langColor = repo.language ? (LANG_COLORS[repo.language] ?? "bg-muted-foreground") : null;
+  const langColor = repo.language
+    ? (LANG_COLORS[repo.language] ?? "bg-muted-foreground")
+    : null;
 
   return (
     <div className="p-4 rounded-xl bg-card border border-border/40 hover:border-primary/20 transition-colors group">
@@ -121,13 +146,18 @@ function RepoCard({ repo, onFork, onShare, onCopy }: {
       </div>
 
       {repo.description && (
-        <p className="font-mono text-xs text-muted-foreground mb-3 line-clamp-2">{repo.description}</p>
+        <p className="font-mono text-xs text-muted-foreground mb-3 line-clamp-2">
+          {repo.description}
+        </p>
       )}
 
       {repo.topics.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-3">
           {repo.topics.slice(0, 4).map((t) => (
-            <span key={t} className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary/80 border border-primary/20">
+            <span
+              key={t}
+              className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary/80 border border-primary/20"
+            >
               {t}
             </span>
           ))}
@@ -149,7 +179,11 @@ function RepoCard({ repo, onFork, onShare, onCopy }: {
             title="Copy clone URL"
             className="p-1.5 rounded-md hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-primary" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
           </button>
           <button
             onClick={() => onFork(repo.owner, repo.name)}
@@ -180,7 +214,13 @@ function RepoCard({ repo, onFork, onShare, onCopy }: {
   );
 }
 
-function CreateRepoModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function CreateRepoModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -188,7 +228,10 @@ function CreateRepoModal({ onClose, onCreated }: { onClose: () => void; onCreate
   const [error, setError] = useState("");
 
   const handleCreate = async () => {
-    if (!name.trim()) { setError("Repository name is required"); return; }
+    if (!name.trim()) {
+      setError("Repository name is required");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -196,7 +239,12 @@ function CreateRepoModal({ onClose, onCreated }: { onClose: () => void; onCreate
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), description, isPrivate, autoInit: true }),
+        body: JSON.stringify({
+          name: name.trim(),
+          description,
+          isPrivate,
+          autoInit: true,
+        }),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -215,21 +263,32 @@ function CreateRepoModal({ onClose, onCreated }: { onClose: () => void; onCreate
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="bg-card border border-border/60 rounded-2xl w-full max-w-md p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-card border border-border/60 rounded-2xl w-full max-w-md p-6 space-y-5"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 font-mono font-semibold text-foreground">
             <Plus className="w-4 h-4 text-primary" />
             New Repository
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground p-1"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block font-mono text-xs text-muted-foreground mb-1.5">Repository name *</label>
+            <label className="block font-mono text-xs text-muted-foreground mb-1.5">
+              Repository name *
+            </label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -238,7 +297,9 @@ function CreateRepoModal({ onClose, onCreated }: { onClose: () => void; onCreate
             />
           </div>
           <div>
-            <label className="block font-mono text-xs text-muted-foreground mb-1.5">Description</label>
+            <label className="block font-mono text-xs text-muted-foreground mb-1.5">
+              Description
+            </label>
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -248,16 +309,18 @@ function CreateRepoModal({ onClose, onCreated }: { onClose: () => void; onCreate
           </div>
           <label className="flex items-center gap-3 cursor-pointer">
             <div
-              onClick={() => setIsPrivate(p => !p)}
+              onClick={() => setIsPrivate((p) => !p)}
               className={cn(
                 "w-9 h-5 rounded-full transition-colors relative",
-                isPrivate ? "bg-primary" : "bg-border"
+                isPrivate ? "bg-primary" : "bg-border",
               )}
             >
-              <div className={cn(
-                "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform",
-                isPrivate ? "translate-x-4" : "translate-x-0.5"
-              )} />
+              <div
+                className={cn(
+                  "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform",
+                  isPrivate ? "translate-x-4" : "translate-x-0.5",
+                )}
+              />
             </div>
             <span className="font-mono text-sm text-muted-foreground">
               {isPrivate ? "Private" : "Public"} repository
@@ -273,7 +336,10 @@ function CreateRepoModal({ onClose, onCreated }: { onClose: () => void; onCreate
         )}
 
         <div className="flex gap-3 pt-1">
-          <button onClick={onClose} className="flex-1 font-mono text-sm text-muted-foreground border border-border/40 rounded-lg py-2 hover:bg-secondary/20 transition-colors">
+          <button
+            onClick={onClose}
+            className="flex-1 font-mono text-sm text-muted-foreground border border-border/40 rounded-lg py-2 hover:bg-secondary/20 transition-colors"
+          >
             Cancel
           </button>
           <button
@@ -297,7 +363,10 @@ function RepositoriesContent() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "public" | "private">("all");
   const [showCreate, setShowCreate] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<{
+    msg: string;
+    type: "success" | "error";
+  } | null>(null);
   const [forking, setForking] = useState<string | null>(null);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
@@ -325,15 +394,20 @@ function RepositoriesContent() {
     }
   }, []);
 
-  useEffect(() => { loadRepos(); }, [loadRepos]);
+  useEffect(() => {
+    loadRepos();
+  }, [loadRepos]);
 
   const handleFork = async (owner: string, repo: string) => {
     setForking(`${owner}/${repo}`);
     try {
-      const res = await fetch(`${basePath}/api/github/repos/${owner}/${repo}/fork`, {
-        method: "POST",
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${basePath}/api/github/repos/${owner}/${repo}/fork`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
       if (res.ok) {
         const d = await res.json();
         showToast(`Forked to ${d.fullName}`);
@@ -349,13 +423,17 @@ function RepositoriesContent() {
   };
 
   const handleShare = async (repo: Repo) => {
-    const content = JSON.stringify({
-      source: repo.htmlUrl,
-      cloneUrl: repo.cloneUrl,
-      branch: repo.defaultBranch,
-      sharedVia: "OmniLearn",
-      timestamp: new Date().toISOString(),
-    }, null, 2);
+    const content = JSON.stringify(
+      {
+        source: repo.htmlUrl,
+        cloneUrl: repo.cloneUrl,
+        branch: repo.defaultBranch,
+        sharedVia: "OmniLearn",
+        timestamp: new Date().toISOString(),
+      },
+      null,
+      2,
+    );
 
     try {
       const res = await fetch(`${basePath}/api/github/share`, {
@@ -382,12 +460,18 @@ function RepositoriesContent() {
   };
 
   const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => showToast("Clone URL copied"));
+    navigator.clipboard
+      .writeText(text)
+      .then(() => showToast("Clone URL copied"));
   };
 
   const filtered = repos.filter((r) => {
-    const matchSearch = !search || r.name.toLowerCase().includes(search.toLowerCase()) || r.description?.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === "all" || (filter === "private" ? r.private : !r.private);
+    const matchSearch =
+      !search ||
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.description?.toLowerCase().includes(search.toLowerCase());
+    const matchFilter =
+      filter === "all" || (filter === "private" ? r.private : !r.private);
     return matchSearch && matchFilter;
   });
 
@@ -407,13 +491,19 @@ function RepositoriesContent() {
     <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
       {/* Toast */}
       {toast && (
-        <div className={cn(
-          "fixed bottom-6 right-6 z-50 flex items-center gap-2 font-mono text-sm px-4 py-3 rounded-xl border shadow-lg",
-          toast.type === "success"
-            ? "bg-card border-primary/30 text-foreground"
-            : "bg-card border-red-400/30 text-red-400"
-        )}>
-          {toast.type === "success" ? <Check className="w-4 h-4 text-primary" /> : <AlertCircle className="w-4 h-4" />}
+        <div
+          className={cn(
+            "fixed bottom-6 right-6 z-50 flex items-center gap-2 font-mono text-sm px-4 py-3 rounded-xl border shadow-lg",
+            toast.type === "success"
+              ? "bg-card border-primary/30 text-foreground"
+              : "bg-card border-red-400/30 text-red-400",
+          )}
+        >
+          {toast.type === "success" ? (
+            <Check className="w-4 h-4 text-primary" />
+          ) : (
+            <AlertCircle className="w-4 h-4" />
+          )}
           {toast.msg}
         </div>
       )}
@@ -423,7 +513,9 @@ function RepositoriesContent() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <Github className="w-5 h-5 text-primary" />
-            <h1 className="font-mono text-xl font-bold text-foreground">Repositories</h1>
+            <h1 className="font-mono text-xl font-bold text-foreground">
+              Repositories
+            </h1>
           </div>
           <p className="font-mono text-sm text-muted-foreground ml-8">
             @{status.username} · {status.publicRepos} public repos
@@ -442,7 +534,12 @@ function RepositoriesContent() {
       <div className="grid grid-cols-3 gap-3">
         {[
           { icon: BookOpen, label: "Browse", desc: "Your repositories" },
-          { icon: Code2, label: "Create", desc: "New repository", onClick: () => setShowCreate(true) },
+          {
+            icon: Code2,
+            label: "Create",
+            desc: "New repository",
+            onClick: () => setShowCreate(true),
+          },
           { icon: Zap, label: "Skills", desc: "Share via Gist" },
         ].map((a) => (
           <button
@@ -451,8 +548,12 @@ function RepositoriesContent() {
             className="p-3 rounded-xl bg-card border border-border/40 hover:border-primary/20 text-left transition-colors group"
           >
             <a.icon className="w-4 h-4 text-primary mb-2 group-hover:scale-110 transition-transform" />
-            <div className="font-mono text-xs font-semibold text-foreground">{a.label}</div>
-            <div className="font-mono text-[10px] text-muted-foreground">{a.desc}</div>
+            <div className="font-mono text-xs font-semibold text-foreground">
+              {a.label}
+            </div>
+            <div className="font-mono text-[10px] text-muted-foreground">
+              {a.desc}
+            </div>
           </button>
         ))}
       </div>
@@ -475,7 +576,9 @@ function RepositoriesContent() {
               onClick={() => setFilter(f)}
               className={cn(
                 "font-mono text-xs px-3 py-1 rounded-md transition-colors capitalize",
-                filter === f ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground",
+                filter === f
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {f}
@@ -490,7 +593,13 @@ function RepositoriesContent() {
       </div>
       <div className="space-y-3">
         {filtered.map((repo) => (
-          <div key={repo.id} className={cn(forking === `${repo.owner}/${repo.name}` && "opacity-60 pointer-events-none")}>
+          <div
+            key={repo.id}
+            className={cn(
+              forking === `${repo.owner}/${repo.name}` &&
+                "opacity-60 pointer-events-none",
+            )}
+          >
             <RepoCard
               repo={repo}
               onFork={handleFork}

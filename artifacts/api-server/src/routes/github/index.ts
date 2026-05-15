@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { createClerkClient } from "@clerk/express";
 import { Octokit } from "@octokit/rest";
-import { requireAuth, type AuthenticatedRequest } from "../../middlewares/requireAuth.js";
+import {
+  requireAuth,
+  type AuthenticatedRequest,
+} from "../../middlewares/requireAuth.js";
 
 const router = Router();
 
@@ -11,7 +14,10 @@ const clerkClient = createClerkClient({
 
 async function getGitHubToken(clerkId: string): Promise<string | null> {
   try {
-    const tokens = await clerkClient.users.getUserOauthAccessToken(clerkId, "oauth_github");
+    const tokens = await clerkClient.users.getUserOauthAccessToken(
+      clerkId,
+      "oauth_github",
+    );
     return tokens.data?.[0]?.token ?? null;
   } catch {
     return null;
@@ -26,7 +32,12 @@ router.get("/github/repos", requireAuth, async (req, res) => {
   const clerkId = (req as AuthenticatedRequest).clerkId;
   const token = await getGitHubToken(clerkId);
   if (!token) {
-    res.status(403).json({ error: "GitHub account not connected. Sign in with GitHub to access repositories." });
+    res
+      .status(403)
+      .json({
+        error:
+          "GitHub account not connected. Sign in with GitHub to access repositories.",
+      });
     return;
   }
   try {
@@ -137,48 +148,56 @@ router.post("/github/repos", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/github/repos/:owner/:repo/fork", requireAuth, async (req, res) => {
-  const clerkId = (req as AuthenticatedRequest).clerkId;
-  const token = await getGitHubToken(clerkId);
-  if (!token) {
-    res.status(403).json({ error: "GitHub account not connected." });
-    return;
-  }
-  const { owner, repo } = req.params as { owner: string; repo: string };
-  try {
-    const octokit = makeOctokit(token);
-    const { data } = await octokit.repos.createFork({ owner, repo });
-    res.json({
-      id: data.id,
-      fullName: data.full_name,
-      htmlUrl: data.html_url,
-      cloneUrl: data.clone_url,
-    });
-  } catch (err) {
-    req.log.error(err, "Failed to fork GitHub repo");
-    res.status(500).json({ error: "Failed to fork repository" });
-  }
-});
+router.post(
+  "/github/repos/:owner/:repo/fork",
+  requireAuth,
+  async (req, res) => {
+    const clerkId = (req as AuthenticatedRequest).clerkId;
+    const token = await getGitHubToken(clerkId);
+    if (!token) {
+      res.status(403).json({ error: "GitHub account not connected." });
+      return;
+    }
+    const { owner, repo } = req.params as { owner: string; repo: string };
+    try {
+      const octokit = makeOctokit(token);
+      const { data } = await octokit.repos.createFork({ owner, repo });
+      res.json({
+        id: data.id,
+        fullName: data.full_name,
+        htmlUrl: data.html_url,
+        cloneUrl: data.clone_url,
+      });
+    } catch (err) {
+      req.log.error(err, "Failed to fork GitHub repo");
+      res.status(500).json({ error: "Failed to fork repository" });
+    }
+  },
+);
 
-router.get("/github/repos/:owner/:repo/contents", requireAuth, async (req, res) => {
-  const clerkId = (req as AuthenticatedRequest).clerkId;
-  const token = await getGitHubToken(clerkId);
-  if (!token) {
-    res.status(403).json({ error: "GitHub account not connected." });
-    return;
-  }
-  const { owner, repo } = req.params as { owner: string; repo: string };
-  const pathQuery = req.query.path as string | string[] | undefined;
-  const path = (Array.isArray(pathQuery) ? pathQuery[0] : pathQuery) ?? "";
-  try {
-    const octokit = makeOctokit(token);
-    const { data } = await octokit.repos.getContent({ owner, repo, path });
-    res.json(data);
-  } catch (err) {
-    req.log.error(err, "Failed to get repo contents");
-    res.status(500).json({ error: "Failed to fetch repository contents" });
-  }
-});
+router.get(
+  "/github/repos/:owner/:repo/contents",
+  requireAuth,
+  async (req, res) => {
+    const clerkId = (req as AuthenticatedRequest).clerkId;
+    const token = await getGitHubToken(clerkId);
+    if (!token) {
+      res.status(403).json({ error: "GitHub account not connected." });
+      return;
+    }
+    const { owner, repo } = req.params as { owner: string; repo: string };
+    const pathQuery = req.query.path as string | string[] | undefined;
+    const path = (Array.isArray(pathQuery) ? pathQuery[0] : pathQuery) ?? "";
+    try {
+      const octokit = makeOctokit(token);
+      const { data } = await octokit.repos.getContent({ owner, repo, path });
+      res.json(data);
+    } catch (err) {
+      req.log.error(err, "Failed to get repo contents");
+      res.status(500).json({ error: "Failed to fetch repository contents" });
+    }
+  },
+);
 
 router.post("/github/share", requireAuth, async (req, res) => {
   const clerkId = (req as AuthenticatedRequest).clerkId;
@@ -210,7 +229,8 @@ router.post("/github/share", requireAuth, async (req, res) => {
     res.json({
       id: data.id,
       htmlUrl: data.html_url,
-      rawUrl: (data.files as Record<string, { raw_url?: string }>)[name]?.raw_url,
+      rawUrl: (data.files as Record<string, { raw_url?: string }>)[name]
+        ?.raw_url,
     });
   } catch (err) {
     req.log.error(err, "Failed to share via GitHub Gist");

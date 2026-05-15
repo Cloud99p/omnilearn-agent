@@ -3,7 +3,7 @@
  * Handles node discovery, heartbeats, and network topology maintenance
  */
 
-import { GhostNode, DiscoveryMessage, Cluster } from './types.js';
+import { GhostNode, DiscoveryMessage, Cluster } from "./types.js";
 
 export interface DiscoveryConfig {
   heartbeatIntervalMs: number;
@@ -44,7 +44,7 @@ export class DiscoveryService {
   registerNode(node: GhostNode): void {
     this.nodes.set(node.id, node);
     this.broadcast({
-      type: 'hello',
+      type: "hello",
       fromNodeId: node.id,
       timestamp: new Date(),
       location: node.location,
@@ -55,21 +55,22 @@ export class DiscoveryService {
   /** Send heartbeat to all known nodes */
   private sendHeartbeats(): void {
     const now = new Date();
-    
+
     // Update node status
-    this.nodes.forEach(node => {
+    this.nodes.forEach((node) => {
       node.lastSeen = now;
-      
+
       // Remove if offline for too long
-      if (now.getTime() - node.lastSeen.getTime() > 300000) { // 5 minutes
-        node.status = 'offline';
+      if (now.getTime() - node.lastSeen.getTime() > 300000) {
+        // 5 minutes
+        node.status = "offline";
       }
     });
 
     // Broadcast heartbeat
     this.broadcast({
-      type: 'heartbeat',
-      fromNodeId: 'discovery-service',
+      type: "heartbeat",
+      fromNodeId: "discovery-service",
       timestamp: now,
       location: { lat: 0, lng: 0 },
       capacity: 0,
@@ -80,19 +81,21 @@ export class DiscoveryService {
   broadcast(message: DiscoveryMessage): void {
     // In production, this would use actual network transport
     // For now, just store for simulation
-    console.log(`[Discovery] Broadcasting: ${message.type} from ${message.fromNodeId}`);
+    console.log(
+      `[Discovery] Broadcasting: ${message.type} from ${message.fromNodeId}`,
+    );
   }
 
   /** Process incoming discovery message */
   processMessage(message: DiscoveryMessage): void {
     switch (message.type) {
-      case 'hello':
+      case "hello":
         this.handleHello(message);
         break;
-      case 'heartbeat':
+      case "heartbeat":
         this.handleHeartbeat(message);
         break;
-      case 'goodbye':
+      case "goodbye":
         this.handleGoodbye(message);
         break;
     }
@@ -101,7 +104,7 @@ export class DiscoveryService {
   /** Handle hello message */
   private handleHello(message: DiscoveryMessage): void {
     const existingNode = this.nodes.get(message.fromNodeId);
-    
+
     if (existingNode) {
       // Update existing node
       existingNode.lastSeen = message.timestamp;
@@ -110,10 +113,10 @@ export class DiscoveryService {
       // Create new node entry
       const newNode: GhostNode = {
         id: message.fromNodeId,
-        publicKey: '',
+        publicKey: "",
         location: message.location,
         capacity: message.capacity,
-        status: 'online',
+        status: "online",
         uptime: 100,
         lastSeen: message.timestamp,
         joinedAt: message.timestamp,
@@ -127,7 +130,7 @@ export class DiscoveryService {
     const node = this.nodes.get(message.fromNodeId);
     if (node) {
       node.lastSeen = message.timestamp;
-      node.status = 'online';
+      node.status = "online";
     }
   }
 
@@ -135,20 +138,25 @@ export class DiscoveryService {
   private handleGoodbye(message: DiscoveryMessage): void {
     const node = this.nodes.get(message.fromNodeId);
     if (node) {
-      node.status = 'offline';
+      node.status = "offline";
       node.lastSeen = message.timestamp;
     }
   }
 
   /** Find nearby nodes */
-  findNearbyNodes(center: { lat: number; lng: number }, radiusKm: number): GhostNode[] {
-    return Array.from(this.nodes.values()).filter(node => {
-      if (node.status !== 'online') return false;
-      
+  findNearbyNodes(
+    center: { lat: number; lng: number },
+    radiusKm: number,
+  ): GhostNode[] {
+    return Array.from(this.nodes.values()).filter((node) => {
+      if (node.status !== "online") return false;
+
       const latDiff = Math.abs(node.location.lat - center.lat) * 111;
-      const lngDiff = Math.abs(node.location.lng - center.lng) * 
-        Math.cos((center.lat * Math.PI) / 180) * 111;
-      
+      const lngDiff =
+        Math.abs(node.location.lng - center.lng) *
+        Math.cos((center.lat * Math.PI) / 180) *
+        111;
+
       const distance = Math.sqrt(latDiff ** 2 + lngDiff ** 2);
       return distance <= radiusKm;
     });
@@ -156,14 +164,14 @@ export class DiscoveryService {
 
   /** Get all online nodes */
   getOnlineNodes(): GhostNode[] {
-    return Array.from(this.nodes.values()).filter(n => n.status === 'online');
+    return Array.from(this.nodes.values()).filter((n) => n.status === "online");
   }
 
   /** Get node count by tier */
   getNodeCountByTier(): Record<number, number> {
     const counts: Record<number, number> = {};
-    
-    this.nodes.forEach(node => {
+
+    this.nodes.forEach((node) => {
       if (node.clusterId) {
         const cluster = this.clusters.get(node.clusterId);
         if (cluster) {
@@ -174,7 +182,7 @@ export class DiscoveryService {
         counts[1] = (counts[1] || 0) + 1;
       }
     });
-    
+
     return counts;
   }
 

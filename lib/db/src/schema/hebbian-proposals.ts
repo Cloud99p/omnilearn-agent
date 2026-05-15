@@ -1,4 +1,11 @@
-import { pgTable, serial, integer, text, real, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  integer,
+  text,
+  real,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -21,12 +28,21 @@ export const hebbianProposals = pgTable("hebbian_proposals", {
   validationCount: integer("validation_count").notNull().default(0),
   rejectionCount: integer("rejection_count").notNull().default(0),
 
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   appliedAt: timestamp("applied_at", { withTimezone: true }),
 });
 
-export const insertHebbianProposalSchema = createInsertSchema(hebbianProposals).omit({
-  id: true, createdAt: true, appliedAt: true, validationCount: true, rejectionCount: true, status: true,
+export const insertHebbianProposalSchema = createInsertSchema(
+  hebbianProposals,
+).omit({
+  id: true,
+  createdAt: true,
+  appliedAt: true,
+  validationCount: true,
+  rejectionCount: true,
+  status: true,
 });
 export type HebbianProposal = typeof hebbianProposals.$inferSelect;
 export type InsertHebbianProposal = z.infer<typeof insertHebbianProposalSchema>;

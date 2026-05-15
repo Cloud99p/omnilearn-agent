@@ -96,13 +96,13 @@ cd omnilearn-agent
 5. Railway will auto-detect your project
 6. **Add environment variables** (click "Variables" tab):
 
-   | Key | Value |
-   |-----|-------|
-   | `DATABASE_URL` | `postgresql://postgres:[PASSWORD]@db.xxxxx.supabase.co:5432/postgres` |
-   | `CLERK_PUBLISHABLE_KEY` | `pk_test_xxxxx` (from Clerk) |
-   | `CLERK_SECRET_KEY` | `sk_test_xxxxx` (from Clerk) |
-   | `PORT` | `8080` |
-   | `ANTHROPIC_API_KEY` | `sk-ant-xxxxx` (if using Claude) |
+   | Key                     | Value                                                                 |
+   | ----------------------- | --------------------------------------------------------------------- |
+   | `DATABASE_URL`          | `postgresql://postgres:[PASSWORD]@db.xxxxx.supabase.co:5432/postgres` |
+   | `CLERK_PUBLISHABLE_KEY` | `pk_test_xxxxx` (from Clerk)                                          |
+   | `CLERK_SECRET_KEY`      | `sk_test_xxxxx` (from Clerk)                                          |
+   | `PORT`                  | `8080`                                                                |
+   | `ANTHROPIC_API_KEY`     | `sk-ant-xxxxx` (if using Claude)                                      |
 
 7. **Deploy:**
    - Go to **Deployments** tab
@@ -114,11 +114,13 @@ cd omnilearn-agent
    - Copy the URL (e.g., `https://workspaceapi-server-production-29ee.up.railway.app`)
 
 **Test your backend:**
+
 ```bash
 curl https://YOUR-RAILWAY-URL.up.railway.app/api/healthz
 ```
 
 Expected response:
+
 ```json
 {
   "status": "ok",
@@ -146,10 +148,10 @@ Expected response:
    - **Install Command:** `pnpm install --no-frozen-lockfile`
 5. **Add environment variables:**
 
-   | Key | Value |
-   |-----|-------|
-   | `VITE_API_URL` | `https://YOUR-RAILWAY-URL.up.railway.app` |
-   | `VITE_CLERK_PUBLISHABLE_KEY` | `pk_test_xxxxx` (from Clerk) |
+   | Key                          | Value                                     |
+   | ---------------------------- | ----------------------------------------- |
+   | `VITE_API_URL`               | `https://YOUR-RAILWAY-URL.up.railway.app` |
+   | `VITE_CLERK_PUBLISHABLE_KEY` | `pk_test_xxxxx` (from Clerk)              |
 
 6. Click **Deploy**
 7. Wait 2-3 minutes for build
@@ -159,6 +161,7 @@ Expected response:
    - Follow DNS configuration instructions
 
 **Test your frontend:**
+
 - Open your Vercel URL (e.g., `https://omnilearn-xxxx.vercel.app`)
 - Try signing in
 - Try sending a chat message
@@ -181,6 +184,7 @@ pnpm run db:push
 ```
 
 **Verify tables were created:**
+
 1. Go to Supabase Dashboard
 2. Click **Table Editor**
 3. You should see tables like: `conversations`, `messages`, `skills`, etc.
@@ -190,22 +194,26 @@ pnpm run db:push
 ## Step 7: Test Everything
 
 ### Health Check
+
 ```bash
 curl https://YOUR-RAILWAY-URL.up.railway.app/api/healthz
 ```
 
 ### Sign In
+
 1. Go to your Vercel URL
 2. Click **Sign In**
 3. Sign in with email or Google
 4. You should be redirected to the dashboard
 
 ### Send a Message
+
 1. Go to `/chat`
 2. Type a message
 3. You should get a response from Claude
 
 ### Check Logs (if something breaks)
+
 - **Railway:** Click project → **Deployments** → **View Logs**
 - **Vercel:** Click project → **Deployments** → **View Build Logs**
 - **Supabase:** Click project → **Logs**
@@ -215,37 +223,49 @@ curl https://YOUR-RAILWAY-URL.up.railway.app/api/healthz
 ## Troubleshooting
 
 ### Backend won't start
+
 ```
 Error: DATABASE_URL must be set
 ```
+
 **Fix:** Add `DATABASE_URL` to Railway environment variables (Step 4)
 
 ### Frontend shows 404 on API calls
+
 ```
 GET /api/healthz 404
 ```
+
 **Fix:** Add `VITE_API_URL` to Vercel environment variables (Step 5)
 
 ### Clerk authentication fails
+
 ```
 Clerk: Publishable key not found
 ```
+
 **Fix:** Add both `CLERK_PUBLISHABLE_KEY` and `VITE_CLERK_PUBLISHABLE_KEY`
 
 ### Database connection timeout
+
 ```
 Error: connect ETIMEDOUT
 ```
-**Fix:** 
+
+**Fix:**
+
 1. Check Supabase project is active (not paused)
 2. Verify DATABASE_URL format includes password
 3. Check Railway logs for full error
 
 ### Build fails on Vercel
+
 ```
 Error: ENOENT: no such file or directory
 ```
-**Fix:** 
+
+**Fix:**
+
 1. Check `outputDirectory` in `vercel.json` matches your build output
 2. Try building locally: `pnpm -r --filter @workspace/omnilearn run build`
 
@@ -256,12 +276,14 @@ Error: ENOENT: no such file or directory
 **Why:** Let users sign in with Google instead of just email/password.
 
 ### 1. Create Google Cloud Project
+
 1. Go to **https://console.cloud.google.com**
 2. Click **Select a project** → **New Project**
 3. Name: `OmniLearn OAuth`
 4. Click **Create**
 
 ### 2. Configure OAuth Consent Screen
+
 1. Go to **APIs & Services** → **OAuth consent screen**
 2. **User type:** External
 3. Fill in:
@@ -273,6 +295,7 @@ Error: ENOENT: no such file or directory
 6. Click **Save and Continue**
 
 ### 3. Create OAuth Credentials
+
 1. Go to **APIs & Services** → **Credentials**
 2. Click **+ CREATE CREDENTIALS** → **OAuth client ID**
 3. **Application type:** Web application
@@ -287,12 +310,14 @@ Error: ENOENT: no such file or directory
 7. Copy **Client ID** and **Client Secret**
 
 ### 4. Add to Clerk
+
 1. Go to Clerk Dashboard → **Authentication** → **Social Connections** → **Google**
 2. Paste **Client ID** and **Client Secret**
 3. Click **Save**
 4. Toggle Google to **Enabled**
 
 ### 5. Test
+
 1. Go to your app's sign-in page
 2. Click **Continue with Google**
 3. Sign in with your Gmail
@@ -303,6 +328,7 @@ Error: ENOENT: no such file or directory
 ## CI/CD Pipeline
 
 Your GitHub Actions CI automatically:
+
 - ✅ Checks code format (Prettier)
 - ✅ Runs TypeScript type checking
 - ✅ Builds the project
@@ -311,22 +337,24 @@ Your GitHub Actions CI automatically:
 **View CI status:** https://github.com/YOUR_USERNAME/omnilearn-agent/actions
 
 **To deploy updates:**
+
 ```bash
 git push origin main
 ```
+
 Railway and Vercel will auto-deploy on push.
 
 ---
 
 ## Cost Breakdown
 
-| Service | Plan | Cost |
-|---------|------|------|
-| Vercel | Hobby | Free |
-| Railway | Starter | $5 credit (then pay-as-you-go) |
-| Supabase | Free | Free (500MB DB, 50K MAU) |
-| Clerk | Free | Free (10K MAU) |
-| Anthropic | Pay-as-you-go | ~$0.01-0.10 per conversation |
+| Service   | Plan          | Cost                           |
+| --------- | ------------- | ------------------------------ |
+| Vercel    | Hobby         | Free                           |
+| Railway   | Starter       | $5 credit (then pay-as-you-go) |
+| Supabase  | Free          | Free (500MB DB, 50K MAU)       |
+| Clerk     | Free          | Free (10K MAU)                 |
+| Anthropic | Pay-as-you-go | ~$0.01-0.10 per conversation   |
 
 **Total:** ~$0-5/month for personal use
 

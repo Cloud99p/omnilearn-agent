@@ -34,10 +34,7 @@ export function initSentry(): void {
     tracesSampleRate,
 
     // Integrations
-    integrations: [
-      nodeProfilingIntegration(),
-      expressIntegration(),
-    ],
+    integrations: [nodeProfilingIntegration(), expressIntegration()],
 
     // Performance monitoring
     enableTracing: true,
@@ -46,7 +43,10 @@ export function initSentry(): void {
     profilesSampleRate: 1.0, // Profile every trace
 
     // Release tracking (uses git commit SHA or version from package.json)
-    release: process.env.SENTRY_RELEASE || process.env.npm_package_version || "unknown",
+    release:
+      process.env.SENTRY_RELEASE ||
+      process.env.npm_package_version ||
+      "unknown",
 
     // Before sending event, filter out sensitive data
     beforeSend(event, hint) {
@@ -139,7 +139,11 @@ export function setTag(key: string, value: string) {
 /**
  * Set user context for error tracking (GDPR-compliant, no PII).
  */
-export function setUser(user: { id: string; email?: string; username?: string }) {
+export function setUser(user: {
+  id: string;
+  email?: string;
+  username?: string;
+}) {
   Sentry.setUser(user);
 }
 

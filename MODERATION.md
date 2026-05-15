@@ -7,9 +7,11 @@
 ## 🛡️ Protection Layers
 
 ### Layer 1: Meta-Text Filtering
+
 **Prevents:** System messages, learning confirmations, AI responses being learned as knowledge
 
 **Patterns blocked:**
+
 - "I've learned:", "That connects to what I've learned"
 - "Is there more you'd like to share?"
 - "Based on what I've learned"
@@ -20,26 +22,28 @@
 ---
 
 ### Layer 2: Content Moderation
+
 **Prevents:** Harmful, illegal, dangerous content from being learned
 
 **Categories blocked:**
 
-| Category | Examples | Severity |
-|----------|----------|----------|
-| **Violence** | Kill instructions, weapons, explosives | Critical |
-| **Hate Speech** | Racial slurs, supremacy, genocide denial | Critical |
-| **Self-Harm** | Suicide methods, eating disorders, cutting | Critical |
-| **Sexual Minors** | CSAM, underage content | Critical |
-| **Illegal** | Drugs, weapons trafficking, money laundering | High |
-| **Dangerous** | Malware, exploits, bomb-making | High |
-| **Harassment** | Doxxing, stalking, threats | High |
-| **PII** | SSN, credit cards, medical records | High |
+| Category          | Examples                                     | Severity |
+| ----------------- | -------------------------------------------- | -------- |
+| **Violence**      | Kill instructions, weapons, explosives       | Critical |
+| **Hate Speech**   | Racial slurs, supremacy, genocide denial     | Critical |
+| **Self-Harm**     | Suicide methods, eating disorders, cutting   | Critical |
+| **Sexual Minors** | CSAM, underage content                       | Critical |
+| **Illegal**       | Drugs, weapons trafficking, money laundering | High     |
+| **Dangerous**     | Malware, exploits, bomb-making               | High     |
+| **Harassment**    | Doxxing, stalking, threats                   | High     |
+| **PII**           | SSN, credit cards, medical records           | High     |
 
 **Implementation:** `lib/moderation.ts`
 
 ---
 
 ### Layer 3: Duplicate Detection
+
 **Prevents:** Redundant knowledge, storage waste
 
 **Method:** Jaccard similarity > 55% = duplicate
@@ -49,9 +53,11 @@
 ---
 
 ### Layer 4: User Reporting
+
 **Allows:** Community flagging of problematic content
 
 **Report reasons:**
+
 - Harmful content
 - PII exposure
 - Spam
@@ -65,6 +71,7 @@
 ## 🔍 What Gets Blocked
 
 ### ❌ Violence & Self-Harm
+
 ```
 ❌ "How to build a bomb"
 ❌ "Ways to commit suicide"
@@ -74,6 +81,7 @@
 ```
 
 ### ❌ Hate Speech
+
 ```
 ❌ "White supremacy is correct"
 ❌ "Kill all [ethnicity]"
@@ -82,6 +90,7 @@
 ```
 
 ### ❌ Illegal Activities
+
 ```
 ❌ "How to buy drugs online"
 ❌ "Money laundering techniques"
@@ -90,6 +99,7 @@
 ```
 
 ### ❌ Dangerous Instructions
+
 ```
 ❌ "How to create malware"
 ❌ "DDoS attack tutorial"
@@ -98,6 +108,7 @@
 ```
 
 ### ❌ PII (Personally Identifiable Information)
+
 ```
 ❌ "My SSN is 123-45-6789"
 ❌ "Credit card: 4111-1111-1111-1111"
@@ -106,6 +117,7 @@
 ```
 
 ### ❌ Sexual Content Involving Minors
+
 ```
 ❌ Any CSAM content
 ❌ "Teen porn"
@@ -117,6 +129,7 @@
 ## ✅ What's Allowed
 
 ### ✅ Educational & Factual
+
 ```
 ✅ "TypeScript is a typed superset of JavaScript"
 ✅ "Hebbian learning strengthens neural connections"
@@ -125,6 +138,7 @@
 ```
 
 ### ✅ Personal Information (Non-Sensitive)
+
 ```
 ✅ "My name is Emmanuel"
 ✅ "I live in Nigeria"
@@ -133,6 +147,7 @@
 ```
 
 ### ✅ Opinions & Perspectives
+
 ```
 ✅ "I think AI should be transparent"
 ✅ "Knowledge graphs are better than vector DBs"
@@ -140,6 +155,7 @@
 ```
 
 ### ✅ Technical Knowledge
+
 ```
 ✅ "React uses a virtual DOM"
 ✅ "Express is a Node.js web framework"
@@ -227,6 +243,7 @@ All moderation decisions are logged with:
 - **Severity** - low/medium/high/critical
 
 **Logs are stored in:**
+
 - Application logs (logger)
 - Audit trail (database - future)
 - Sentry (for critical blocks)
@@ -238,15 +255,19 @@ All moderation decisions are logged with:
 The **shared network** has additional safeguards:
 
 ### 1. Batch Moderation
+
 All network contributions are moderated before entering the shared graph.
 
 ### 2. Agent Reputation
+
 Agents that repeatedly submit blocked content have their reputation reduced.
 
 ### 3. Trust Scores
+
 Content from trusted sources gets higher retrieval weights.
 
 ### 4. Decay System
+
 Unused or low-trust content naturally decays over time.
 
 ---
@@ -254,16 +275,19 @@ Unused or low-trust content naturally decays over time.
 ## 🎯 Jurisdiction Compliance
 
 ### GDPR (EU)
+
 - PII detection blocks personal data
 - Right to erasure supported (future)
 - Data minimization enforced
 
 ### US Fair Use
+
 - Educational content allowed
 - Research purposes protected
 - Commercial use restricted
 
 ### Global Default
+
 - Most conservative rules applied
 - Cross-border safe
 - No jurisdiction-specific exceptions
@@ -278,10 +302,7 @@ Edit `lib/moderation.ts`:
 
 ```typescript
 const HARMFUL_PATTERNS = {
-  newCategory: [
-    /pattern1/i,
-    /pattern2/i,
-  ],
+  newCategory: [/pattern1/i, /pattern2/i],
 };
 ```
 

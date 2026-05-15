@@ -3,6 +3,7 @@
 **Vision:** AI agents with persistent, evolving knowledge that learn and adapt like humans.
 
 **Current State (May 2026):**
+
 - ✅ Core architecture deployed (Vercel + Railway + Supabase)
 - ✅ Google OAuth authentication
 - ✅ Hebbian learning with SHA-256 proof chains
@@ -44,12 +45,12 @@
 
 ### 🔴 CRITICAL (Month 1-2)
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **7-tier mesh network** | Self-organizing distributed AI | 40h | High |
-| **Auto-clustering** | Nodes form clusters by proximity | 20h | High |
-| **Hierarchical routing** | Queries routed through tiers | 24h | High |
-| **Knowledge aggregation** | Insights flow up hierarchy | 16h | High |
+| Task                      | Why                              | Effort | Impact |
+| ------------------------- | -------------------------------- | ------ | ------ |
+| **7-tier mesh network**   | Self-organizing distributed AI   | 40h    | High   |
+| **Auto-clustering**       | Nodes form clusters by proximity | 20h    | High   |
+| **Hierarchical routing**  | Queries routed through tiers     | 24h    | High   |
+| **Knowledge aggregation** | Insights flow up hierarchy       | 16h    | High   |
 
 **Implementation:**
 
@@ -74,6 +75,7 @@ pnpm --filter @omnilearn/network-hierarchy run build
 ```
 
 **Files created:**
+
 - `packages/network-hierarchy/` - Complete infrastructure
 - `packages/network-hierarchy/src/types.ts` - Network tiers, clusters, nodes
 - `packages/network-hierarchy/src/cluster-manager.ts` - Cluster formation & fusion
@@ -81,6 +83,7 @@ pnpm --filter @omnilearn/network-hierarchy run build
 - `packages/network-hierarchy/src/routing.ts` - Hierarchical query routing
 
 **Deliverables:**
+
 - ✅ Hierarchical network infrastructure complete
 - ✅ Roadmap updated with network architecture
 - ✅ Onboarding page shows 7-tier vision
@@ -92,12 +95,12 @@ pnpm --filter @omnilearn/network-hierarchy run build
 
 ### 🔴 CRITICAL (Week 1-2)
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Add error tracking (Sentry)** | Catch errors before users report them | 2h | High |
-| **Set up uptime monitoring** | Know when service is down before users tell you | 1h | High |
-| **Database migration scripts** | Schema changes won't break production | 3h | High |
-| **Rate limiting on API** | Prevent abuse on free-tier backend | 4h | High |
+| Task                            | Why                                             | Effort | Impact |
+| ------------------------------- | ----------------------------------------------- | ------ | ------ |
+| **Add error tracking (Sentry)** | Catch errors before users report them           | 2h     | High   |
+| **Set up uptime monitoring**    | Know when service is down before users tell you | 1h     | High   |
+| **Database migration scripts**  | Schema changes won't break production           | 3h     | High   |
+| **Rate limiting on API**        | Prevent abuse on free-tier backend              | 4h     | High   |
 
 **Implementation:**
 
@@ -118,6 +121,7 @@ pnpm add express-rate-limit
 ```
 
 **Files to create:**
+
 - `artifacts/api-server/src/lib/sentry.ts` - Sentry initialization
 - `artifacts/api-server/src/middlewares/rateLimit.ts` - Rate limiting
 - `memory/monitoring-setup.md` - Dashboard URLs, alert contacts
@@ -126,12 +130,12 @@ pnpm add express-rate-limit
 
 ### 🟠 HIGH (Week 3-4)
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Backup deployment path** | Railway fails → have Fly.io ready | 4h | High |
-| **Health check dashboard** | Visualize system health over time | 3h | Medium |
-| **Automated backups** | Export conversations weekly | 2h | High |
-| **Log aggregation** | Centralize logs (Railway + Vercel) | 3h | Medium |
+| Task                       | Why                                | Effort | Impact |
+| -------------------------- | ---------------------------------- | ------ | ------ |
+| **Backup deployment path** | Railway fails → have Fly.io ready  | 4h     | High   |
+| **Health check dashboard** | Visualize system health over time  | 3h     | Medium |
+| **Automated backups**      | Export conversations weekly        | 2h     | High   |
+| **Log aggregation**        | Centralize logs (Railway + Vercel) | 3h     | Medium |
 
 **Implementation:**
 
@@ -146,6 +150,7 @@ pnpm add @logtail/node
 ```
 
 **Deliverables:**
+
 - ✅ Fly.io deployment tested and documented
 - ✅ Weekly automated DB exports to S3/Google Drive
 - ✅ Centralized logging dashboard
@@ -154,14 +159,15 @@ pnpm add @logtail/node
 
 ### 🟡 MEDIUM (Month 2)
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **API versioning** | `/api/v1/...` for backward compatibility | 3h | Medium |
-| **User preferences** | Remember user settings per session | 4h | Medium |
-| **Conversation export** | Let users download their chat history | 3h | Medium |
-| **Skill marketplace UI** | Browse/install skills from UI | 8h | High |
+| Task                     | Why                                      | Effort | Impact |
+| ------------------------ | ---------------------------------------- | ------ | ------ |
+| **API versioning**       | `/api/v1/...` for backward compatibility | 3h     | Medium |
+| **User preferences**     | Remember user settings per session       | 4h     | Medium |
+| **Conversation export**  | Let users download their chat history    | 3h     | Medium |
+| **Skill marketplace UI** | Browse/install skills from UI            | 8h     | High   |
 
 **Implementation:**
+
 - Add version prefix to all routes
 - Create `user_preferences` table
 - Add export button to chat UI
@@ -171,14 +177,15 @@ pnpm add @logtail/node
 
 ### 🟢 LOW (Month 3)
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Character trait visualization** | Show users how their agent evolved | 6h | Medium |
-| **Onboarding flow** | Guide new users through features | 8h | High |
-| **Mobile-responsive UI** | Better experience on phones | 8h | Medium |
-| **Dark mode** | User preference | 4h | Low |
+| Task                              | Why                                | Effort | Impact |
+| --------------------------------- | ---------------------------------- | ------ | ------ |
+| **Character trait visualization** | Show users how their agent evolved | 6h     | Medium |
+| **Onboarding flow**               | Guide new users through features   | 8h     | High   |
+| **Mobile-responsive UI**          | Better experience on phones        | 8h     | Medium |
+| **Dark mode**                     | User preference                    | 4h     | Low    |
 
 **Deliverables:**
+
 - ✅ Personality evolution chart (radar chart over time)
 - ✅ Interactive onboarding tour (Intro.js or similar)
 - ✅ Mobile-optimized chat interface
@@ -190,12 +197,12 @@ pnpm add @logtail/node
 
 ### 🔴 CRITICAL
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Edge functions for TF-IDF** | Faster retrieval, lower latency | 8h | High |
-| **Database connection pooling** | Handle more concurrent users | 4h | High |
-| **Caching layer (Redis)** | Reduce DB load, faster responses | 6h | High |
-| **Load testing** | Know your breaking point | 4h | High |
+| Task                            | Why                              | Effort | Impact |
+| ------------------------------- | -------------------------------- | ------ | ------ |
+| **Edge functions for TF-IDF**   | Faster retrieval, lower latency  | 8h     | High   |
+| **Database connection pooling** | Handle more concurrent users     | 4h     | High   |
+| **Caching layer (Redis)**       | Reduce DB load, faster responses | 6h     | High   |
+| **Load testing**                | Know your breaking point         | 4h     | High   |
 
 **Implementation:**
 
@@ -212,6 +219,7 @@ pnpm add -D k6
 ```
 
 **Performance Targets:**
+
 - API response time: <200ms (p95)
 - TF-IDF retrieval: <100ms
 - Page load: <2s
@@ -221,14 +229,15 @@ pnpm add -D k6
 
 ### 🟠 HIGH
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Knowledge graph visualization** | Let users see their agent's knowledge | 12h | Medium |
-| **Multi-agent conversations** | Multiple agents collaborating | 16h | High |
-| **Skill composition** | Chain multiple skills together | 10h | High |
-| **Conversation summaries** | Auto-summarize long conversations | 6h | Medium |
+| Task                              | Why                                   | Effort | Impact |
+| --------------------------------- | ------------------------------------- | ------ | ------ |
+| **Knowledge graph visualization** | Let users see their agent's knowledge | 12h    | Medium |
+| **Multi-agent conversations**     | Multiple agents collaborating         | 16h    | High   |
+| **Skill composition**             | Chain multiple skills together        | 10h    | High   |
+| **Conversation summaries**        | Auto-summarize long conversations     | 6h     | Medium |
 
 **Technical Challenges:**
+
 - Graph visualization: D3.js or Cytoscape.js
 - Multi-agent: WebSocket connections, agent coordination
 - Skill composition: Pipeline architecture, skill dependency graph
@@ -237,14 +246,15 @@ pnpm add -D k6
 
 ### 🟡 MEDIUM
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Webhook integrations** | Connect to external services | 8h | Medium |
-| **Scheduled tasks** | Background jobs (cron) | 4h | Medium |
-| **Email notifications** | Notify users of important events | 4h | Low |
-| **API documentation** | Public docs for developers | 6h | Medium |
+| Task                     | Why                              | Effort | Impact |
+| ------------------------ | -------------------------------- | ------ | ------ |
+| **Webhook integrations** | Connect to external services     | 8h     | Medium |
+| **Scheduled tasks**      | Background jobs (cron)           | 4h     | Medium |
+| **Email notifications**  | Notify users of important events | 4h     | Low    |
+| **API documentation**    | Public docs for developers       | 6h     | Medium |
 
 **Tools:**
+
 - Webhooks: `express-webhook`
 - Cron: Railway Cron Jobs or GitHub Actions
 - Email: Resend (free tier)
@@ -254,12 +264,12 @@ pnpm add -D k6
 
 ### 🟢 LOW
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Chrome extension** | Quick access to OmniLearn | 12h | Low |
-| **Slack/Discord bot** | Use OmniLearn in chat | 10h | Medium |
-| **Voice input/output** | Talk to your agent | 8h | Low |
-| **Public API** | Let others build on OmniLearn | 8h | Medium |
+| Task                   | Why                           | Effort | Impact |
+| ---------------------- | ----------------------------- | ------ | ------ |
+| **Chrome extension**   | Quick access to OmniLearn     | 12h    | Low    |
+| **Slack/Discord bot**  | Use OmniLearn in chat         | 10h    | Medium |
+| **Voice input/output** | Talk to your agent            | 8h     | Low    |
+| **Public API**         | Let others build on OmniLearn | 8h     | Medium |
 
 ---
 
@@ -267,14 +277,15 @@ pnpm add -D k6
 
 ### 🔴 CRITICAL
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Upgrade Hebbian learning** | Better weight decay, reinforcement | 12h | High |
-| **Ontology v2** | More sophisticated self-reflection | 16h | High |
-| **Memory consolidation** | Sleep-like memory optimization | 10h | High |
-| **Transfer learning** | Apply knowledge across domains | 14h | High |
+| Task                         | Why                                | Effort | Impact |
+| ---------------------------- | ---------------------------------- | ------ | ------ |
+| **Upgrade Hebbian learning** | Better weight decay, reinforcement | 12h    | High   |
+| **Ontology v2**              | More sophisticated self-reflection | 16h    | High   |
+| **Memory consolidation**     | Sleep-like memory optimization     | 10h    | High   |
+| **Transfer learning**        | Apply knowledge across domains     | 14h    | High   |
 
 **Research Questions:**
+
 - How to implement memory consolidation without losing important details?
 - What metrics measure ontology "quality"?
 - How to balance stability vs. plasticity in learning?
@@ -283,34 +294,34 @@ pnpm add -D k6
 
 ### 🟠 HIGH
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Long-term memory archive** | Compress old memories, keep essentials | 8h | Medium |
-| **Emotion modeling** | Agent emotional state affects responses | 10h | Medium |
-| **Learning style adaptation** | Adapt to user's communication style | 8h | High |
-| **Proactive suggestions** | Agent suggests topics/questions | 10h | Medium |
+| Task                          | Why                                     | Effort | Impact |
+| ----------------------------- | --------------------------------------- | ------ | ------ |
+| **Long-term memory archive**  | Compress old memories, keep essentials  | 8h     | Medium |
+| **Emotion modeling**          | Agent emotional state affects responses | 10h    | Medium |
+| **Learning style adaptation** | Adapt to user's communication style     | 8h     | High   |
+| **Proactive suggestions**     | Agent suggests topics/questions         | 10h    | Medium |
 
 ---
 
 ### 🟡 MEDIUM
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Collaborative knowledge** | Shared knowledge graphs between users | 12h | Medium |
-| **Knowledge import/export** | Import from Notion, Obsidian, etc. | 10h | Medium |
-| **Citation tracking** | Show sources for agent's knowledge | 6h | Medium |
-| **Confidence scoring** | Agent indicates uncertainty | 4h | High |
+| Task                        | Why                                   | Effort | Impact |
+| --------------------------- | ------------------------------------- | ------ | ------ |
+| **Collaborative knowledge** | Shared knowledge graphs between users | 12h    | Medium |
+| **Knowledge import/export** | Import from Notion, Obsidian, etc.    | 10h    | Medium |
+| **Citation tracking**       | Show sources for agent's knowledge    | 6h     | Medium |
+| **Confidence scoring**      | Agent indicates uncertainty           | 4h     | High   |
 
 ---
 
 ### 🟢 LOW
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Avatar customization** | Visual representation of agent | 8h | Low |
-| **Voice personalities** | Different TTS voices for different modes | 4h | Low |
-| **Gamification** | Achievements, streaks, levels | 10h | Low |
-| **Mobile app** | Native iOS/Android app | 40h | Medium |
+| Task                     | Why                                      | Effort | Impact |
+| ------------------------ | ---------------------------------------- | ------ | ------ |
+| **Avatar customization** | Visual representation of agent           | 8h     | Low    |
+| **Voice personalities**  | Different TTS voices for different modes | 4h     | Low    |
+| **Gamification**         | Achievements, streaks, levels            | 10h    | Low    |
+| **Mobile app**           | Native iOS/Android app                   | 40h    | Medium |
 
 ---
 
@@ -318,88 +329,89 @@ pnpm add -D k6
 
 ### 🔴 CRITICAL
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Pricing tiers** | Free, Pro, Enterprise | 8h | High |
-| **Usage tracking** | Track API calls, storage per user | 6h | High |
-| **Billing integration** | Stripe or Lemon Squeezy | 10h | High |
-| **Team features** | Shared workspaces, collaboration | 16h | High |
+| Task                    | Why                               | Effort | Impact |
+| ----------------------- | --------------------------------- | ------ | ------ |
+| **Pricing tiers**       | Free, Pro, Enterprise             | 8h     | High   |
+| **Usage tracking**      | Track API calls, storage per user | 6h     | High   |
+| **Billing integration** | Stripe or Lemon Squeezy           | 10h    | High   |
+| **Team features**       | Shared workspaces, collaboration  | 16h    | High   |
 
 **Pricing Model (Proposed):**
 
-| Tier | Price | Features |
-|------|-------|----------|
-| Free | $0 | 100 conversations/month, 1 agent, basic skills |
-| Pro | $12/mo | Unlimited conversations, 5 agents, advanced skills, priority support |
-| Team | $49/mo | 10 seats, shared knowledge, admin dashboard, SSO |
-| Enterprise | Custom | Unlimited, dedicated infrastructure, custom integrations |
+| Tier       | Price  | Features                                                             |
+| ---------- | ------ | -------------------------------------------------------------------- |
+| Free       | $0     | 100 conversations/month, 1 agent, basic skills                       |
+| Pro        | $12/mo | Unlimited conversations, 5 agents, advanced skills, priority support |
+| Team       | $49/mo | 10 seats, shared knowledge, admin dashboard, SSO                     |
+| Enterprise | Custom | Unlimited, dedicated infrastructure, custom integrations             |
 
 ---
 
 ### 🟠 HIGH
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Analytics dashboard** | Usage metrics, insights | 12h | Medium |
-| **Referral program** | User acquisition | 6h | Medium |
-| **Content marketing** | Blog, tutorials, case studies | Ongoing | High |
-| **Community building** | Discord, forums, user groups | Ongoing | High |
+| Task                    | Why                           | Effort  | Impact |
+| ----------------------- | ----------------------------- | ------- | ------ |
+| **Analytics dashboard** | Usage metrics, insights       | 12h     | Medium |
+| **Referral program**    | User acquisition              | 6h      | Medium |
+| **Content marketing**   | Blog, tutorials, case studies | Ongoing | High   |
+| **Community building**  | Discord, forums, user groups  | Ongoing | High   |
 
 ---
 
 ### 🟡 MEDIUM
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Affiliate program** | Incentivize referrals | 4h | Low |
-| **Partnership integrations** | Notion, Zapier, Make | 20h | Medium |
-| **Conference talks** | Share research, build credibility | Ongoing | Medium |
-| **Open-source contributions** | Give back, attract contributors | Ongoing | Medium |
+| Task                          | Why                               | Effort  | Impact |
+| ----------------------------- | --------------------------------- | ------- | ------ |
+| **Affiliate program**         | Incentivize referrals             | 4h      | Low    |
+| **Partnership integrations**  | Notion, Zapier, Make              | 20h     | Medium |
+| **Conference talks**          | Share research, build credibility | Ongoing | Medium |
+| **Open-source contributions** | Give back, attract contributors   | Ongoing | Medium |
 
 ---
 
 ### 🟢 LOW
 
-| Task | Why | Effort | Impact |
-|------|-----|--------|--------|
-| **Merchandise** | T-shirts, stickers | 4h | Low |
-| **Podcast/Sponsorships** | Brand awareness | Ongoing | Low |
+| Task                        | Why                     | Effort  | Impact |
+| --------------------------- | ----------------------- | ------- | ------ |
+| **Merchandise**             | T-shirts, stickers      | 4h      | Low    |
+| **Podcast/Sponsorships**    | Brand awareness         | Ongoing | Low    |
 | **University partnerships** | Research collaborations | Ongoing | Medium |
-| **Grant applications** | Non-dilutive funding | 20h | Medium |
+| **Grant applications**      | Non-dilutive funding    | 20h     | Medium |
 
 ---
 
 ## Success Metrics (12-Month Targets)
 
-| Metric | Current | Target | Stretch |
-|--------|---------|--------|---------|
-| **Monthly Active Users** | ~10 | 1,000 | 5,000 |
-| **Conversations/Month** | ~100 | 50,000 | 200,000 |
-| **Uptime** | ~95% | 99.5% | 99.9% |
-| **API Response Time (p95)** | ~500ms | <200ms | <100ms |
-| **User Retention (D30)** | Unknown | 40% | 60% |
-| **Revenue** | $0 | $2,000/mo | $10,000/mo |
-| **GitHub Stars** | Unknown | 500 | 2,000 |
-| **Contributors** | 1 | 10 | 50 |
+| Metric                      | Current | Target    | Stretch    |
+| --------------------------- | ------- | --------- | ---------- |
+| **Monthly Active Users**    | ~10     | 1,000     | 5,000      |
+| **Conversations/Month**     | ~100    | 50,000    | 200,000    |
+| **Uptime**                  | ~95%    | 99.5%     | 99.9%      |
+| **API Response Time (p95)** | ~500ms  | <200ms    | <100ms     |
+| **User Retention (D30)**    | Unknown | 40%       | 60%        |
+| **Revenue**                 | $0      | $2,000/mo | $10,000/mo |
+| **GitHub Stars**            | Unknown | 500       | 2,000      |
+| **Contributors**            | 1       | 10        | 50         |
 
 ---
 
 ## Risk Mitigation
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| **Railway/Supabase price increase** | Medium | High | Multi-cloud deployment, cost monitoring |
-| **Anthropic API price increase** | Medium | High | Support multiple LLM providers (OpenAI, Groq) |
-| **Security breach** | Low | Critical | Regular audits, rate limiting, input validation |
-| **User data loss** | Low | Critical | Automated backups, point-in-time recovery |
-| **Key person risk** | Medium | High | Documentation, open-source community |
-| **Regulatory changes (AI)** | Medium | Medium | Compliance monitoring, legal review |
+| Risk                                | Probability | Impact   | Mitigation                                      |
+| ----------------------------------- | ----------- | -------- | ----------------------------------------------- |
+| **Railway/Supabase price increase** | Medium      | High     | Multi-cloud deployment, cost monitoring         |
+| **Anthropic API price increase**    | Medium      | High     | Support multiple LLM providers (OpenAI, Groq)   |
+| **Security breach**                 | Low         | Critical | Regular audits, rate limiting, input validation |
+| **User data loss**                  | Low         | Critical | Automated backups, point-in-time recovery       |
+| **Key person risk**                 | Medium      | High     | Documentation, open-source community            |
+| **Regulatory changes (AI)**         | Medium      | Medium   | Compliance monitoring, legal review             |
 
 ---
 
 ## Quarterly Review Cadence
 
 **End of each quarter:**
+
 1. Review metrics vs. targets
 2. Retrospective: What worked, what didn't?
 3. Adjust next quarter's roadmap
@@ -407,20 +419,25 @@ pnpm add -D k6
 5. Communicate progress to users/community
 
 **Review template:**
+
 ```markdown
 ## Q[X] 202X Review
 
 ### Wins
-- 
+
+-
 
 ### Misses
-- 
+
+-
 
 ### Learnings
-- 
+
+-
 
 ### Next Quarter Focus
-- 
+
+-
 ```
 
 ---
@@ -428,16 +445,19 @@ pnpm add -D k6
 ## Getting Involved
 
 **For contributors:**
+
 - Check `CONTRIBUTING.md` for setup
 - Look for issues tagged `good first issue`
 - Join Discord (link TBD)
 
 **For users:**
+
 - Report bugs via GitHub Issues
 - Request features via Discussions
 - Share your use cases
 
 **For sponsors:**
+
 - GitHub Sponsors (link TBD)
 - Open Collective (link TBD)
 
@@ -445,13 +465,13 @@ pnpm add -D k6
 
 ## Version History
 
-| Version | Date | Highlights |
-|---------|------|------------|
-| 0.1.0 | May 2026 | Initial deployment, OAuth, health checks |
-| 0.2.0 | Q3 2026 | Observability, rate limiting, backups |
-| 0.3.0 | Q4 2026 | Edge functions, caching, multi-agent |
-| 1.0.0 | Q1 2027 | Hebbian v2, ontology v2, memory consolidation |
-| 2.0.0 | Q2 2027 | Monetization, team features, analytics |
+| Version | Date     | Highlights                                    |
+| ------- | -------- | --------------------------------------------- |
+| 0.1.0   | May 2026 | Initial deployment, OAuth, health checks      |
+| 0.2.0   | Q3 2026  | Observability, rate limiting, backups         |
+| 0.3.0   | Q4 2026  | Edge functions, caching, multi-agent          |
+| 1.0.0   | Q1 2027  | Hebbian v2, ontology v2, memory consolidation |
+| 2.0.0   | Q2 2027  | Monetization, team features, analytics        |
 
 ---
 
@@ -461,4 +481,4 @@ pnpm add -D k6
 
 ---
 
-*"The best way to predict the future is to build it."*
+_"The best way to predict the future is to build it."_

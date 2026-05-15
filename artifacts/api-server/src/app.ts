@@ -10,7 +10,11 @@ import {
   clerkProxyMiddleware,
 } from "./middlewares/clerkProxyMiddleware";
 import { runOntologyReflection } from "./brain/ontology.js";
-import { initSentry, sentryRequestHandler, sentryErrorHandler } from "./lib/sentry";
+import {
+  initSentry,
+  sentryRequestHandler,
+  sentryErrorHandler,
+} from "./lib/sentry";
 
 // Initialize Sentry (must be first, before any other imports)
 initSentry();
@@ -18,12 +22,14 @@ initSentry();
 const app: Express = express();
 
 // Trust Railway's proxy (fixes X-Forwarded-For errors)
-app.set('trust proxy', true);
+app.set("trust proxy", true);
 
 // ── Background ontology reflection ────
 const ONTOLOGY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 function scheduleOntologyReflection() {
-  runOntologyReflection().catch(err => logger.error(err, "Ontology reflection failed"));
+  runOntologyReflection().catch((err) =>
+    logger.error(err, "Ontology reflection failed"),
+  );
   setTimeout(scheduleOntologyReflection, ONTOLOGY_INTERVAL_MS);
 }
 scheduleOntologyReflection();
@@ -55,12 +61,14 @@ app.use(
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 // Allow all origins (for development + Vercel + Railway)
-app.use(cors({ 
-  credentials: true, 
-  origin: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use(
+  cors({
+    credentials: true,
+    origin: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

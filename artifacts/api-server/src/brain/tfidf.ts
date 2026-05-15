@@ -1,10 +1,86 @@
 const STOPWORDS = new Set([
-  "the","a","an","is","it","in","on","at","to","for","of","and","or","but","with","by",
-  "from","that","this","are","was","were","be","been","being","have","has","had","do",
-  "does","did","will","would","could","should","may","might","can","shall","i","you","he",
-  "she","we","they","me","him","her","us","them","my","your","his","its","our","their",
-  "what","which","who","how","when","where","why","not","no","so","if","then","than",
-  "just","also","about","into","up","out","as","more","some","all","any","there","here",
+  "the",
+  "a",
+  "an",
+  "is",
+  "it",
+  "in",
+  "on",
+  "at",
+  "to",
+  "for",
+  "of",
+  "and",
+  "or",
+  "but",
+  "with",
+  "by",
+  "from",
+  "that",
+  "this",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "will",
+  "would",
+  "could",
+  "should",
+  "may",
+  "might",
+  "can",
+  "shall",
+  "i",
+  "you",
+  "he",
+  "she",
+  "we",
+  "they",
+  "me",
+  "him",
+  "her",
+  "us",
+  "them",
+  "my",
+  "your",
+  "his",
+  "its",
+  "our",
+  "their",
+  "what",
+  "which",
+  "who",
+  "how",
+  "when",
+  "where",
+  "why",
+  "not",
+  "no",
+  "so",
+  "if",
+  "then",
+  "than",
+  "just",
+  "also",
+  "about",
+  "into",
+  "up",
+  "out",
+  "as",
+  "more",
+  "some",
+  "all",
+  "any",
+  "there",
+  "here",
 ]);
 
 export function tokenize(text: string): string[] {
@@ -12,7 +88,7 @@ export function tokenize(text: string): string[] {
     .toLowerCase()
     .replace(/[^a-z0-9\s\-_]/g, " ")
     .split(/[\s\-_]+/)
-    .filter(t => t.length > 2 && !STOPWORDS.has(t));
+    .filter((t) => t.length > 2 && !STOPWORDS.has(t));
 }
 
 export function termFrequency(tokens: string[]): Record<string, number> {
@@ -27,7 +103,9 @@ export function termFrequency(tokens: string[]): Record<string, number> {
   return tf;
 }
 
-export function computeIdfFromVectors(vectors: Array<Record<string, number>>): Record<string, number> {
+export function computeIdfFromVectors(
+  vectors: Array<Record<string, number>>,
+): Record<string, number> {
   const N = vectors.length || 1;
   const docFreq: Record<string, number> = {};
   for (const vec of vectors) {
@@ -86,8 +164,8 @@ export function queryScore(
 
   // Boost exact term matches
   const nodeSet = new Set(nodeTokens);
-  const matchCount = queryTokens.filter(t => nodeSet.has(t)).length;
-  const exactBoost = matchCount / (queryTokens.length || 1) * 0.2;
+  const matchCount = queryTokens.filter((t) => nodeSet.has(t)).length;
+  const exactBoost = (matchCount / (queryTokens.length || 1)) * 0.2;
 
   return Math.min(1, base + exactBoost);
 }

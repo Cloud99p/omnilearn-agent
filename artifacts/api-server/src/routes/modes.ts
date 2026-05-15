@@ -74,7 +74,7 @@ router.get("/", async (req, res) => {
         icon: "🤖",
       },
     ];
-    
+
     res.json({ modes });
   } catch (err) {
     req.log.error(err, "Failed to get modes");
@@ -86,19 +86,19 @@ router.get("/", async (req, res) => {
 router.put("/", async (req, res) => {
   try {
     const { mode } = req.body;
-    
+
     const validModes = ["local", "native", "ghost", "anthropic"];
     if (!validModes.includes(mode)) {
-      res.status(400).json({ 
-        error: `Invalid mode. Must be one of: ${validModes.join(", ")}` 
+      res.status(400).json({
+        error: `Invalid mode. Must be one of: ${validModes.join(", ")}`,
       });
       return;
     }
-    
+
     // In production, this would update a config file or env var
     // For now, just acknowledge the request
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       mode,
       message: `Switched to ${mode} mode`,
     });

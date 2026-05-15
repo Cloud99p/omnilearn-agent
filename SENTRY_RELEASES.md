@@ -3,6 +3,7 @@
 ## Overview
 
 Release tracking in Sentry helps you:
+
 - ✅ Identify which deployment introduced a bug
 - ✅ See error rates per version
 - ✅ Auto-resolve issues when fixed in a release
@@ -17,10 +18,12 @@ Release tracking in Sentry helps you:
 ### ✅ Frontend (Vercel + React)
 
 **Files Modified:**
+
 1. `artifacts/omnilearn/vite.config.ts` - Injects release version
 2. `artifacts/omnilearn/src/lib/sentry.ts` - Uses `VITE_SENTRY_RELEASE`
 
 **Version Source (priority order):**
+
 1. `VITE_SENTRY_RELEASE` env var (recommended)
 2. `package.json` version (`1.0.0`)
 3. Falls back to `"unknown"`
@@ -28,11 +31,13 @@ Release tracking in Sentry helps you:
 ### ✅ Backend (Railway + Express)
 
 **Files Modified:**
+
 1. `artifacts/api-server/src/lib/sentry.ts` - Uses `SENTRY_RELEASE`
 2. `.env.example` - Added `SENTRY_RELEASE` documentation
 3. `railway.toml` - Added env var reference
 
 **Version Source (priority order):**
+
 1. `SENTRY_RELEASE` env var (recommended)
 2. `package.json` version (`1.0.0`)
 3. Falls back to `"unknown"`
@@ -64,6 +69,7 @@ Update this manually before each deploy.
 ### Option 3: Use package.json Version
 
 No env var needed — it already reads from `package.json`:
+
 ```json
 {
   "version": "1.0.0"
@@ -96,6 +102,7 @@ export SENTRY_RELEASE=$(git rev-parse --short HEAD)
 ### Option 3: Use package.json Version
 
 No env var needed — reads from `artifacts/api-server/package.json`:
+
 ```json
 {
   "version": "1.0.0"
@@ -110,8 +117,8 @@ No env var needed — reads from `artifacts/api-server/package.json`:
 
 Go to: https://vercel.com/dashboard → Your Project → Settings → Environment Variables
 
-| Variable | Value | Environment |
-|----------|-------|-------------|
+| Variable              | Value                           | Environment          |
+| --------------------- | ------------------------------- | -------------------- |
 | `VITE_SENTRY_RELEASE` | `{{GIT_COMMIT_SHA}}` or `1.0.0` | Production + Preview |
 
 **Then redeploy** for changes to take effect.
@@ -120,8 +127,8 @@ Go to: https://vercel.com/dashboard → Your Project → Settings → Environmen
 
 Go to: https://railway.app → Your Project → Variables
 
-| Variable | Value |
-|----------|-------|
+| Variable         | Value                   |
+| ---------------- | ----------------------- |
 | `SENTRY_RELEASE` | `1.0.0` (or commit SHA) |
 
 **Then redeploy** for changes to take effect.
@@ -137,6 +144,7 @@ https://sentry.io/organizations/[your-org]/releases/
 ```
 
 Or:
+
 1. Go to https://sentry.io
 2. Select your organization
 3. Click **Releases** in left sidebar
@@ -147,6 +155,7 @@ Or:
 ### 2. What You'll See
 
 For each project:
+
 - **Release name** (e.g., `1.0.0` or commit SHA)
 - **Created** timestamp
 - **First event** / **Last event**
@@ -157,6 +166,7 @@ For each project:
 ### 3. Full-Stack Correlation
 
 When both frontend and backend use the **same release version**:
+
 - Click a release → See errors from **both** projects
 - Correlate frontend errors with backend errors by version
 - Identify if a bad deploy broke both layers
@@ -164,6 +174,7 @@ When both frontend and backend use the **same release version**:
 ### 4. Release Details Page
 
 Click any release to see:
+
 - **Issues** in that release (all projects)
 - **Commits** included
 - **Deployments** (if connected to CI/CD)
@@ -177,11 +188,13 @@ Click any release to see:
 ### Auto-Resolve Issues
 
 When fixing a bug, in the issue dropdown select:
+
 - **"Resolved in next release"** → Auto-closes when new release arrives
 
 ### Deploy Notifications
 
 Connect your repo (GitHub/GitLab) to get:
+
 - Email when new release has errors
 - Slack/Discord notifications
 - Commit author attribution
@@ -189,6 +202,7 @@ Connect your repo (GitHub/GitLab) to get:
 ### Session Replay + Releases
 
 Watch replays filtered by release:
+
 1. Go to **Replays** tab
 2. Filter by release version
 3. See exactly what users experienced in that version
@@ -205,7 +219,7 @@ After deploying with `VITE_SENTRY_RELEASE` set:
 2. Check console for: `[Sentry] Initialized for production (traces: 10%)`
 3. Trigger a test error:
    ```javascript
-   throw new Error("Frontend release test error")
+   throw new Error("Frontend release test error");
    ```
 4. Go to Sentry → **Releases** → Should show `1.0.0` (or your version)!
 
@@ -220,6 +234,7 @@ After deploying with `SENTRY_RELEASE` set:
 ### Full-Stack Verification
 
 In Sentry → **Releases**:
+
 - Both projects should show the **same release version**
 - Click the release → See errors from both frontend and backend
 - This confirms your full-stack release tracking is working! ✅
@@ -229,14 +244,17 @@ In Sentry → **Releases**:
 ## Troubleshooting
 
 ### Release Shows "unknown"
+
 - Env var not set in Vercel
 - Redeploy after adding `VITE_SENTRY_RELEASE`
 
 ### No Releases Tab Visible
+
 - Need at least one event with release info
 - Trigger an error after setting up
 
 ### Commits Not Showing
+
 - Connect GitHub repo in Sentry Settings → Integrations
 - Requires repo permission
 

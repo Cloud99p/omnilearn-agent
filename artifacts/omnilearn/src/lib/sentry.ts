@@ -45,14 +45,17 @@ export function initSentry(): void {
     enableTracing: true,
 
     // Release tracking (uses git commit SHA or version from package.json)
-    release: import.meta.env.VITE_SENTRY_RELEASE || import.meta.env.npm_package_version || "unknown",
+    release:
+      import.meta.env.VITE_SENTRY_RELEASE ||
+      import.meta.env.npm_package_version ||
+      "unknown",
 
     // Filter out noisy errors
     beforeSend(event, hint) {
       // Ignore resize observer errors (common browser quirk)
       if (
-        event.exception?.values?.some(v =>
-          v.value?.includes("ResizeObserver")
+        event.exception?.values?.some((v) =>
+          v.value?.includes("ResizeObserver"),
         )
       ) {
         return null;
@@ -60,8 +63,8 @@ export function initSentry(): void {
 
       // Ignore script load errors (ad blockers, etc.)
       if (
-        event.exception?.values?.some(v =>
-          v.value?.includes("script") || v.value?.includes("stylesheet")
+        event.exception?.values?.some(
+          (v) => v.value?.includes("script") || v.value?.includes("stylesheet"),
         )
       ) {
         return null;
@@ -99,7 +102,11 @@ export function setTag(key: string, value: string) {
 /**
  * Set user context (GDPR-compliant, no PII).
  */
-export function setUser(user: { id: string; email?: string; username?: string }) {
+export function setUser(user: {
+  id: string;
+  email?: string;
+  username?: string;
+}) {
   Sentry.setUser(user);
 }
 

@@ -6,7 +6,7 @@
 
 ---
 
-## ⚠️  Prerequisites
+## ⚠️ Prerequisites
 
 1. **DATABASE_URL** must be set in your environment
 2. **ANTHROPIC_API_KEY** or local synthesizer must be working (for embedding generation)
@@ -24,6 +24,7 @@ pnpm tsx scripts/backup-knowledge-nodes.ts
 ```
 
 This creates two files:
+
 - `knowledge-nodes-backup-<timestamp>.json` — Full backup of all nodes
 - `nodes-to-reingest-<timestamp>.json` — Only nodes without embeddings
 
@@ -50,14 +51,14 @@ This deletes all nodes where `embedding IS NULL` or `embedding = []`.
 
 ```sql
 -- Count first
-SELECT 
+SELECT
   COUNT(*) as total,
   COUNT(*) FILTER (WHERE embedding IS NULL OR jsonb_array_length(embedding) = 0) as without_embeddings
 FROM knowledge_nodes;
 
 -- Delete
 DELETE FROM knowledge_nodes
-WHERE embedding IS NULL 
+WHERE embedding IS NULL
    OR jsonb_array_length(embedding) = 0;
 ```
 
@@ -78,7 +79,7 @@ pnpm tsx scripts/reingest-knowledge-nodes.ts ../knowledge-nodes-backup-<timestam
 
 ```bash
 # Check via SQL in Supabase Dashboard
-SELECT 
+SELECT
   COUNT(*) as total,
   COUNT(*) FILTER (WHERE embedding IS NOT NULL AND jsonb_array_length(embedding) > 0) as with_embeddings
 FROM knowledge_nodes;
@@ -93,17 +94,20 @@ All nodes should now have embeddings.
 The document upload UI has been commented out in `artifacts/omnilearn/src/pages/intelligence.tsx` until the backend upload issue is resolved.
 
 **What was disabled:**
+
 - File upload button in Training tab
 - `selectedFile` and `fileContent` state variables
 - Document source type selector
 - FormData upload logic
 
 **What still works:**
+
 - ✅ Manual text paste
 - ✅ Web URL fetch
 - ✅ Research mode (multiple URLs)
 
 **To re-enable later:**
+
 1. Uncomment the document button in the source selector
 2. Uncomment the `trainSource === "document"` conditional block
 3. Uncomment `selectedFile` and `fileContent` state
@@ -115,15 +119,18 @@ The document upload UI has been commented out in `artifacts/omnilearn/src/pages/
 ## Troubleshooting
 
 ### Embedding model fails to load
+
 - First run downloads the model (~80MB). Ensure internet connection.
 - Check console for `@xenova/transformers` errors.
 - Try running with `DEBUG=*` for verbose logging.
 
 ### Database connection fails
+
 - Verify `DATABASE_URL` in Railway dashboard matches Supabase connection string.
 - Ensure Supabase project is active and not paused.
 
 ### Re-ingestion is slow
+
 - This is normal. Embedding generation is CPU-intensive.
 - Model loads on first use (~10-20 seconds), then ~1-2 sec per node.
 - Let it run — batches of 10 nodes at a time.

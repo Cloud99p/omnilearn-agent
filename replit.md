@@ -66,24 +66,25 @@ lib/
 ## API Routes
 
 ### Core
-| Route | Auth | Description |
-|-------|------|-------------|
-| GET /api/healthz | — | Health check |
-| GET /api/me | Required | Current user profile (upserted into DB) |
-| GET /api/anthropic/conversations | — | List conversations |
-| POST /api/anthropic/conversations | — | Create conversation |
-| DELETE /api/anthropic/conversations/:id | — | Delete conversation |
-| POST /api/anthropic/conversations/:id/messages/stream | — | SSE streaming chat |
-| GET /api/skills | — | List skills |
-| POST /api/skills | — | Create skill |
-| DELETE /api/skills/:id | — | Delete skill |
-| GET /api/github/status | Required | GitHub connection status |
-| GET /api/github/repos | Required | List user's GitHub repos |
-| GET /api/github/repos/search | Required | Search GitHub repos |
-| POST /api/github/repos | Required | Create new repo |
-| POST /api/github/repos/:owner/:repo/fork | Required | Fork a repo |
-| GET /api/github/repos/:owner/:repo/contents | Required | Browse repo files |
-| POST /api/github/share | Required | Share config as GitHub Gist |
+
+| Route                                                 | Auth     | Description                             |
+| ----------------------------------------------------- | -------- | --------------------------------------- |
+| GET /api/healthz                                      | —        | Health check                            |
+| GET /api/me                                           | Required | Current user profile (upserted into DB) |
+| GET /api/anthropic/conversations                      | —        | List conversations                      |
+| POST /api/anthropic/conversations                     | —        | Create conversation                     |
+| DELETE /api/anthropic/conversations/:id               | —        | Delete conversation                     |
+| POST /api/anthropic/conversations/:id/messages/stream | —        | SSE streaming chat                      |
+| GET /api/skills                                       | —        | List skills                             |
+| POST /api/skills                                      | —        | Create skill                            |
+| DELETE /api/skills/:id                                | —        | Delete skill                            |
+| GET /api/github/status                                | Required | GitHub connection status                |
+| GET /api/github/repos                                 | Required | List user's GitHub repos                |
+| GET /api/github/repos/search                          | Required | Search GitHub repos                     |
+| POST /api/github/repos                                | Required | Create new repo                         |
+| POST /api/github/repos/:owner/:repo/fork              | Required | Fork a repo                             |
+| GET /api/github/repos/:owner/:repo/contents           | Required | Browse repo files                       |
+| POST /api/github/share                                | Required | Share config as GitHub Gist             |
 
 ## Authentication (Clerk)
 
@@ -98,31 +99,32 @@ lib/
 
 ## Frontend Pages
 
-| Route | Auth | Description |
-|-------|------|-------------|
-| / | Public | Home / hero page |
-| /onboarding | Public | Get Started guide |
-| /chat | Public* | AI agent chat (* requires login to persist) |
-| /personality | Public | Personality configuration |
-| /architecture | Public | System architecture |
-| /network | Public | Distributed computing |
-| /dna | Public | Instance DNA |
-| /compare | Public | Compare instances |
-| /ingestion | Public | Data ingestion |
-| /storage | Public | Storage management |
-| /memory | Public | Memory system |
-| /compliance | Public | Compliance layer |
-| /configuration | Public | Configuration |
-| /components | Public | Components reference |
-| /governance | Public | Governance |
-| /sign-in | Public | Clerk sign-in (Google + GitHub OAuth) |
-| /sign-up | Public | Clerk sign-up |
-| /account | Auth | User profile + connected accounts |
-| /repositories | Auth | GitHub repository browser |
+| Route          | Auth     | Description                                  |
+| -------------- | -------- | -------------------------------------------- |
+| /              | Public   | Home / hero page                             |
+| /onboarding    | Public   | Get Started guide                            |
+| /chat          | Public\* | AI agent chat (\* requires login to persist) |
+| /personality   | Public   | Personality configuration                    |
+| /architecture  | Public   | System architecture                          |
+| /network       | Public   | Distributed computing                        |
+| /dna           | Public   | Instance DNA                                 |
+| /compare       | Public   | Compare instances                            |
+| /ingestion     | Public   | Data ingestion                               |
+| /storage       | Public   | Storage management                           |
+| /memory        | Public   | Memory system                                |
+| /compliance    | Public   | Compliance layer                             |
+| /configuration | Public   | Configuration                                |
+| /components    | Public   | Components reference                         |
+| /governance    | Public   | Governance                                   |
+| /sign-in       | Public   | Clerk sign-in (Google + GitHub OAuth)        |
+| /sign-up       | Public   | Clerk sign-up                                |
+| /account       | Auth     | User profile + connected accounts            |
+| /repositories  | Auth     | GitHub repository browser                    |
 
 ## Clerk Appearance
 
 Dark theme matching OmniLearn brand:
+
 - Primary: `#22d3ee` (electric cyan)
 - Background: `#0f172a` (deep navy)
 - Font: JetBrains Mono / Fira Code (monospace)

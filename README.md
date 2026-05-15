@@ -53,21 +53,25 @@ omnilearn-agent/
 ## 🧠 Core Features
 
 ### Persistent Knowledge Graph
+
 - TF-IDF based semantic retrieval
 - Hebbian learning with cryptographic proof chains
 - Ontology self-reflection (merge/split/demote proposals)
 
 ### Evolving Character
+
 - 7 personality traits that adapt over interactions
 - Curiosity, caution, confidence, verbosity, technical, empathy, creativity
 - Evolution log with historical snapshots
 
 ### Distributed Neural Network
+
 - Multi-agent knowledge sharing
 - Synaptic decay and reinforcement
 - Core neuron emergence
 
 ### 🌐 Hierarchical Network Architecture (Q3-Q4 2026)
+
 - **7-tier self-organizing mesh network**
 - **Tier 1**: Individual Node (1 agent)
 - **Tier 2**: Local Cluster (50 nodes in 50km - city-wide)
@@ -81,22 +85,23 @@ omnilearn-agent/
 - Knowledge aggregation up the hierarchy
 
 ### Real-time Web Access
+
 - DuckDuckGo web search
 - URL content fetching
 - SSE streaming responses
 
 ## 🔧 Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string |
-| `CLERK_SECRET_KEY` | ✅ | Clerk API secret key |
-| `CLERK_PUBLISHABLE_KEY` | ✅ | Clerk publishable key |
-| `VITE_CLERK_PUBLISHABLE_KEY` | ✅ | Client-side Clerk key |
-| `ANTHROPIC_API_KEY` | ✅ | Anthropic API key |
-| `GITHUB_TOKEN` | ❌ | GitHub OAuth token (for repo features) |
-| `PORT` | ❌ | Server port (default: 3000) |
-| `BASE_PATH` | ❌ | Base path for deployment (default: /) |
+| Variable                     | Required | Description                            |
+| ---------------------------- | -------- | -------------------------------------- |
+| `DATABASE_URL`               | ✅       | PostgreSQL connection string           |
+| `CLERK_SECRET_KEY`           | ✅       | Clerk API secret key                   |
+| `CLERK_PUBLISHABLE_KEY`      | ✅       | Clerk publishable key                  |
+| `VITE_CLERK_PUBLISHABLE_KEY` | ✅       | Client-side Clerk key                  |
+| `ANTHROPIC_API_KEY`          | ✅       | Anthropic API key                      |
+| `GITHUB_TOKEN`               | ❌       | GitHub OAuth token (for repo features) |
+| `PORT`                       | ❌       | Server port (default: 3000)            |
+| `BASE_PATH`                  | ❌       | Base path for deployment (default: /)  |
 
 ## 📦 Commands
 
@@ -142,6 +147,7 @@ New Knowledge → Propose Edge → Cryptographic Proof → 5 Validators → Appl
 ### Ontology Reflection Cycle
 
 Runs every 10 minutes:
+
 1. Scan for novel edge types → propose registration
 2. Find low-confidence rules → propose demotion
 3. Detect duplicate concepts → propose merge
@@ -149,14 +155,14 @@ Runs every 10 minutes:
 
 ## 🗄️ Database Schema
 
-| Table | Purpose |
-|-------|---------|
-| `knowledge_nodes` + `knowledge_edges` | Local knowledge graph |
-| `hebbian_proposals` | Pending edge mutations |
-| `character_state` | Personality traits + evolution |
-| `network_neurons` + `network_synapses` | Distributed neural network |
-| `ontology_nodes` + `ontology_proposals` | Meta-ontology management |
-| `conversations` + `messages` | Chat history |
+| Table                                   | Purpose                        |
+| --------------------------------------- | ------------------------------ |
+| `knowledge_nodes` + `knowledge_edges`   | Local knowledge graph          |
+| `hebbian_proposals`                     | Pending edge mutations         |
+| `character_state`                       | Personality traits + evolution |
+| `network_neurons` + `network_synapses`  | Distributed neural network     |
+| `ontology_nodes` + `ontology_proposals` | Meta-ontology management       |
+| `conversations` + `messages`            | Chat history                   |
 
 ## 🚀 Deployment
 
@@ -205,6 +211,7 @@ pnpm run typecheck
 API routes are documented in `lib/api-spec/openapi.yaml`.
 
 Key endpoints:
+
 - `POST /api/omni/chat` — SSE streaming chat
 - `GET /api/omni/knowledge` — Browse knowledge nodes
 - `POST /api/omni/train` — Manual training
@@ -220,6 +227,7 @@ Key endpoints:
 5. Open a Pull Request
 
 **Requirements:**
+
 - All PRs must pass CI (type check + build)
 - Follow existing code style
 - Update documentation for new features
@@ -234,4 +242,5 @@ MIT License — see [LICENSE](LICENSE) for details.
 - Powered by [Anthropic Claude](https://anthropic.com)
 - UI components from [shadcn/ui](https://ui.shadcn.com)
 - ORM by [Drizzle](https://orm.drizzle.team)
+
 # Redeploy trigger

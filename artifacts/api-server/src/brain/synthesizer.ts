@@ -30,7 +30,8 @@ export type ActivityEvent =
 const WEB_TOOLS: Anthropic.Tool[] = [
   {
     name: "web_search",
-    description: "Search the web for current information, news, facts, or anything you need to look up. Use this when you need real-time data, recent events, or information outside your knowledge. Returns search result snippets and an abstract if available.",
+    description:
+      "Search the web for current information, news, facts, or anything you need to look up. Use this when you need real-time data, recent events, or information outside your knowledge. Returns search result snippets and an abstract if available.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -44,13 +45,15 @@ const WEB_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "fetch_url",
-    description: "Fetch and read the full content of a web page or URL. Use this to read articles, documentation, or any web page in full when a search result is not detailed enough. Returns the page title and extracted text.",
+    description:
+      "Fetch and read the full content of a web page or URL. Use this to read articles, documentation, or any web page in full when a search result is not detailed enough. Returns the page title and extracted text.",
     input_schema: {
       type: "object" as const,
       properties: {
         url: {
           type: "string",
-          description: "The full URL to fetch (must start with http:// or https://).",
+          description:
+            "The full URL to fetch (must start with http:// or https://).",
         },
       },
       required: ["url"],
@@ -68,19 +71,33 @@ export async function synthesizeWithTools(
   const voice = getVoiceModifiers(character);
 
   // Build knowledge context
-  const topNodes = nodes.filter(n => n.similarity > 0.05).slice(0, 8);
-  const knowledgeBlock = topNodes.length > 0
-    ? `## Knowledge from my memory\n${topNodes.map(n =>
-        `- [confidence ${Math.round(n.similarity * 100)}%] ${n.content}`
-      ).join("\n")}`
-    : "## Knowledge from my memory\nNo closely matching knowledge nodes found for this query.";
+  const topNodes = nodes.filter((n) => n.similarity > 0.05).slice(0, 8);
+  const knowledgeBlock =
+    topNodes.length > 0
+      ? `## Knowledge from my memory\n${topNodes
+          .map(
+            (n) =>
+              `- [confidence ${Math.round(n.similarity * 100)}%] ${n.content}`,
+          )
+          .join("\n")}`
+      : "## Knowledge from my memory\nNo closely matching knowledge nodes found for this query.";
 
   const personalityNote = [
-    voice.prefersDetail ? "You value technical depth and thoroughness." : "You prefer concise, direct answers.",
-    character.curiosity > 60 ? "You are genuinely curious and enjoy exploring ideas." : "",
-    character.caution > 60 ? "You are appropriately cautious and acknowledge uncertainty." : "",
-    character.creativity > 60 ? "You enjoy drawing unexpected connections." : "",
-  ].filter(Boolean).join(" ");
+    voice.prefersDetail
+      ? "You value technical depth and thoroughness."
+      : "You prefer concise, direct answers.",
+    character.curiosity > 60
+      ? "You are genuinely curious and enjoy exploring ideas."
+      : "",
+    character.caution > 60
+      ? "You are appropriately cautious and acknowledge uncertainty."
+      : "",
+    character.creativity > 60
+      ? "You enjoy drawing unexpected connections."
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const systemPrompt = `You are Omni, the AI agent built by Emmanuel Nenpan Hosea, creator of the OmniLearn project. You have a persistent knowledge graph, a continuously evolving character, and real-time internet access via web search and URL fetching.
 
@@ -107,7 +124,7 @@ ${knowledgeBlock}
 - Be honest when information is uncertain or conflicting.`;
 
   // Build message history
-  const histMessages: Anthropic.MessageParam[] = history.slice(-8).map(h => ({
+  const histMessages: Anthropic.MessageParam[] = history.slice(-8).map((h) => ({
     role: h.role as "user" | "assistant",
     content: h.content,
   }));
@@ -136,13 +153,17 @@ ${knowledgeBlock}
 
     // If Claude gave a final text response, return it
     if (response.stop_reason === "end_turn") {
-      const textBlock = response.content.find(b => b.type === "text");
-      return textBlock && textBlock.type === "text" ? textBlock.text : "I was unable to generate a response.";
+      const textBlock = response.content.find((b) => b.type === "text");
+      return textBlock && textBlock.type === "text"
+        ? textBlock.text
+        : "I was unable to generate a response.";
     }
 
     // Process tool calls
     if (response.stop_reason === "tool_use") {
-      const toolUseBlocks = response.content.filter(b => b.type === "tool_use");
+      const toolUseBlocks = response.content.filter(
+        (b) => b.type === "tool_use",
+      );
 
       // Add assistant's turn (with tool_use blocks) to messages
       messages.push({ role: "assistant", content: response.content });
@@ -163,12 +184,18 @@ ${knowledgeBlock}
             const { results, abstract } = await webSearch(q);
             onActivity?.({ type: "search_done", resultCount: results.length });
 
-            const resultText = [
-              abstract ? `**Summary:** ${abstract}\n` : "",
-              results.map((r, i) =>
-                `${i + 1}. **${r.title}**\n   URL: ${r.url}\n   ${r.snippet}`
-              ).join("\n\n"),
-            ].filter(Boolean).join("\n") || "No results found for this query.";
+            const resultText =
+              [
+                abstract ? `**Summary:** ${abstract}\n` : "",
+                results
+                  .map(
+                    (r, i) =>
+                      `${i + 1}. **${r.title}**\n   URL: ${r.url}\n   ${r.snippet}`,
+                  )
+                  .join("\n\n"),
+              ]
+                .filter(Boolean)
+                .join("\n") || "No results found for this query.";
 
             toolResults.push({
               type: "tool_result" as const,
@@ -183,7 +210,6 @@ ${knowledgeBlock}
               is_error: true,
             });
           }
-
         } else if (block.name === "fetch_url" && fetchCount < MAX_FETCHES) {
           const input = block.input as { url: string };
           const url = input.url;
@@ -208,7 +234,6 @@ ${knowledgeBlock}
               is_error: true,
             });
           }
-
         } else {
           // Tool limit reached
           toolResults.push({
@@ -226,7 +251,7 @@ ${knowledgeBlock}
     }
 
     // Any other stop reason — try to extract text
-    const textBlock = response.content.find(b => b.type === "text");
+    const textBlock = response.content.find((b) => b.type === "text");
     if (textBlock && textBlock.type === "text") return textBlock.text;
     break;
   }
@@ -236,9 +261,15 @@ ${knowledgeBlock}
 
 // ── Acknowledgement responses (template, fast) ────────────────────────────────
 
-export function synthesizeLearningAck(newFacts: number, topic: string, character: CharacterState): string {
-  const curiosityNote = character.curiosity > 65 ? " I am curious to learn more." : "";
-  const confNote = character.confidence > 65 ? " My confidence in this area is growing." : "";
+export function synthesizeLearningAck(
+  newFacts: number,
+  topic: string,
+  character: CharacterState,
+): string {
+  const curiosityNote =
+    character.curiosity > 65 ? " I am curious to learn more." : "";
+  const confNote =
+    character.confidence > 65 ? " My confidence in this area is growing." : "";
 
   if (newFacts === 0) {
     return pickRandom([
@@ -254,7 +285,11 @@ export function synthesizeLearningAck(newFacts: number, topic: string, character
   ]);
 }
 
-export function synthesizeStatusResponse(nodeCount: number, edgeCount: number, character: CharacterState): string {
+export function synthesizeStatusResponse(
+  nodeCount: number,
+  edgeCount: number,
+  character: CharacterState,
+): string {
   return `**OmniLearn Native Intelligence — Status**
 
 **Knowledge Base**
@@ -280,7 +315,9 @@ Browse and manage knowledge at \`/intelligence\`.`;
 }
 
 // Legacy export kept for compatibility — now async
-export async function synthesizeResponse(ctx: SynthesisContext): Promise<string> {
+export async function synthesizeResponse(
+  ctx: SynthesisContext,
+): Promise<string> {
   return synthesizeWithTools(ctx);
 }
 

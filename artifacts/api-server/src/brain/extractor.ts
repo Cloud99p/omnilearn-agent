@@ -8,23 +8,70 @@ export interface ExtractedFact {
 
 // Common words that should NOT be captured as names
 const NON_NAME_WORDS = new Set([
-  'learning', 'happy', 'sad', 'tired', 'excited', 'bored', 'confused',
-  'ai', 'bot', 'assistant', 'omni', 'omnilearn', 'robot', 'machine', 'system',
-  'a', 'an', 'the', 'this', 'that', 'one', 'someone', 'anyone',
-  'student', 'developer', 'programmer', 'engineer', 'user', 'person',
-  'here', 'there', 'ready', 'sure', 'okay', 'ok', 'yes', 'no',
+  "learning",
+  "happy",
+  "sad",
+  "tired",
+  "excited",
+  "bored",
+  "confused",
+  "ai",
+  "bot",
+  "assistant",
+  "omni",
+  "omnilearn",
+  "robot",
+  "machine",
+  "system",
+  "a",
+  "an",
+  "the",
+  "this",
+  "that",
+  "one",
+  "someone",
+  "anyone",
+  "student",
+  "developer",
+  "programmer",
+  "engineer",
+  "user",
+  "person",
+  "here",
+  "there",
+  "ready",
+  "sure",
+  "okay",
+  "ok",
+  "yes",
+  "no",
 ]);
 
 // Identity statement patterns - detect user self-identification
-const IDENTITY_PATTERNS: Array<{ re: RegExp; extractName: (m: RegExpMatchArray) => string }> = [
+const IDENTITY_PATTERNS: Array<{
+  re: RegExp;
+  extractName: (m: RegExpMatchArray) => string;
+}> = [
   // "I am [Name]" or "I'm [Name]" - must be capitalized proper noun(s)
-  { re: /(i am|i'm)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i, extractName: (m) => m[2] },
+  {
+    re: /(i am|i'm)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i,
+    extractName: (m) => m[2],
+  },
   // "My name is [Name]"
-  { re: /my name is\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i, extractName: (m) => m[1] },
+  {
+    re: /my name is\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i,
+    extractName: (m) => m[1],
+  },
   // "Call me [Name]"
-  { re: /call me\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i, extractName: (m) => m[1] },
+  {
+    re: /call me\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i,
+    extractName: (m) => m[1],
+  },
   // "I go by [Name]"
-  { re: /i go by\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i, extractName: (m) => m[1] },
+  {
+    re: /i go by\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i,
+    extractName: (m) => m[1],
+  },
 ];
 
 /**
@@ -32,35 +79,89 @@ const IDENTITY_PATTERNS: Array<{ re: RegExp; extractName: (m: RegExpMatchArray) 
  */
 function isValidName(name: string): boolean {
   const lower = name.toLowerCase().trim();
-  
+
   // Must start with capital letter and be 2-50 chars
   if (!/^[A-Z][a-z]/.test(name)) return false;
   if (name.length < 2 || name.length > 50) return false;
-  
+
   // Reject if it's a common non-name word
   if (NON_NAME_WORDS.has(lower)) return false;
-  
+
   // Reject if it looks like an AI self-description or project name
-  if (/\b(ai|bot|assistant|omni|omnilearn|robot|machine|intelligence)\b/i.test(lower)) return false;
-  
+  if (
+    /\b(ai|bot|assistant|omni|omnilearn|robot|machine|intelligence)\b/i.test(
+      lower,
+    )
+  )
+    return false;
+
   // Reject if it's just a common noun pretending to be capitalized
-  const commonNouns = ['Learning', 'Happy', 'Sad', 'Tired', 'Ready', 'Sure', 'Here', 'There'];
+  const commonNouns = [
+    "Learning",
+    "Happy",
+    "Sad",
+    "Tired",
+    "Ready",
+    "Sure",
+    "Here",
+    "There",
+  ];
   if (commonNouns.includes(name)) return false;
-  
+
   return true;
 }
 
-const FACT_PATTERNS: Array<{ re: RegExp; type: ExtractedFact["type"]; conf: number }> = [
-  { re: /([A-Za-z][\w\s]{2,40}?)\s+(?:is|are)\s+(?:a|an|the|one of)?\s*([\w][\w\s,]{2,60})/gi, type: "fact", conf: 0.75 },
-  { re: /([A-Za-z][\w\s]{2,40}?)\s+(?:means?|refers? to|stands? for)\s+([\w][\w\s,]{2,60})/gi, type: "fact", conf: 0.80 },
-  { re: /([A-Za-z][\w\s]{2,40}?)\s+(?:can|could|enables?|allows?)\s+([\w][\w\s,]{2,60})/gi, type: "rule", conf: 0.70 },
-  { re: /([A-Za-z][\w\s]{2,40}?)\s+(?:causes?|leads? to|results? in|produces?)\s+([\w][\w\s,]{2,60})/gi, type: "fact", conf: 0.75 },
-  { re: /([A-Za-z][\w\s]{2,40}?)\s+(?:uses?|employs?|relies? on|requires?)\s+([\w][\w\s,]{2,60})/gi, type: "fact", conf: 0.70 },
-  { re: /([A-Za-z][\w\s]{2,40}?)\s+(?:consists? of|contains?|includes?|has)\s+([\w][\w\s,]{2,60})/gi, type: "fact", conf: 0.70 },
-  { re: /([A-Za-z][\w\s]{2,40}?)\s+(?:was|were)\s+(?:designed?|built?|created?|developed?)\s+(?:to|for|by)\s+([\w][\w\s,]{2,60})/gi, type: "fact", conf: 0.72 },
-  { re: /([A-Za-z][\w\s]{2,40}?)\s+(?:works?|operates?|functions?|runs?)\s+(?:by|through|via|on)\s+([\w][\w\s,]{2,60})/gi, type: "fact", conf: 0.68 },
+const FACT_PATTERNS: Array<{
+  re: RegExp;
+  type: ExtractedFact["type"];
+  conf: number;
+}> = [
+  {
+    re: /([A-Za-z][\w\s]{2,40}?)\s+(?:is|are)\s+(?:a|an|the|one of)?\s*([\w][\w\s,]{2,60})/gi,
+    type: "fact",
+    conf: 0.75,
+  },
+  {
+    re: /([A-Za-z][\w\s]{2,40}?)\s+(?:means?|refers? to|stands? for)\s+([\w][\w\s,]{2,60})/gi,
+    type: "fact",
+    conf: 0.8,
+  },
+  {
+    re: /([A-Za-z][\w\s]{2,40}?)\s+(?:can|could|enables?|allows?)\s+([\w][\w\s,]{2,60})/gi,
+    type: "rule",
+    conf: 0.7,
+  },
+  {
+    re: /([A-Za-z][\w\s]{2,40}?)\s+(?:causes?|leads? to|results? in|produces?)\s+([\w][\w\s,]{2,60})/gi,
+    type: "fact",
+    conf: 0.75,
+  },
+  {
+    re: /([A-Za-z][\w\s]{2,40}?)\s+(?:uses?|employs?|relies? on|requires?)\s+([\w][\w\s,]{2,60})/gi,
+    type: "fact",
+    conf: 0.7,
+  },
+  {
+    re: /([A-Za-z][\w\s]{2,40}?)\s+(?:consists? of|contains?|includes?|has)\s+([\w][\w\s,]{2,60})/gi,
+    type: "fact",
+    conf: 0.7,
+  },
+  {
+    re: /([A-Za-z][\w\s]{2,40}?)\s+(?:was|were)\s+(?:designed?|built?|created?|developed?)\s+(?:to|for|by)\s+([\w][\w\s,]{2,60})/gi,
+    type: "fact",
+    conf: 0.72,
+  },
+  {
+    re: /([A-Za-z][\w\s]{2,40}?)\s+(?:works?|operates?|functions?|runs?)\s+(?:by|through|via|on)\s+([\w][\w\s,]{2,60})/gi,
+    type: "fact",
+    conf: 0.68,
+  },
   // NEW: Capture simple declarative sentences as facts
-  { re: /^(\w+\s+\w+\s+\w+)\s+(?:is|are|was|were)\s+(\w+)$/i, type: "fact", conf: 0.60 },
+  {
+    re: /^(\w+\s+\w+\s+\w+)\s+(?:is|are|was|were)\s+(\w+)$/i,
+    type: "fact",
+    conf: 0.6,
+  },
 ];
 
 /**
@@ -86,28 +187,28 @@ export function detectIdentityStatement(text: string): string | null {
  */
 export function hasKnowledgeQuality(text: string): boolean {
   const trimmed = text.trim();
-  
+
   // Too short (likely truncated)
   if (trimmed.length < 25) return false;
-  
+
   // Too long (likely a full document, not atomic fact)
   if (trimmed.length > 500) return false;
-  
+
   // Check for obvious garbage patterns
   const garbagePatterns = [
-    /is a n\s+\w+/i,           // "is a n open" (broken grammar)
-    /the the\s+/i,              // Repeated words
-    /a a\s+/i,                  // Repeated articles
-    /\n\n\n+/,                  // Multiple blank lines
-    /^\s*[A-Z]\.$/,             // Single letter sentences
-    /\[\d+\]/,                  // Citation markers [1], [2]
-    /fig\.?\s*\d+/i,           // Figure references
-    /table\s*\d+/i,            // Table references
-    /et al\.?/i,               // Academic citations
+    /is a n\s+\w+/i, // "is a n open" (broken grammar)
+    /the the\s+/i, // Repeated words
+    /a a\s+/i, // Repeated articles
+    /\n\n\n+/, // Multiple blank lines
+    /^\s*[A-Z]\.$/, // Single letter sentences
+    /\[\d+\]/, // Citation markers [1], [2]
+    /fig\.?\s*\d+/i, // Figure references
+    /table\s*\d+/i, // Table references
+    /et al\.?/i, // Academic citations
   ];
-  
-  if (garbagePatterns.some(p => p.test(trimmed))) return false;
-  
+
+  if (garbagePatterns.some((p) => p.test(trimmed))) return false;
+
   // AI shouldn't claim agency (working on features, building things)
   const agencyPatterns = [
     /i['']?m working on/i,
@@ -116,21 +217,24 @@ export function hasKnowledgeQuality(text: string): boolean {
     /i['']?m creating/i,
     /i will (add|implement|create|build)/i,
   ];
-  
-  if (agencyPatterns.some(p => p.test(trimmed))) return false;
-  
+
+  if (agencyPatterns.some((p) => p.test(trimmed))) return false;
+
   // Check for incomplete sentences (no verb)
-  const hasVerb = /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?)\b/i.test(trimmed);
-  if (!hasVerb && trimmed.length > 40) return false;  // Long text without verb is suspicious
-  
+  const hasVerb =
+    /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?)\b/i.test(
+      trimmed,
+    );
+  if (!hasVerb && trimmed.length > 40) return false; // Long text without verb is suspicious
+
   // Check for proper sentence structure (capital letter start, punctuation end)
   const hasProperStructure = /^[A-Z]/.test(trimmed) && /[.!?]$/.test(trimmed);
-  if (!hasProperStructure && trimmed.length > 60) return false;  // Long text should be properly structured
-  
+  if (!hasProperStructure && trimmed.length > 60) return false; // Long text should be properly structured
+
   // Reject if it's mostly numbers/symbols
-  const alphaChars = trimmed.replace(/[^a-zA-Z]/g, '').length;
-  if (alphaChars / trimmed.length < 0.6) return false;  // Less than 60% letters is suspicious
-  
+  const alphaChars = trimmed.replace(/[^a-zA-Z]/g, "").length;
+  if (alphaChars / trimmed.length < 0.6) return false; // Less than 60% letters is suspicious
+
   return true;
 }
 
@@ -139,21 +243,23 @@ export function hasKnowledgeQuality(text: string): boolean {
  */
 function isNonLearnable(text: string): boolean {
   const trimmed = text.trim().toLowerCase();
-  
+
   // Empty or too short
   if (trimmed.length < 10) return true;
-  
+
   // Questions ending with ?
   if (trimmed.endsWith("?")) return true;
-  
+
   // Direct questions (what, who, where, when, why, how, etc.)
-  const questionStarts = /^(what|who|where|when|why|how|is|are|can|could|does|do|will|would|should|tell|explain|describe|show|give|help)/i;
+  const questionStarts =
+    /^(what|who|where|when|why|how|is|are|can|could|does|do|will|would|should|tell|explain|describe|show|give|help)/i;
   if (questionStarts.test(trimmed)) return true;
-  
+
   // Commands/requests (imperative mood)
-  const commands = /^(explain|show|tell|give|help|teach|describe|summarize|clarify|elaborate|expand|simplify|rephrase|repeat)/i;
+  const commands =
+    /^(explain|show|tell|give|help|teach|describe|summarize|clarify|elaborate|expand|simplify|rephrase|repeat)/i;
   if (commands.test(trimmed)) return true;
-  
+
   // Understanding/clarification requests
   const clarification = [
     /i (don't|do not|dont) understand/,
@@ -175,18 +281,31 @@ function isNonLearnable(text: string): boolean {
     /make it clearer/,
     /simplify (it|this)/,
   ];
-  
-  if (clarification.some(pattern => pattern.test(trimmed))) return true;
-  
+
+  if (clarification.some((pattern) => pattern.test(trimmed))) return true;
+
   // Greetings and conversational fillers
   const greetings = [
-    /^hello/, /^hi /, /^hey /, /^thanks/, /^thank you/,
-    /^please/, /^ok$/, /^okay$/, /^sure/, /^yes$/, /^no$/,
-    /^good/, /^great/, /^awesome/, /^nice/, /^cool/,
+    /^hello/,
+    /^hi /,
+    /^hey /,
+    /^thanks/,
+    /^thank you/,
+    /^please/,
+    /^ok$/,
+    /^okay$/,
+    /^sure/,
+    /^yes$/,
+    /^no$/,
+    /^good/,
+    /^great/,
+    /^awesome/,
+    /^nice/,
+    /^cool/,
   ];
-  
-  if (greetings.some(pattern => pattern.test(trimmed))) return true;
-  
+
+  if (greetings.some((pattern) => pattern.test(trimmed))) return true;
+
   // Meta-conversation about the conversation
   const metaPatterns = [
     /let['']s (talk|discuss|chat)/,
@@ -199,9 +318,9 @@ function isNonLearnable(text: string): boolean {
     /^(Great|Good|Sure|Absolutely|Of course|Well|Okay|Alright)\s*!\s*/i,
     /^(Great|Good)\s+question\s*!\s*/i,
   ];
-  
-  if (metaPatterns.some(pattern => pattern.test(trimmed))) return true;
-  
+
+  if (metaPatterns.some((pattern) => pattern.test(trimmed))) return true;
+
   return false;
 }
 
@@ -245,7 +364,8 @@ export function extractFacts(text: string): ExtractedFact[] {
       if (seen.has(key)) continue;
       seen.add(key);
 
-      const content = `${subj} ${match[0].slice(subj.length, match[0].indexOf(obj)).trim()} ${obj}`.trim();
+      const content =
+        `${subj} ${match[0].slice(subj.length, match[0].indexOf(obj)).trim()} ${obj}`.trim();
       const tags = extractTags([subj, obj]);
 
       facts.push({ content, type, tags, confidence: conf });
@@ -257,36 +377,41 @@ export function extractFacts(text: string): ExtractedFact[] {
     // Split into sentences
     const sentences = text
       .split(/[.!?]+\s+/)
-      .filter(s => s.trim().length > 30 && s.trim().length < 300);
-    
+      .filter((s) => s.trim().length > 30 && s.trim().length < 300);
+
     for (const sentence of sentences) {
       const clean = sentence.trim();
-      
+
       // Skip if already extracted
       const key = clean.toLowerCase().slice(0, 50);
       if (seen.has(key)) continue;
       seen.add(key);
-      
+
       // Skip questions/commands
       if (isNonLearnable(clean)) continue;
-      
+
       // Must have a verb
-      const hasVerb = /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?|contains?|includes?|consists?|requires?|depends?|affects?|produces?|generates?|forms?|becomes?|remains?)\b/i.test(clean);
+      const hasVerb =
+        /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?|contains?|includes?|consists?|requires?|depends?|affects?|produces?|generates?|forms?|becomes?|remains?)\b/i.test(
+          clean,
+        );
       if (!hasVerb) continue;
-      
+
       // Determine type
       let type: ExtractedFact["type"] = "fact";
-      if (/\b(can|could|enables?|allows?|must|should|requires?)\b/i.test(clean)) {
+      if (
+        /\b(can|could|enables?|allows?|must|should|requires?)\b/i.test(clean)
+      ) {
         type = "rule";
       } else if (/\b(concept|idea|theory|principle|notion)\b/i.test(clean)) {
         type = "concept";
       } else if (/\b(think|believe|opinion|feel)\b/i.test(clean)) {
         type = "opinion";
       }
-      
+
       // Extract key terms for tags
       const terms = extractKeyTerms(clean);
-      
+
       facts.push({
         content: clean,
         type,
@@ -298,10 +423,17 @@ export function extractFacts(text: string): ExtractedFact[] {
 
   // Also capture the whole sentence as a general knowledge node if long enough
   // BUT: skip sentences that are questions, commands, requests, or low-quality
-  const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 30 && s.length < 300);
+  const sentences = text
+    .split(/[.!?]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 30 && s.length < 300);
   for (const sentence of sentences) {
     const normalised = sentence.toLowerCase().replace(/\s+/g, " ");
-    if (!seen.has(`sent::${normalised}`) && !isNonLearnable(sentence) && hasKnowledgeQuality(sentence)) {
+    if (
+      !seen.has(`sent::${normalised}`) &&
+      !isNonLearnable(sentence) &&
+      hasKnowledgeQuality(sentence)
+    ) {
       seen.add(`sent::${normalised}`);
       facts.push({
         content: sentence.trim(),
@@ -317,17 +449,26 @@ export function extractFacts(text: string): ExtractedFact[] {
 
 export function extractTags(words: string[]): string[] {
   return words
-    .map(w => w.toLowerCase().replace(/[^a-z0-9]/g, ""))
-    .filter(w => w.length > 3)
+    .map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, ""))
+    .filter((w) => w.length > 3)
     .slice(0, 8);
 }
 
-export function detectQueryType(text: string): "question" | "statement" | "command" {
+export function detectQueryType(
+  text: string,
+): "question" | "statement" | "command" {
   const trimmed = text.trim();
-  if (trimmed.endsWith("?") || /^(what|who|where|when|why|how|is|are|can|could|does|do|will|would|should|tell|explain|describe)/i.test(trimmed)) {
+  if (
+    trimmed.endsWith("?") ||
+    /^(what|who|where|when|why|how|is|are|can|could|does|do|will|would|should|tell|explain|describe)/i.test(
+      trimmed,
+    )
+  ) {
     return "question";
   }
-  if (/^(teach|learn|remember|know|store|add|save|update|forget)/i.test(trimmed)) {
+  if (
+    /^(teach|learn|remember|know|store|add|save|update|forget)/i.test(trimmed)
+  ) {
     return "command";
   }
   return "statement";
@@ -339,13 +480,20 @@ export function extractKeyTerms(text: string): string[] {
 
   // Capitalized phrases (likely proper nouns / named concepts)
   const caps = text.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/g) ?? [];
-  terms.push(...caps.map(t => t.toLowerCase()));
+  terms.push(...caps.map((t) => t.toLowerCase()));
 
   // Words after "about", "regarding", "on", "concerning"
-  const topicMatch = text.match(/(?:about|regarding|on|concerning|understand|know about|tell me about)\s+([a-z][\w\s]{2,30})/gi);
+  const topicMatch = text.match(
+    /(?:about|regarding|on|concerning|understand|know about|tell me about)\s+([a-z][\w\s]{2,30})/gi,
+  );
   if (topicMatch) {
     for (const m of topicMatch) {
-      const t = m.replace(/^(about|regarding|on|concerning|understand|know about|tell me about)\s+/i, "").trim();
+      const t = m
+        .replace(
+          /^(about|regarding|on|concerning|understand|know about|tell me about)\s+/i,
+          "",
+        )
+        .trim();
       if (t) terms.push(t.toLowerCase());
     }
   }

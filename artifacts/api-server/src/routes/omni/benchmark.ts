@@ -22,26 +22,37 @@ router.post("/benchmark", async (req, res) => {
     req.log.info({ question }, "Running benchmark");
 
     // 1. Retrieve relevant knowledge nodes from DB
-    const tokens = question.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(t => t.length > 3);
-    
-    const allNodes = await db.select({
-      id: knowledgeNodes.id,
-      content: knowledgeNodes.content,
-      type: knowledgeNodes.type,
-      tags: knowledgeNodes.tags,
-      confidence: knowledgeNodes.confidence,
-      timesAccessed: knowledgeNodes.timesAccessed,
-    }).from(knowledgeNodes)
+    const tokens = question
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length > 3);
+
+    const allNodes = await db
+      .select({
+        id: knowledgeNodes.id,
+        content: knowledgeNodes.content,
+        type: knowledgeNodes.type,
+        tags: knowledgeNodes.tags,
+        confidence: knowledgeNodes.confidence,
+        timesAccessed: knowledgeNodes.timesAccessed,
+      })
+      .from(knowledgeNodes)
       .orderBy(desc(knowledgeNodes.confidence))
       .limit(50);
-    
-    // Filter by token matching
-    const relevantNodes = allNodes.filter(node => {
-      const nodeText = node.content.toLowerCase();
-      return tokens.some(token => nodeText.includes(token));
-    }).slice(0, 8);
 
-    req.log.info({ nodesFound: relevantNodes.length }, "Retrieved knowledge nodes");
+    // Filter by token matching
+    const relevantNodes = allNodes
+      .filter((node) => {
+        const nodeText = node.content.toLowerCase();
+        return tokens.some((token) => nodeText.includes(token));
+      })
+      .slice(0, 8);
+
+    req.log.info(
+      { nodesFound: relevantNodes.length },
+      "Retrieved knowledge nodes",
+    );
 
     // 2. Path A — Raw (no knowledge context)
     const rawContext = {
@@ -59,14 +70,14 @@ router.post("/benchmark", async (req, res) => {
       },
       history: [],
     };
-    
+
     const rawResult = await synthesizeNative(rawContext);
 
     // 3. Path B — Augmented (with knowledge)
     const augContext = {
       query: question.trim(),
       queryType: "question" as const,
-      nodes: relevantNodes.map(n => ({ ...n, similarity: 0.5 })),
+      nodes: relevantNodes.map((n) => ({ ...n, similarity: 0.5 })),
       character: {
         curiosity: 50,
         confidence: 50,
@@ -78,21 +89,25 @@ router.post("/benchmark", async (req, res) => {
       },
       history: [],
     };
-    
+
     const augResult = await synthesizeNative(augContext);
 
     // 4. Compute quality signals
-    const wordCount = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
+    const wordCount = (s: string) =>
+      s.trim().split(/\s+/).filter(Boolean).length;
     const sentenceCount = (s: string) => (s.match(/[.!?]+/g) ?? []).length;
 
-    const knowledgeTerms = relevantNodes.flatMap(n =>
-      n.content.toLowerCase().split(/\W+/).filter(w => w.length > 4)
+    const knowledgeTerms = relevantNodes.flatMap((n) =>
+      n.content
+        .toLowerCase()
+        .split(/\W+/)
+        .filter((w) => w.length > 4),
     );
     const uniqueTerms = [...new Set(knowledgeTerms)];
     const augLower = augResult.text.toLowerCase();
-    const termsHit = uniqueTerms.filter(t => augLower.includes(t)).length;
+    const termsHit = uniqueTerms.filter((t) => augLower.includes(t)).length;
     const rawLower = rawResult.text.toLowerCase();
-    const rawTermsHit = uniqueTerms.filter(t => rawLower.includes(t)).length;
+    const rawTermsHit = uniqueTerms.filter((t) => rawLower.includes(t)).length;
 
     res.json({
       question: question.trim(),
@@ -113,7 +128,7 @@ router.post("/benchmark", async (req, res) => {
       knowledge: {
         nodesRetrieved: relevantNodes.length,
         totalNodesSearched: allNodes.length,
-        nodes: relevantNodes.map(n => ({
+        nodes: relevantNodes.map((n) => ({
           id: n.id,
           content: n.content,
           type: n.type,
@@ -124,13 +139,14 @@ router.post("/benchmark", async (req, res) => {
       },
       delta: {
         wordCountDiff: wordCount(augResult.text) - wordCount(rawResult.text),
-        sentenceDiff: sentenceCount(augResult.text) - sentenceCount(rawResult.text),
+        sentenceDiff:
+          sentenceCount(augResult.text) - sentenceCount(rawResult.text),
         knowledgeTermsDiff: termsHit - rawTermsHit,
       },
     });
   } catch (err) {
     req.log.error({ err }, "benchmark failed");
-    res.status(500).json({ 
+    res.status(500).json({
       error: "benchmark failed",
       details: err instanceof Error ? err.message : String(err),
     });

@@ -28,12 +28,21 @@ const upload = multer({
 // POST /api/omni/train — ingest text and extract knowledge from it
 // Supports: { text, url, file, source } — if url or file provided, fetches/extracts first
 router.post("/", upload.single("file"), async (req, res) => {
-  const { text, url, source = "manual" } = req.body as { text?: string; url?: string; source?: string };
+  const {
+    text,
+    url,
+    source = "manual",
+  } = req.body as { text?: string; url?: string; source?: string };
   const file = req.file;
 
   // Validate input: need either text, url, or file
   if ((!text?.trim() || text.trim().length < 10) && !url?.trim() && !file) {
-    res.status(400).json({ error: "Provide either text (min 10 chars), a URL to fetch, or upload a document file" });
+    res
+      .status(400)
+      .json({
+        error:
+          "Provide either text (min 10 chars), a URL to fetch, or upload a document file",
+      });
     return;
   }
 
@@ -45,20 +54,31 @@ router.post("/", upload.single("file"), async (req, res) => {
   // If file uploaded, extract text from it
   if (file) {
     try {
-      const extracted = await extractTextFromFile(file.path, file.mimetype, file.originalname);
+      const extracted = await extractTextFromFile(
+        file.path,
+        file.mimetype,
+        file.originalname,
+      );
       textToTrain = extracted.text;
       extractionMethod = `file:${file.mimetype}`;
-      logger.info({ file: file.originalname, size: file.size, method: extracted.method }, "Document uploaded for training");
-      
+      logger.info(
+        { file: file.originalname, size: file.size, method: extracted.method },
+        "Document uploaded for training",
+      );
+
       // Clean up uploaded file
       await fs.unlink(file.path).catch(() => {});
     } catch (err) {
       logger.error({ err, file: file.originalname }, "File extraction failed");
-      res.status(400).json({ error: `Failed to extract text from file: ${err instanceof Error ? err.message : String(err)}` });
+      res
+        .status(400)
+        .json({
+          error: `Failed to extract text from file: ${err instanceof Error ? err.message : String(err)}`,
+        });
       return;
     }
   }
-  
+
   // If URL provided without text (or with minimal text), fetch the URL first
   if (url?.trim() && (!textToTrain || textToTrain.length < 10)) {
     try {
@@ -66,7 +86,11 @@ router.post("/", upload.single("file"), async (req, res) => {
       textToTrain = fetched.text;
       extractionMethod = `url:${url.trim()}`;
     } catch (err) {
-      res.status(400).json({ error: `Failed to fetch URL: ${err instanceof Error ? err.message : String(err)}` });
+      res
+        .status(400)
+        .json({
+          error: `Failed to fetch URL: ${err instanceof Error ? err.message : String(err)}`,
+        });
       return;
     }
   }
@@ -81,20 +105,23 @@ router.post("/", upload.single("file"), async (req, res) => {
   // Feed extracted knowledge into the shared network brain (fire-and-forget)
   if (result.nodes && result.nodes.length > 0) {
     contributeNeurons(
-      result.nodes.map((n: { content: string; type?: string; tags?: string[] }) => ({
-        content: n.content,
-        type: n.type,
-        tags: n.tags ?? [],
-      })),
-      "self"
+      result.nodes.map(
+        (n: { content: string; type?: string; tags?: string[] }) => ({
+          content: n.content,
+          type: n.type,
+          tags: n.tags ?? [],
+        }),
+      ),
+      "self",
     ).catch(() => {});
   }
 
   res.json({
     ...result,
-    message: result.added > 0
-      ? `Integrated ${result.added} knowledge item${result.added > 1 ? "s" : ""}. ${result.skipped > 0 ? `${result.skipped} skipped (already known).` : ""}`
-      : `No new knowledge extracted. ${result.skipped} items already in knowledge base.`,
+    message:
+      result.added > 0
+        ? `Integrated ${result.added} knowledge item${result.added > 1 ? "s" : ""}. ${result.skipped > 0 ? `${result.skipped} skipped (already known).` : ""}`
+        : `No new knowledge extracted. ${result.skipped} items already in knowledge base.`,
   });
 });
 

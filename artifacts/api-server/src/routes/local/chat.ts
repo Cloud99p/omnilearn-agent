@@ -40,14 +40,19 @@ router.post("/chat", async (req, res) => {
         .where(eq(messages.conversationId, convId))
         .orderBy(desc(messages.createdAt))
         .limit(10);
-      history = hist.reverse().map(m => ({ role: m.role, content: m.content }));
+      history = hist
+        .reverse()
+        .map((m) => ({ role: m.role, content: m.content }));
     } else {
       // Create a new conversation
       const title = content.slice(0, 60);
-      const [conv] = await db.insert(conversations).values({
-        title,
-        mode: "local",
-      }).returning();
+      const [conv] = await db
+        .insert(conversations)
+        .values({
+          title,
+          mode: "local",
+        })
+        .returning();
       convId = conv.id;
       sendEvent({ conversationId: convId });
     }
@@ -63,16 +68,25 @@ router.post("/chat", async (req, res) => {
 
     // Process through brain — NO web search, knowledge graph only
     // Pass onActivity as undefined to disable web search
-    const result = await processMessage(content.trim(), clerkId, history, undefined);
+    const result = await processMessage(
+      content.trim(),
+      clerkId,
+      history,
+      undefined,
+    );
 
     // Stream the response word-by-word
     const words = result.text.split(/(\s+)/);
     for (const word of words) {
       sendEvent({ content: word });
-      const delay = word.match(/[.!?]$/) ? 80 :
-                    word.match(/[,;:]$/) ? 40 :
-                    word.trim().length === 0 ? 15 : 25;
-      await new Promise(r => setTimeout(r, delay));
+      const delay = word.match(/[.!?]$/)
+        ? 80
+        : word.match(/[,;:]$/)
+          ? 40
+          : word.trim().length === 0
+            ? 15
+            : 25;
+      await new Promise((r) => setTimeout(r, delay));
     }
 
     // Send metadata

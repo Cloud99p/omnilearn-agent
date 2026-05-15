@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { db } from "@workspace/db";
-import { ghostInviteTokens, ghostWorkerSessions, ghostWorkerTasks } from "@workspace/db/schema";
+import {
+  ghostInviteTokens,
+  ghostWorkerSessions,
+  ghostWorkerTasks,
+} from "@workspace/db/schema";
 import { eq, and, lt, sql } from "drizzle-orm";
 import crypto from "crypto";
 
@@ -11,18 +15,23 @@ const router = Router();
 router.post("/worker/invite", async (req, res) => {
   try {
     const { label, maxUses, expiresInDays } = req.body as {
-      label?: string; maxUses?: number; expiresInDays?: number;
+      label?: string;
+      maxUses?: number;
+      expiresInDays?: number;
     };
     const token = crypto.randomUUID();
     const expiresAt = expiresInDays
       ? new Date(Date.now() + expiresInDays * 86_400_000)
       : null;
-    const [invite] = await db.insert(ghostInviteTokens).values({
-      token,
-      label:    label ?? "Worker invite",
-      maxUses:  maxUses ?? 100,
-      expiresAt,
-    }).returning();
+    const [invite] = await db
+      .insert(ghostInviteTokens)
+      .values({
+        token,
+        label: label ?? "Worker invite",
+        maxUses: maxUses ?? 100,
+        expiresAt,
+      })
+      .returning();
     res.json(invite);
   } catch (err) {
     req.log.error(err, "Failed to create invite token");
@@ -33,7 +42,9 @@ router.post("/worker/invite", async (req, res) => {
 // GET /api/ghost/worker/invite/:token — validate an invite token (public)
 router.get("/worker/invite/:token", async (req, res) => {
   try {
-    const [invite] = await db.select().from(ghostInviteTokens)
+    const [invite] = await db
+      .select()
+      .from(ghostInviteTokens)
       .where(eq(ghostInviteTokens.token, req.params.token));
     if (!invite || !invite.active) {
       res.status(404).json({ error: "Invite not found or inactive" });
@@ -61,7 +72,9 @@ router.get("/worker/invite/:token", async (req, res) => {
 // GET /api/ghost/invites — list all invite tokens
 router.get("/invites", async (req, res) => {
   try {
-    const invites = await db.select().from(ghostInviteTokens)
+    const invites = await db
+      .select()
+      .from(ghostInviteTokens)
       .orderBy(ghostInviteTokens.createdAt);
     res.json(invites);
   } catch (err) {
@@ -74,8 +87,12 @@ router.get("/invites", async (req, res) => {
 router.delete("/invites/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-    await db.update(ghostInviteTokens)
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    await db
+      .update(ghostInviteTokens)
       .set({ active: false })
       .where(eq(ghostInviteTokens.id, id));
     res.json({ ok: true });
@@ -89,15 +106,25 @@ router.delete("/invites/:id", async (req, res) => {
 router.post("/worker/join", async (req, res) => {
   try {
     const { token, name } = req.body as { token?: string; name?: string };
-    if (!token || !name || typeof token !== "string" || typeof name !== "string" || !name.trim()) {
-      res.status(400).json({ error: "name and token required" }); return;
+    if (
+      !token ||
+      !name ||
+      typeof token !== "string" ||
+      typeof name !== "string" ||
+      !name.trim()
+    ) {
+      res.status(400).json({ error: "name and token required" });
+      return;
     }
     const safeName = name.trim().slice(0, 80);
-    const [invite] = await db.select().from(ghostInviteTokens)
+    const [invite] = await db
+      .select()
+      .from(ghostInviteTokens)
       .where(eq(ghostInviteTokens.token, token));
 
     if (
-      !invite || !invite.active ||
+      !invite ||
+      !invite.active ||
       (invite.expiresAt && new Date(invite.expiresAt) < new Date()) ||
       invite.usesCount >= invite.maxUses
     ) {
@@ -105,7 +132,7 @@ router.post("/worker/join", async (req, res) => {
       return;
     }
 
-    const workerId     = crypto.randomUUID();
+    const workerId = crypto.randomUUID();
     const workerSecret = crypto.randomBytes(32).toString("hex");
 
     await db.insert(ghostWorkerSessions).values({
@@ -113,12 +140,13 @@ router.post("/worker/join", async (req, res) => {
       workerSecret,
       name: safeName,
       inviteToken: token,
-      status:      "idle",
-      lastSeen:    new Date(),
+      status: "idle",
+      lastSeen: new Date(),
       connectedAt: new Date(),
     });
 
-    await db.update(ghostInviteTokens)
+    await db
+      .update(ghostInviteTokens)
       .set({ usesCount: sql`uses_count + 1` })
       .where(eq(ghostInviteTokens.id, invite.id));
 
@@ -131,21 +159,27 @@ router.post("/worker/join", async (req, res) => {
 
 // GET /api/ghost/worker/poll — long-poll for a pending task
 router.get("/worker/poll", async (req, res) => {
-  const { workerId, workerSecret } = req.query as { workerId?: string; workerSecret?: string };
+  const { workerId, workerSecret } = req.query as {
+    workerId?: string;
+    workerSecret?: string;
+  };
   if (!workerId || !workerSecret) {
     res.status(400).json({ error: "Missing credentials" });
     return;
   }
 
   try {
-    const [session] = await db.select().from(ghostWorkerSessions)
+    const [session] = await db
+      .select()
+      .from(ghostWorkerSessions)
       .where(eq(ghostWorkerSessions.workerId, workerId));
     if (!session || session.workerSecret !== workerSecret) {
       res.status(401).json({ error: "Invalid worker credentials" });
       return;
     }
 
-    await db.update(ghostWorkerSessions)
+    await db
+      .update(ghostWorkerSessions)
       .set({ lastSeen: new Date(), status: "idle" })
       .where(eq(ghostWorkerSessions.workerId, workerId));
 
@@ -153,47 +187,61 @@ router.get("/worker/poll", async (req, res) => {
 
     while (Date.now() < deadline) {
       // Expire timed-out pending tasks
-      await db.update(ghostWorkerTasks)
+      await db
+        .update(ghostWorkerTasks)
         .set({ status: "timeout" })
-        .where(and(
-          eq(ghostWorkerTasks.status, "pending"),
-          lt(ghostWorkerTasks.timeoutAt, new Date()),
-        ));
+        .where(
+          and(
+            eq(ghostWorkerTasks.status, "pending"),
+            lt(ghostWorkerTasks.timeoutAt, new Date()),
+          ),
+        );
 
       // Also expire timed-out assigned tasks (worker died)
-      await db.update(ghostWorkerTasks)
+      await db
+        .update(ghostWorkerTasks)
         .set({ status: "timeout" })
-        .where(and(
-          eq(ghostWorkerTasks.status, "assigned"),
-          lt(ghostWorkerTasks.timeoutAt, new Date()),
-        ));
+        .where(
+          and(
+            eq(ghostWorkerTasks.status, "assigned"),
+            lt(ghostWorkerTasks.timeoutAt, new Date()),
+          ),
+        );
 
-      const [task] = await db.select().from(ghostWorkerTasks)
+      const [task] = await db
+        .select()
+        .from(ghostWorkerTasks)
         .where(eq(ghostWorkerTasks.status, "pending"))
         .orderBy(ghostWorkerTasks.createdAt)
         .limit(1);
 
       if (task) {
         // Atomically claim it
-        const claimed = await db.update(ghostWorkerTasks)
+        const claimed = await db
+          .update(ghostWorkerTasks)
           .set({ status: "assigned", workerId, assignedAt: new Date() })
-          .where(and(
-            eq(ghostWorkerTasks.taskId, task.taskId),
-            eq(ghostWorkerTasks.status, "pending"),
-          ))
+          .where(
+            and(
+              eq(ghostWorkerTasks.taskId, task.taskId),
+              eq(ghostWorkerTasks.status, "pending"),
+            ),
+          )
           .returning();
 
         if (claimed.length > 0) {
-          await db.update(ghostWorkerSessions)
+          await db
+            .update(ghostWorkerSessions)
             .set({ status: "busy" })
             .where(eq(ghostWorkerSessions.workerId, workerId));
 
-          res.json({ task: { taskId: task.taskId, payload: JSON.parse(task.payload) } });
+          res.json({
+            task: { taskId: task.taskId, payload: JSON.parse(task.payload) },
+          });
           return;
         }
       }
 
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 600));
     }
 
     res.json({ task: null });
@@ -206,12 +254,18 @@ router.get("/worker/poll", async (req, res) => {
 // POST /api/ghost/worker/result/:taskId — submit task result
 router.post("/worker/result/:taskId", async (req, res) => {
   try {
-    const { workerId, workerSecret, result, failed, processingMs } = req.body as {
-      workerId: string; workerSecret: string;
-      result?: string; failed?: boolean; processingMs?: number;
-    };
+    const { workerId, workerSecret, result, failed, processingMs } =
+      req.body as {
+        workerId: string;
+        workerSecret: string;
+        result?: string;
+        failed?: boolean;
+        processingMs?: number;
+      };
 
-    const [session] = await db.select().from(ghostWorkerSessions)
+    const [session] = await db
+      .select()
+      .from(ghostWorkerSessions)
       .where(eq(ghostWorkerSessions.workerId, workerId));
     if (!session || session.workerSecret !== workerSecret) {
       res.status(401).json({ error: "Invalid credentials" });
@@ -219,24 +273,34 @@ router.post("/worker/result/:taskId", async (req, res) => {
     }
 
     const taskId = req.params.taskId;
-    await db.update(ghostWorkerTasks).set({
-      status:      failed ? "failed" : "complete",
-      result:      result ?? null,
-      completedAt: new Date(),
-    }).where(eq(ghostWorkerTasks.taskId, taskId));
+    await db
+      .update(ghostWorkerTasks)
+      .set({
+        status: failed ? "failed" : "complete",
+        result: result ?? null,
+        completedAt: new Date(),
+      })
+      .where(eq(ghostWorkerTasks.taskId, taskId));
 
     const prevCount = session.tasksProcessed;
-    const newAvg = processingMs && prevCount > 0
-      ? ((session.avgResponseMs ?? processingMs) * prevCount + processingMs) / (prevCount + 1)
-      : processingMs ?? session.avgResponseMs;
+    const newAvg =
+      processingMs && prevCount > 0
+        ? ((session.avgResponseMs ?? processingMs) * prevCount + processingMs) /
+          (prevCount + 1)
+        : (processingMs ?? session.avgResponseMs);
 
-    await db.update(ghostWorkerSessions).set({
-      status:         "idle",
-      lastSeen:       new Date(),
-      tasksProcessed: failed ? session.tasksProcessed : sql`tasks_processed + 1`,
-      tasksFailed:    failed ? sql`tasks_failed + 1`   : session.tasksFailed,
-      avgResponseMs:  newAvg ?? null,
-    }).where(eq(ghostWorkerSessions.workerId, workerId));
+    await db
+      .update(ghostWorkerSessions)
+      .set({
+        status: "idle",
+        lastSeen: new Date(),
+        tasksProcessed: failed
+          ? session.tasksProcessed
+          : sql`tasks_processed + 1`,
+        tasksFailed: failed ? sql`tasks_failed + 1` : session.tasksFailed,
+        avgResponseMs: newAvg ?? null,
+      })
+      .where(eq(ghostWorkerSessions.workerId, workerId));
 
     res.json({ ok: true });
   } catch (err) {
@@ -248,13 +312,20 @@ router.post("/worker/result/:taskId", async (req, res) => {
 // POST /api/ghost/worker/heartbeat
 router.post("/worker/heartbeat", async (req, res) => {
   try {
-    const { workerId, workerSecret } = req.body as { workerId?: string; workerSecret?: string };
-    const [session] = await db.select().from(ghostWorkerSessions)
+    const { workerId, workerSecret } = req.body as {
+      workerId?: string;
+      workerSecret?: string;
+    };
+    const [session] = await db
+      .select()
+      .from(ghostWorkerSessions)
       .where(eq(ghostWorkerSessions.workerId, workerId ?? ""));
     if (!session || session.workerSecret !== workerSecret) {
-      res.status(401).json({ error: "Invalid credentials" }); return;
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
     }
-    await db.update(ghostWorkerSessions)
+    await db
+      .update(ghostWorkerSessions)
       .set({ lastSeen: new Date() })
       .where(eq(ghostWorkerSessions.workerId, workerId!));
     res.json({ ok: true });
@@ -267,25 +338,43 @@ router.post("/worker/heartbeat", async (req, res) => {
 // POST /api/ghost/worker/execute/:taskId — worker claims & server processes task via Anthropic
 router.post("/worker/execute/:taskId", async (req, res) => {
   try {
-    const { workerId, workerSecret } = req.body as { workerId?: string; workerSecret?: string };
+    const { workerId, workerSecret } = req.body as {
+      workerId?: string;
+      workerSecret?: string;
+    };
     if (!workerId || !workerSecret) {
-      res.status(400).json({ error: "Missing credentials" }); return;
+      res.status(400).json({ error: "Missing credentials" });
+      return;
     }
 
-    const [session] = await db.select().from(ghostWorkerSessions)
+    const [session] = await db
+      .select()
+      .from(ghostWorkerSessions)
       .where(eq(ghostWorkerSessions.workerId, workerId));
     if (!session || session.workerSecret !== workerSecret) {
-      res.status(401).json({ error: "Invalid worker credentials" }); return;
+      res.status(401).json({ error: "Invalid worker credentials" });
+      return;
     }
 
     const taskId = req.params.taskId;
-    const [task] = await db.select().from(ghostWorkerTasks)
-      .where(and(eq(ghostWorkerTasks.taskId, taskId), eq(ghostWorkerTasks.workerId, workerId)));
+    const [task] = await db
+      .select()
+      .from(ghostWorkerTasks)
+      .where(
+        and(
+          eq(ghostWorkerTasks.taskId, taskId),
+          eq(ghostWorkerTasks.workerId, workerId),
+        ),
+      );
     if (!task) {
-      res.status(404).json({ error: "Task not found or not assigned to this worker" }); return;
+      res
+        .status(404)
+        .json({ error: "Task not found or not assigned to this worker" });
+      return;
     }
     if (task.status !== "assigned") {
-      res.status(409).json({ error: "Task is not in assigned state" }); return;
+      res.status(409).json({ error: "Task is not in assigned state" });
+      return;
     }
 
     const payload = JSON.parse(task.payload) as {
@@ -306,10 +395,12 @@ router.post("/worker/execute/:taskId", async (req, res) => {
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 8192,
-        system: payload.systemPrompt ?? "You are OmniLearn, a distributed AI assistant.",
+        system:
+          payload.systemPrompt ??
+          "You are OmniLearn, a distributed AI assistant.",
         messages: msgs,
       });
-      resultText = response.content.find(c => c.type === "text")?.text ?? "";
+      resultText = response.content.find((c) => c.type === "text")?.text ?? "";
     } catch (err) {
       req.log.error(err, "Browser worker execute: Anthropic error");
       failed = true;
@@ -317,26 +408,37 @@ router.post("/worker/execute/:taskId", async (req, res) => {
 
     const processingMs = Date.now() - startTime;
 
-    await db.update(ghostWorkerTasks).set({
-      status:      failed ? "failed" : "complete",
-      result:      failed ? null : resultText,
-      completedAt: new Date(),
-    }).where(eq(ghostWorkerTasks.taskId, taskId));
+    await db
+      .update(ghostWorkerTasks)
+      .set({
+        status: failed ? "failed" : "complete",
+        result: failed ? null : resultText,
+        completedAt: new Date(),
+      })
+      .where(eq(ghostWorkerTasks.taskId, taskId));
 
     const prevCount = session.tasksProcessed ?? 0;
-    const newAvg = !failed && processingMs
-      ? prevCount > 0
-        ? ((session.avgResponseMs ?? processingMs) * prevCount + processingMs) / (prevCount + 1)
-        : processingMs
-      : session.avgResponseMs;
+    const newAvg =
+      !failed && processingMs
+        ? prevCount > 0
+          ? ((session.avgResponseMs ?? processingMs) * prevCount +
+              processingMs) /
+            (prevCount + 1)
+          : processingMs
+        : session.avgResponseMs;
 
-    await db.update(ghostWorkerSessions).set({
-      status:         "idle",
-      lastSeen:       new Date(),
-      tasksProcessed: failed ? session.tasksProcessed : sql`tasks_processed + 1`,
-      tasksFailed:    failed ? sql`tasks_failed + 1`   : session.tasksFailed,
-      avgResponseMs:  newAvg ?? null,
-    }).where(eq(ghostWorkerSessions.workerId, workerId));
+    await db
+      .update(ghostWorkerSessions)
+      .set({
+        status: "idle",
+        lastSeen: new Date(),
+        tasksProcessed: failed
+          ? session.tasksProcessed
+          : sql`tasks_processed + 1`,
+        tasksFailed: failed ? sql`tasks_failed + 1` : session.tasksFailed,
+        avgResponseMs: newAvg ?? null,
+      })
+      .where(eq(ghostWorkerSessions.workerId, workerId));
 
     if (failed) {
       res.status(500).json({ error: "AI processing failed" });
@@ -353,43 +455,70 @@ router.post("/worker/execute/:taskId", async (req, res) => {
 // Called by single-machine users when idle; no invite token required (same-instance trust)
 router.post("/contribute", async (req, res) => {
   try {
-    const [task] = await db.select().from(ghostWorkerTasks)
+    const [task] = await db
+      .select()
+      .from(ghostWorkerTasks)
       .where(eq(ghostWorkerTasks.status, "pending"))
       .orderBy(ghostWorkerTasks.createdAt)
       .limit(1);
 
-    if (!task) { res.json({ processed: false }); return; }
+    if (!task) {
+      res.json({ processed: false });
+      return;
+    }
 
-    const [claimed] = await db.update(ghostWorkerTasks)
-      .set({ status: "assigned", workerId: "local-contributor", assignedAt: new Date() })
-      .where(and(
-        eq(ghostWorkerTasks.taskId, task.taskId),
-        eq(ghostWorkerTasks.status, "pending"),
-      ))
+    const [claimed] = await db
+      .update(ghostWorkerTasks)
+      .set({
+        status: "assigned",
+        workerId: "local-contributor",
+        assignedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(ghostWorkerTasks.taskId, task.taskId),
+          eq(ghostWorkerTasks.status, "pending"),
+        ),
+      )
       .returning();
 
-    if (!claimed) { res.json({ processed: false }); return; }
+    if (!claimed) {
+      res.json({ processed: false });
+      return;
+    }
 
     const payload = JSON.parse(task.payload) as {
-      message: string; history?: Array<{ role: "user" | "assistant"; content: string }>; systemPrompt?: string;
+      message: string;
+      history?: Array<{ role: "user" | "assistant"; content: string }>;
+      systemPrompt?: string;
     };
     const start = Date.now();
     try {
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-5",
         max_tokens: 8192,
-        system: payload.systemPrompt ?? "You are Omni, a distributed AI agent contributing to the ghost network.",
-        messages: [...(payload.history ?? []), { role: "user" as const, content: payload.message }],
+        system:
+          payload.systemPrompt ??
+          "You are Omni, a distributed AI agent contributing to the ghost network.",
+        messages: [
+          ...(payload.history ?? []),
+          { role: "user" as const, content: payload.message },
+        ],
       });
-      const text = response.content.find(c => c.type === "text")?.text ?? "";
+      const text = response.content.find((c) => c.type === "text")?.text ?? "";
       const processingMs = Date.now() - start;
-      await db.update(ghostWorkerTasks)
+      await db
+        .update(ghostWorkerTasks)
         .set({ status: "complete", result: text, completedAt: new Date() })
         .where(eq(ghostWorkerTasks.taskId, task.taskId));
-      req.log.info({ taskId: task.taskId, processingMs }, "Local contributor processed task");
+      req.log.info(
+        { taskId: task.taskId, processingMs },
+        "Local contributor processed task",
+      );
       res.json({ processed: true, taskId: task.taskId, processingMs });
     } catch (aiErr) {
-      await db.update(ghostWorkerTasks)
+      await db
+        .update(ghostWorkerTasks)
         .set({ status: "failed", completedAt: new Date() })
         .where(eq(ghostWorkerTasks.taskId, task.taskId));
       req.log.error(aiErr, "Local contributor AI failed");
@@ -404,22 +533,29 @@ router.post("/contribute", async (req, res) => {
 // GET /api/ghost/workers — list active browser workers
 router.get("/workers", async (req, res) => {
   try {
-    const all = await db.select({
-      workerId:       ghostWorkerSessions.workerId,
-      name:           ghostWorkerSessions.name,
-      status:         ghostWorkerSessions.status,
-      lastSeen:       ghostWorkerSessions.lastSeen,
-      tasksProcessed: ghostWorkerSessions.tasksProcessed,
-      tasksFailed:    ghostWorkerSessions.tasksFailed,
-      avgResponseMs:  ghostWorkerSessions.avgResponseMs,
-      connectedAt:    ghostWorkerSessions.connectedAt,
-    }).from(ghostWorkerSessions).orderBy(ghostWorkerSessions.connectedAt);
+    const all = await db
+      .select({
+        workerId: ghostWorkerSessions.workerId,
+        name: ghostWorkerSessions.name,
+        status: ghostWorkerSessions.status,
+        lastSeen: ghostWorkerSessions.lastSeen,
+        tasksProcessed: ghostWorkerSessions.tasksProcessed,
+        tasksFailed: ghostWorkerSessions.tasksFailed,
+        avgResponseMs: ghostWorkerSessions.avgResponseMs,
+        connectedAt: ghostWorkerSessions.connectedAt,
+      })
+      .from(ghostWorkerSessions)
+      .orderBy(ghostWorkerSessions.connectedAt);
 
     const now = Date.now();
-    res.json(all.map(w => ({
-      ...w,
-      online: w.lastSeen ? now - new Date(w.lastSeen).getTime() < 90_000 : false,
-    })));
+    res.json(
+      all.map((w) => ({
+        ...w,
+        online: w.lastSeen
+          ? now - new Date(w.lastSeen).getTime() < 90_000
+          : false,
+      })),
+    );
   } catch (err) {
     req.log.error(err, "Failed to list workers");
     res.status(500).json({ error: "Failed" });

@@ -57,7 +57,9 @@ router.post("/proposals", async (req, res) => {
     };
 
   if (!nodeAId || !nodeBId || !edgeType || !evidenceText) {
-    res.status(400).json({ error: "nodeAId, nodeBId, edgeType, evidenceText are required" });
+    res
+      .status(400)
+      .json({ error: "nodeAId, nodeBId, edgeType, evidenceText are required" });
     return;
   }
 

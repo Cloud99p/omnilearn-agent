@@ -7,7 +7,8 @@ router.use("/*", (req, res) => {
   res.status(501).json({
     error: "Ghost network is disabled",
     disabled: true,
-    reason: "This agent operates independently. Distributed/ghost features are disabled by configuration.",
+    reason:
+      "This agent operates independently. Distributed/ghost features are disabled by configuration.",
     endpoints: {
       "/api/ghost/nodes": "DISABLED",
       "/api/ghost/worker": "DISABLED",

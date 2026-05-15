@@ -22,7 +22,7 @@ router.get("/", async (req, res) => {
         lastUpdated: new Date().toISOString(),
       },
     ];
-    
+
     res.json({ repositories });
   } catch (err) {
     req.log.error(err, "Failed to list repositories");

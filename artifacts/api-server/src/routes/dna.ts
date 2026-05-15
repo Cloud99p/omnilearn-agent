@@ -19,7 +19,7 @@ router.get("/", async (req, res) => {
     // 2. Character evolution history
     // 3. Learning patterns
     // 4. Conversation history
-    
+
     // For now, return a static structure - this would be calculated from DB
     const dna = {
       instanceId: process.env.INSTANCE_ID || "local-instance",
@@ -64,7 +64,7 @@ router.get("/", async (req, res) => {
       },
       fingerprint: "unique-instance-fingerprint",
     };
-    
+
     res.json(dna);
   } catch (err) {
     req.log.error(err, "Failed to get instance DNA");
@@ -76,7 +76,7 @@ router.get("/", async (req, res) => {
 router.put("/", async (req, res) => {
   try {
     const { action } = req.body;
-    
+
     if (action === "recalibrate") {
       // Recalculate DNA based on current state
       res.json({ success: true, message: "DNA recalculated" });
@@ -84,7 +84,9 @@ router.put("/", async (req, res) => {
       // Reset to default DNA
       res.json({ success: true, message: "DNA reset to defaults" });
     } else {
-      res.status(400).json({ error: "Invalid action. Use 'recalibrate' or 'reset'" });
+      res
+        .status(400)
+        .json({ error: "Invalid action. Use 'recalibrate' or 'reset'" });
     }
   } catch (err) {
     req.log.error(err, "Failed to update instance DNA");

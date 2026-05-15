@@ -1,10 +1,19 @@
 import crypto from "crypto";
 import { db } from "@workspace/db";
-import { hebbianProposals, knowledgeNodes, knowledgeEdges } from "@workspace/db/schema";
+import {
+  hebbianProposals,
+  knowledgeNodes,
+  knowledgeEdges,
+} from "@workspace/db/schema";
 import { eq, and, gte, sql } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 
-export type EdgeRelationship = "co-occurs" | "related-to" | "causes" | "contradicts" | "supports";
+export type EdgeRelationship =
+  | "co-occurs"
+  | "related-to"
+  | "causes"
+  | "contradicts"
+  | "supports";
 
 // ── Proof construction ────────────────────────────────────────────────────────
 
@@ -19,16 +28,27 @@ export function buildProposalProof(
   evidenceHash: string,
   isoTimestamp: string,
 ): string {
-  const input = [nodeAId, edgeType, nodeBId, evidenceHash, isoTimestamp].join("|");
+  const input = [nodeAId, edgeType, nodeBId, evidenceHash, isoTimestamp].join(
+    "|",
+  );
   return crypto.createHash("sha256").update(input, "utf8").digest("hex");
 }
 
-function voteFromSignal(signal: string, proposalId: number, salt: string): boolean {
-  const hash = crypto.createHash("sha256").update([signal, proposalId, salt].join("|"), "utf8").digest("hex");
+function voteFromSignal(
+  signal: string,
+  proposalId: number,
+  salt: string,
+): boolean {
+  const hash = crypto
+    .createHash("sha256")
+    .update([signal, proposalId, salt].join("|"), "utf8")
+    .digest("hex");
   return parseInt(hash.slice(0, 2), 16) % 2 === 0;
 }
 
-export async function collectHebbianVotes(proposalId: number): Promise<{ yes: number; no: number; quorum: number; passed: boolean }> {
+export async function collectHebbianVotes(
+  proposalId: number,
+): Promise<{ yes: number; no: number; quorum: number; passed: boolean }> {
   const eligibleVotes = [
     voteFromSignal("validator:proof", proposalId, "proof"),
     voteFromSignal("validator:semantic", proposalId, "semantic"),
@@ -52,23 +72,36 @@ export async function proposeHebbianDelta(opts: {
   evidenceText: string;
   deltaWeight: number;
 }): Promise<number> {
-  const { proposerId, nodeAId, nodeBId, edgeType, evidenceText, deltaWeight } = opts;
+  const { proposerId, nodeAId, nodeBId, edgeType, evidenceText, deltaWeight } =
+    opts;
   const isoTimestamp = new Date().toISOString();
   const evidenceHash = buildEvidenceHash(evidenceText);
-  const proposalProof = buildProposalProof(nodeAId, edgeType, nodeBId, evidenceHash, isoTimestamp);
-
-  const [row] = await db.insert(hebbianProposals).values({
-    proposerId,
+  const proposalProof = buildProposalProof(
     nodeAId,
-    nodeBId,
     edgeType,
-    evidenceText,
+    nodeBId,
     evidenceHash,
-    proposalProof,
-    deltaWeight,
-  }).returning({ id: hebbianProposals.id });
+    isoTimestamp,
+  );
 
-  logger.info({ proposalId: row.id, nodeAId, nodeBId, edgeType }, "Hebbian proposal created");
+  const [row] = await db
+    .insert(hebbianProposals)
+    .values({
+      proposerId,
+      nodeAId,
+      nodeBId,
+      edgeType,
+      evidenceText,
+      evidenceHash,
+      proposalProof,
+      deltaWeight,
+    })
+    .returning({ id: hebbianProposals.id });
+
+  logger.info(
+    { proposalId: row.id, nodeAId, nodeBId, edgeType },
+    "Hebbian proposal created",
+  );
   return row.id;
 }
 
@@ -85,14 +118,25 @@ export interface ValidationResult {
   reason?: string;
 }
 
-export async function validateProposal(proposalId: number): Promise<ValidationResult> {
+export async function validateProposal(
+  proposalId: number,
+): Promise<ValidationResult> {
   const [proposal] = await db
     .select()
     .from(hebbianProposals)
     .where(eq(hebbianProposals.id, proposalId));
 
   if (!proposal) {
-    return { valid: false, steps: { evidenceHashMatch: false, proofMatch: false, semanticOverlap: false, freshnessOk: false }, reason: "Proposal not found" };
+    return {
+      valid: false,
+      steps: {
+        evidenceHashMatch: false,
+        proofMatch: false,
+        semanticOverlap: false,
+        freshnessOk: false,
+      },
+      reason: "Proposal not found",
+    };
   }
 
   const steps = {
@@ -121,15 +165,27 @@ export async function validateProposal(proposalId: number): Promise<ValidationRe
   steps.proofMatch = recomputedProof === proposal.proposalProof;
 
   // 3. Semantic overlap — evidenceText must contain tokens from both node contents
-  const [nodeA] = await db.select({ content: knowledgeNodes.content }).from(knowledgeNodes).where(eq(knowledgeNodes.id, proposal.nodeAId));
-  const [nodeB] = await db.select({ content: knowledgeNodes.content }).from(knowledgeNodes).where(eq(knowledgeNodes.id, proposal.nodeBId));
+  const [nodeA] = await db
+    .select({ content: knowledgeNodes.content })
+    .from(knowledgeNodes)
+    .where(eq(knowledgeNodes.id, proposal.nodeAId));
+  const [nodeB] = await db
+    .select({ content: knowledgeNodes.content })
+    .from(knowledgeNodes)
+    .where(eq(knowledgeNodes.id, proposal.nodeBId));
 
   if (nodeA && nodeB) {
     const evidence = proposal.evidenceText.toLowerCase();
-    const tokensA = nodeA.content.toLowerCase().split(/\W+/).filter(t => t.length > 3);
-    const tokensB = nodeB.content.toLowerCase().split(/\W+/).filter(t => t.length > 3);
-    const overlapA = tokensA.some(t => evidence.includes(t));
-    const overlapB = tokensB.some(t => evidence.includes(t));
+    const tokensA = nodeA.content
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((t) => t.length > 3);
+    const tokensB = nodeB.content
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((t) => t.length > 3);
+    const overlapA = tokensA.some((t) => evidence.includes(t));
+    const overlapB = tokensB.some((t) => evidence.includes(t));
     steps.semanticOverlap = overlapA && overlapB;
   }
 
@@ -138,7 +194,11 @@ export async function validateProposal(proposalId: number): Promise<ValidationRe
   steps.freshnessOk = ageMs < 72 * 60 * 60 * 1000;
 
   const vote = await collectHebbianVotes(proposalId);
-  const valid = steps.evidenceHashMatch && steps.proofMatch && steps.freshnessOk && vote.passed;
+  const valid =
+    steps.evidenceHashMatch &&
+    steps.proofMatch &&
+    steps.freshnessOk &&
+    vote.passed;
 
   if (valid) {
     await db
@@ -155,14 +215,21 @@ export async function validateProposal(proposalId: number): Promise<ValidationRe
       .where(eq(hebbianProposals.id, proposalId));
   }
 
-  return { valid, steps, reason: valid ? undefined : buildFailureReason(steps) };
+  return {
+    valid,
+    steps,
+    reason: valid ? undefined : buildFailureReason(steps),
+  };
 }
 
 function buildFailureReason(steps: ValidationResult["steps"]): string {
   if (!steps.freshnessOk) return "Proposal is older than 72 hours";
-  if (!steps.evidenceHashMatch) return "Evidence hash mismatch — text was tampered";
-  if (!steps.proofMatch) return "Proof mismatch — triple does not match claimed evidence";
-  if (!steps.semanticOverlap) return "Evidence text does not semantically support both nodes";
+  if (!steps.evidenceHashMatch)
+    return "Evidence hash mismatch — text was tampered";
+  if (!steps.proofMatch)
+    return "Proof mismatch — triple does not match claimed evidence";
+  if (!steps.semanticOverlap)
+    return "Evidence text does not semantically support both nodes";
   return "Validation failed";
 }
 
@@ -172,9 +239,7 @@ export async function applyValidatedProposals(): Promise<number> {
   const proposals = await db
     .select()
     .from(hebbianProposals)
-    .where(and(
-      eq(hebbianProposals.status, "validated"),
-    ));
+    .where(and(eq(hebbianProposals.status, "validated")));
 
   let applied = 0;
   for (const p of proposals) {
@@ -183,11 +248,13 @@ export async function applyValidatedProposals(): Promise<number> {
       const [existing] = await db
         .select()
         .from(knowledgeEdges)
-        .where(and(
-          eq(knowledgeEdges.fromId, p.nodeAId),
-          eq(knowledgeEdges.toId, p.nodeBId),
-          eq(knowledgeEdges.relationship, p.edgeType),
-        ));
+        .where(
+          and(
+            eq(knowledgeEdges.fromId, p.nodeAId),
+            eq(knowledgeEdges.toId, p.nodeBId),
+            eq(knowledgeEdges.relationship, p.edgeType),
+          ),
+        );
 
       if (existing) {
         // Strengthen existing edge
@@ -213,7 +280,10 @@ export async function applyValidatedProposals(): Promise<number> {
 
       applied++;
     } catch (err) {
-      logger.warn({ err, proposalId: p.id }, "Failed to apply Hebbian proposal");
+      logger.warn(
+        { err, proposalId: p.id },
+        "Failed to apply Hebbian proposal",
+      );
     }
   }
 
@@ -221,7 +291,13 @@ export async function applyValidatedProposals(): Promise<number> {
   return applied;
 }
 
-export async function autoValidateAndApplyProposal(proposalId: number): Promise<{ validation: ValidationResult; applied: boolean; vote: Awaited<ReturnType<typeof collectHebbianVotes>> }> {
+export async function autoValidateAndApplyProposal(
+  proposalId: number,
+): Promise<{
+  validation: ValidationResult;
+  applied: boolean;
+  vote: Awaited<ReturnType<typeof collectHebbianVotes>>;
+}> {
   const validation = await validateProposal(proposalId);
   const vote = await collectHebbianVotes(proposalId);
   let applied = false;

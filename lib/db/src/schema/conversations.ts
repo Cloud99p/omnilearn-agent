@@ -7,7 +7,9 @@ export const conversations = pgTable("conversations", {
   clerkId: text("clerk_id"),
   title: text("title").notNull(),
   mode: text("mode").notNull().default("local"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const insertConversationSchema = createInsertSchema(conversations).omit({

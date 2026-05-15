@@ -6,7 +6,7 @@
 import { detectIdentityStatement } from "../src/brain/extractor.js";
 
 console.log("🧪 Testing AI Identity Enforcement\n");
-console.log("=" .repeat(60));
+console.log("=".repeat(60));
 
 // Test 1: AI should NOT learn user identity statements as its own
 const userIdentities = [
@@ -16,7 +16,9 @@ const userIdentities = [
   "Call me Alice",
 ];
 
-console.log("\n1️⃣  User Identity Statements (should be detected as USER identity):\n");
+console.log(
+  "\n1️⃣  User Identity Statements (should be detected as USER identity):\n",
+);
 for (const statement of userIdentities) {
   const detected = detectIdentityStatement(statement);
   const status = detected ? "✅ Detected" : "❌ Missed";
@@ -31,7 +33,9 @@ const aiSelfIdentities = [
   "I am OmniLearn",
 ];
 
-console.log("\n2️⃣  AI Self-Identity (should NOT be stored as user identity):\n");
+console.log(
+  "\n2️⃣  AI Self-Identity (should NOT be stored as user identity):\n",
+);
 for (const statement of aiSelfIdentities) {
   const detected = detectIdentityStatement(statement);
   const status = !detected ? "✅ Blocked" : "❌ Leaked";
@@ -44,7 +48,7 @@ console.log("   ✅ Identity facts filtered by clerkId (user-specific)");
 console.log("   ✅ AI identity queries return 'Omni' response");
 console.log("   ✅ User identity statements stored with user's clerkId only");
 
-console.log("\n" + "=" .repeat(60));
+console.log("\n" + "=".repeat(60));
 console.log("\n📋 Identity Enforcement Rules:\n");
 console.log("   1. User says 'I'm Emmanuel' → Stored with user's clerkId only");
 console.log("   2. AI is asked 'Who are you?' → Always responds 'I am Omni'");

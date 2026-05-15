@@ -12,7 +12,9 @@ export const skills = pgTable("skills", {
   category: text("category").notNull(),
   isBuiltIn: boolean("is_built_in").notNull().default(false),
   isInstalled: boolean("is_installed").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const insertSkillSchema = createInsertSchema(skills).omit({

@@ -1,11 +1,16 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { networkNeurons, networkSynapses, networkAgents, networkPulses } from "@workspace/db/schema";
+import {
+  networkNeurons,
+  networkSynapses,
+  networkAgents,
+  networkPulses,
+} from "@workspace/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
-import { 
-  contributeNeurons, 
-  queryNetwork, 
-  getNetworkStats, 
+import {
+  contributeNeurons,
+  queryNetwork,
+  getNetworkStats,
   runDecay,
   voteOnNeuron,
   ratifyNeuron,
@@ -13,7 +18,7 @@ import {
   calculateAccuracyScore,
   calculateTopologyScore,
   calculateAgeMultiplier,
-  determinePhase
+  determinePhase,
 } from "../brain/network.js";
 
 const router = Router();
@@ -31,19 +36,26 @@ router.get("/network/neurons", async (req, res) => {
   try {
     const limit = Math.min(200, Number(req.query.limit ?? 50));
     const sort = String(req.query.sort ?? "weight");
-    const order = sort === "recent" ? desc(networkNeurons.createdAt) : desc(networkNeurons.weight);
-    const rows = await db.select({
-      id: networkNeurons.id,
-      content: networkNeurons.content,
-      type: networkNeurons.type,
-      tags: networkNeurons.tags,
-      weight: networkNeurons.weight,
-      reinforcementCount: networkNeurons.reinforcementCount,
-      accessCount: networkNeurons.accessCount,
-      isCore: networkNeurons.isCore,
-      sourceAgent: networkNeurons.sourceAgent,
-      createdAt: networkNeurons.createdAt,
-    }).from(networkNeurons).orderBy(order).limit(limit);
+    const order =
+      sort === "recent"
+        ? desc(networkNeurons.createdAt)
+        : desc(networkNeurons.weight);
+    const rows = await db
+      .select({
+        id: networkNeurons.id,
+        content: networkNeurons.content,
+        type: networkNeurons.type,
+        tags: networkNeurons.tags,
+        weight: networkNeurons.weight,
+        reinforcementCount: networkNeurons.reinforcementCount,
+        accessCount: networkNeurons.accessCount,
+        isCore: networkNeurons.isCore,
+        sourceAgent: networkNeurons.sourceAgent,
+        createdAt: networkNeurons.createdAt,
+      })
+      .from(networkNeurons)
+      .orderBy(order)
+      .limit(limit);
     res.json(rows);
   } catch (err) {
     req.log.error(err, "network neurons error");
@@ -54,13 +66,17 @@ router.get("/network/neurons", async (req, res) => {
 router.get("/network/synapses", async (req, res) => {
   try {
     const limit = Math.min(300, Number(req.query.limit ?? 150));
-    const rows = await db.select({
-      id: networkSynapses.id,
-      sourceId: networkSynapses.sourceId,
-      targetId: networkSynapses.targetId,
-      weight: networkSynapses.weight,
-      activationCount: networkSynapses.activationCount,
-    }).from(networkSynapses).orderBy(desc(networkSynapses.weight)).limit(limit);
+    const rows = await db
+      .select({
+        id: networkSynapses.id,
+        sourceId: networkSynapses.sourceId,
+        targetId: networkSynapses.targetId,
+        weight: networkSynapses.weight,
+        activationCount: networkSynapses.activationCount,
+      })
+      .from(networkSynapses)
+      .orderBy(desc(networkSynapses.weight))
+      .limit(limit);
     res.json(rows);
   } catch (err) {
     req.log.error(err, "network synapses error");
@@ -70,7 +86,10 @@ router.get("/network/synapses", async (req, res) => {
 
 router.get("/network/agents", async (req, res) => {
   try {
-    const rows = await db.select().from(networkAgents).orderBy(desc(networkAgents.totalContributions));
+    const rows = await db
+      .select()
+      .from(networkAgents)
+      .orderBy(desc(networkAgents.totalContributions));
     res.json(rows);
   } catch (err) {
     req.log.error(err, "network agents error");
@@ -81,8 +100,11 @@ router.get("/network/agents", async (req, res) => {
 router.get("/network/pulses", async (req, res) => {
   try {
     const limit = Math.min(100, Number(req.query.limit ?? 40));
-    const rows = await db.select().from(networkPulses)
-      .orderBy(desc(networkPulses.createdAt)).limit(limit);
+    const rows = await db
+      .select()
+      .from(networkPulses)
+      .orderBy(desc(networkPulses.createdAt))
+      .limit(limit);
     res.json(rows);
   } catch (err) {
     req.log.error(err, "network pulses error");
@@ -91,7 +113,11 @@ router.get("/network/pulses", async (req, res) => {
 });
 
 router.post("/network/contribute", async (req, res) => {
-  const { neurons, agentName = "self", agentEndpoint } = req.body as {
+  const {
+    neurons,
+    agentName = "self",
+    agentEndpoint,
+  } = req.body as {
     neurons: Array<{ content: string; type?: string; tags?: string[] }>;
     agentName?: string;
     agentEndpoint?: string;
@@ -101,7 +127,11 @@ router.post("/network/contribute", async (req, res) => {
     return;
   }
   try {
-    const result = await contributeNeurons(neurons, agentName ?? "self", agentEndpoint);
+    const result = await contributeNeurons(
+      neurons,
+      agentName ?? "self",
+      agentEndpoint,
+    );
     res.json(result);
   } catch (err) {
     req.log.error(err, "network contribute error");
@@ -111,7 +141,10 @@ router.post("/network/contribute", async (req, res) => {
 
 router.post("/network/query", async (req, res) => {
   const { text, limit = 20 } = req.body as { text: string; limit?: number };
-  if (!text?.trim()) { res.status(400).json({ error: "text is required" }); return; }
+  if (!text?.trim()) {
+    res.status(400).json({ error: "text is required" });
+    return;
+  }
   try {
     const results = await queryNetwork(text.trim(), "self", Number(limit));
     res.json(results);
@@ -124,13 +157,16 @@ router.post("/network/query", async (req, res) => {
 router.post("/network/reinforce/:id", async (req, res) => {
   const id = Number(req.params.id);
   try {
-    await db.update(networkNeurons).set({
-      weight: sql`LEAST(10.0, weight + 0.3)`,
-      reinforcementCount: sql`reinforcement_count + 1`,
-      isCore: sql`(weight + 0.3) >= 5.0`,
-      lastReinforcedAt: new Date(),
-      updatedAt: new Date(),
-    }).where(eq(networkNeurons.id, id));
+    await db
+      .update(networkNeurons)
+      .set({
+        weight: sql`LEAST(10.0, weight + 0.3)`,
+        reinforcementCount: sql`reinforcement_count + 1`,
+        isCore: sql`(weight + 0.3) >= 5.0`,
+        lastReinforcedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(networkNeurons.id, id));
     await db.insert(networkPulses).values({
       agentName: "self",
       eventType: "reinforce",
@@ -156,18 +192,20 @@ router.post("/network/decay", async (req, res) => {
 
 router.post("/network/sync", async (req, res) => {
   const GHOST_SECRET = process.env.GHOST_SECRET;
-  
+
   // SECURITY: Require ghost secret header for sync operations
   const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
   if (GHOST_SECRET && providedSecret !== GHOST_SECRET) {
     req.log.warn(
       { agentName: req.body.agentName, agentEndpoint: req.body.agentEndpoint },
-      "Unauthorized network sync attempt - invalid or missing ghost secret"
+      "Unauthorized network sync attempt - invalid or missing ghost secret",
     );
-    res.status(401).json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
+    res
+      .status(401)
+      .json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
     return;
   }
-  
+
   const { knowledge, agentName, agentEndpoint, relayPath } = req.body as {
     knowledge: Array<{ content: string; type?: string; tags?: string[] }>;
     agentName: string;
@@ -175,11 +213,18 @@ router.post("/network/sync", async (req, res) => {
     relayPath?: string;
   };
   if (!Array.isArray(knowledge) || !agentName) {
-    res.status(400).json({ error: "knowledge array and agentName are required" });
+    res
+      .status(400)
+      .json({ error: "knowledge array and agentName are required" });
     return;
   }
   try {
-    const result = await contributeNeurons(knowledge, agentName, agentEndpoint, relayPath);
+    const result = await contributeNeurons(
+      knowledge,
+      agentName,
+      agentEndpoint,
+      relayPath,
+    );
     await db.insert(networkPulses).values({
       agentName,
       eventType: "sync",
@@ -197,31 +242,43 @@ router.post("/network/sync", async (req, res) => {
 router.post("/network/vote/:id", async (req, res) => {
   const GHOST_SECRET = process.env.GHOST_SECRET;
   const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
-  
+
   if (GHOST_SECRET && providedSecret !== GHOST_SECRET) {
-    res.status(401).json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
+    res
+      .status(401)
+      .json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
     return;
   }
-  
+
   const id = Number(req.params.id);
-  const { vote, relayPath } = req.body as { vote: "up" | "down"; relayPath?: string };
-  
+  const { vote, relayPath } = req.body as {
+    vote: "up" | "down";
+    relayPath?: string;
+  };
+
   if (!vote || (vote !== "up" && vote !== "down")) {
     res.status(400).json({ error: "vote must be 'up' or 'down'" });
     return;
   }
-  
+
   try {
-    const { success, neuronId, vote: voted, weight } = await voteOnNeuron(id, req.body.agentName || "self", vote, relayPath);
-    
+    const {
+      success,
+      neuronId,
+      vote: voted,
+      weight,
+    } = await voteOnNeuron(id, req.body.agentName || "self", vote, relayPath);
+
     if (!success) {
-      res.status(403).json({ 
-        error: "Cannot vote - agent not yet eligible (Observer phase, no voting weight)",
-        reason: "Wait for agent to progress through Observer → Probationary → Voting Member phases",
+      res.status(403).json({
+        error:
+          "Cannot vote - agent not yet eligible (Observer phase, no voting weight)",
+        reason:
+          "Wait for agent to progress through Observer → Probationary → Voting Member phases",
       });
       return;
     }
-    
+
     res.json({ success: true, neuronId, vote: voted, weight });
   } catch (err) {
     req.log.error(err, "network vote error");
@@ -233,18 +290,24 @@ router.post("/network/vote/:id", async (req, res) => {
 router.post("/network/ratify/:id", async (req, res) => {
   const GHOST_SECRET = process.env.GHOST_SECRET;
   const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
-  
+
   if (GHOST_SECRET && providedSecret !== GHOST_SECRET) {
-    res.status(401).json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
+    res
+      .status(401)
+      .json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
     return;
   }
-  
+
   const id = Number(req.params.id);
   const { quorumSize } = req.body as { quorumSize?: number };
-  
+
   try {
-    const { success, ratified, quorum } = await ratifyNeuron(id, req.body.agentName || "self", quorumSize || 3);
-    
+    const { success, ratified, quorum } = await ratifyNeuron(
+      id,
+      req.body.agentName || "self",
+      quorumSize || 3,
+    );
+
     res.json({ success, ratified, quorum });
   } catch (err) {
     req.log.error(err, "network ratify error");
@@ -256,39 +319,49 @@ router.post("/network/ratify/:id", async (req, res) => {
 router.get("/network/probation", async (req, res) => {
   try {
     const now = new Date();
-    const probationNeurons = await db.select({
-      id: networkNeurons.id,
-      content: networkNeurons.content,
-      sourceAgent: networkNeurons.sourceAgent,
-      createdAt: networkNeurons.createdAt,
-      ratificationQuorum: networkNeurons.ratificationQuorum,
-      isRatified: networkNeurons.isRatified,
-    }).from(networkNeurons)
-      .where(and(
-        eq(networkNeurons.isRatified, false),
-        eq(networkNeurons.sourceAgent, "!="), // Will be filtered by agent
-      ))
+    const probationNeurons = await db
+      .select({
+        id: networkNeurons.id,
+        content: networkNeurons.content,
+        sourceAgent: networkNeurons.sourceAgent,
+        createdAt: networkNeurons.createdAt,
+        ratificationQuorum: networkNeurons.ratificationQuorum,
+        isRatified: networkNeurons.isRatified,
+      })
+      .from(networkNeurons)
+      .where(
+        and(
+          eq(networkNeurons.isRatified, false),
+          eq(networkNeurons.sourceAgent, "!="), // Will be filtered by agent
+        ),
+      )
       .orderBy(networkNeurons.createdAt)
       .limit(100);
-    
+
     // Get ratification progress for each neuron
-    const result = await Promise.all(probationNeurons.map(async (n) => {
-      const ratifications = await db.select({ agentName: networkVotes.agentName })
-        .from(networkVotes)
-        .where(eq(networkVotes.neuronId, n.id));
-      
-      return {
-        id: n.id,
-        content: n.content,
-        sourceAgent: n.sourceAgent,
-        createdAt: n.createdAt,
-        ratificationQuorum: n.ratificationQuorum ?? 0,
-        ratifications: ratifications.length,
-        ratificationsBy: ratifications.map(r => r.agentName),
-        daysSinceSubmitted: Math.floor((now.getTime() - new Date(n.createdAt).getTime()) / (24 * 60 * 60 * 1000)),
-      };
-    }));
-    
+    const result = await Promise.all(
+      probationNeurons.map(async (n) => {
+        const ratifications = await db
+          .select({ agentName: networkVotes.agentName })
+          .from(networkVotes)
+          .where(eq(networkVotes.neuronId, n.id));
+
+        return {
+          id: n.id,
+          content: n.content,
+          sourceAgent: n.sourceAgent,
+          createdAt: n.createdAt,
+          ratificationQuorum: n.ratificationQuorum ?? 0,
+          ratifications: ratifications.length,
+          ratificationsBy: ratifications.map((r) => r.agentName),
+          daysSinceSubmitted: Math.floor(
+            (now.getTime() - new Date(n.createdAt).getTime()) /
+              (24 * 60 * 60 * 1000),
+          ),
+        };
+      }),
+    );
+
     res.json(result);
   } catch (err) {
     req.log.error(err, "network probation list error");
@@ -299,33 +372,40 @@ router.get("/network/probation", async (req, res) => {
 // GET /api/network/agents — list all agents with their reputation
 router.get("/network/agents", async (req, res) => {
   try {
-    const agents = await db.select().from(networkAgents)
+    const agents = await db
+      .select()
+      .from(networkAgents)
       .orderBy(desc(networkAgents.trustScore))
       .limit(200);
-    
-    const result = await Promise.all(agents.map(async (a) => {
-      const domainStats = await calculateDomainScore(a.name);
-      const accuracyStats = await calculateAccuracyScore(a.name);
-      const topologyStats = await calculateTopologyScore(a.name);
-      const ageMultiplier = calculateAgeMultiplier(a.firstSeenAt ?? null);
-      const { phase, weight } = determinePhase(a.trustScore, a.daysActive ?? 0);
-      
-      return {
-        ...a,
-        phase,
-        weight,
-        domainScore: domainStats.score,
-        accuracyScore: accuracyStats.score,
-        topologyScore: topologyStats.score,
-        uniqueDomains: domainStats.uniqueDomains,
-        uniqueRelayPaths: topologyStats.paths,
-        submissions: accuracyStats.submissions,
-        ratified: accuracyStats.ratified,
-        daysActive: a.daysActive ?? 0,
-        ageMultiplier,
-      };
-    }));
-    
+
+    const result = await Promise.all(
+      agents.map(async (a) => {
+        const domainStats = await calculateDomainScore(a.name);
+        const accuracyStats = await calculateAccuracyScore(a.name);
+        const topologyStats = await calculateTopologyScore(a.name);
+        const ageMultiplier = calculateAgeMultiplier(a.firstSeenAt ?? null);
+        const { phase, weight } = determinePhase(
+          a.trustScore,
+          a.daysActive ?? 0,
+        );
+
+        return {
+          ...a,
+          phase,
+          weight,
+          domainScore: domainStats.score,
+          accuracyScore: accuracyStats.score,
+          topologyScore: topologyStats.score,
+          uniqueDomains: domainStats.uniqueDomains,
+          uniqueRelayPaths: topologyStats.paths,
+          submissions: accuracyStats.submissions,
+          ratified: accuracyStats.ratified,
+          daysActive: a.daysActive ?? 0,
+          ageMultiplier,
+        };
+      }),
+    );
+
     res.json(result);
   } catch (err) {
     req.log.error(err, "network agents list error");
@@ -337,19 +417,26 @@ router.get("/network/agents", async (req, res) => {
 router.get("/network/agent/:name", async (req, res) => {
   try {
     const agentName = req.params.name;
-    const agent = await db.select().from(networkAgents).where(eq(networkAgents.name, agentName)).limit(1);
-    
+    const agent = await db
+      .select()
+      .from(networkAgents)
+      .where(eq(networkAgents.name, agentName))
+      .limit(1);
+
     if (!agent[0]) {
       res.status(404).json({ error: "Agent not found" });
       return;
     }
-    
+
     const domainStats = await calculateDomainScore(agentName);
     const accuracyStats = await calculateAccuracyScore(agentName);
     const topologyStats = await calculateTopologyScore(agentName);
     const ageMultiplier = calculateAgeMultiplier(agent[0].firstSeenAt ?? null);
-    const { phase, weight } = determinePhase(agent[0].trustScore, agent[0].daysActive ?? 0);
-    
+    const { phase, weight } = determinePhase(
+      agent[0].trustScore,
+      agent[0].daysActive ?? 0,
+    );
+
     res.json({
       ...agent[0],
       phase,

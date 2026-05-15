@@ -29,6 +29,7 @@ Tier 1: Individual Node (1 agent)
 ## Tier Definitions
 
 ### Tier 1: Individual Node
+
 ```yaml
 Capacity: 1 Ghost Node
 Coverage: Single machine
@@ -38,6 +39,7 @@ Role: Process local queries, maintain personal knowledge graph
 ```
 
 ### Tier 2: Local Cluster
+
 ```yaml
 Threshold: 50+ nodes in 50km radius
 Coverage: City or metropolitan area
@@ -48,6 +50,7 @@ Bandwidth: Local LAN-speed
 ```
 
 ### Tier 3: Metro Network
+
 ```yaml
 Threshold: 5+ Local Clusters in 200km radius
 Coverage: Greater metropolitan region
@@ -58,6 +61,7 @@ Bandwidth: Regional fiber/microwave links
 ```
 
 ### Tier 4: Regional Network
+
 ```yaml
 Threshold: 10+ Metro Networks in 1000km radius
 Coverage: State or small country
@@ -68,6 +72,7 @@ Bandwidth: National fiber backbones
 ```
 
 ### Tier 5: Continental Backbone
+
 ```yaml
 Threshold: 20+ Regional Networks on continent
 Coverage: Entire continent
@@ -78,6 +83,7 @@ Bandwidth: Subsea fiber + satellite links
 ```
 
 ### Tier 6: Global Mesh
+
 ```yaml
 Threshold: 4 continental backbones connected
 Coverage: Planetary
@@ -88,6 +94,7 @@ Bandwidth: Subsea fiber cables + Starlink
 ```
 
 ### Tier 7: Planetary Intelligence
+
 ```yaml
 Threshold: Self-organizing (emergent property)
 Coverage: Global consciousness
@@ -101,13 +108,17 @@ Role: Planetary-scale pattern recognition, AI-human collaborative intelligence
 ## Key Features
 
 ### 1. Self-Organizing
+
 Nodes automatically discover and cluster based on geographic proximity using Haversine distance calculation.
 
 ### 2. Self-Healing
+
 Network automatically routes around failures. If a cluster goes offline, queries are rerouted through alternative paths.
 
 ### 3. Hierarchical Routing
+
 Queries are routed through the appropriate tier:
+
 - **Local queries** → Tier 1-2 (<10ms)
 - **Metro queries** → Tier 3 (<50ms)
 - **Regional queries** → Tier 4 (<100ms)
@@ -116,7 +127,9 @@ Queries are routed through the appropriate tier:
 - **Planetary queries** → Tier 7 (emergent synthesis)
 
 ### 4. Knowledge Aggregation
+
 Knowledge flows up the hierarchy:
+
 ```
 Individual Node learns something
          ↓
@@ -130,7 +143,9 @@ Global network receives distilled knowledge
 ```
 
 ### 5. Scalability
+
 The architecture scales from 1 node to 1M+ nodes:
+
 - **1-50 nodes**: Individual + Local clusters
 - **50-250 nodes**: Metro networks form
 - **250-2,500 nodes**: Regional networks form
@@ -160,31 +175,37 @@ packages/network-hierarchy/
 ### Key Classes
 
 #### `ClusterManager`
+
 ```typescript
 class ClusterManager {
-  registerNode(node: GhostNode): void
-  findNearbyNodes(node: GhostNode, radiusKm: number): GhostNode[]
-  createCluster(nodes: GhostNode[], radiusKm: number): string
-  checkFusion(clusterId: string): FusionProposal | null
+  registerNode(node: GhostNode): void;
+  findNearbyNodes(node: GhostNode, radiusKm: number): GhostNode[];
+  createCluster(nodes: GhostNode[], radiusKm: number): string;
+  checkFusion(clusterId: string): FusionProposal | null;
 }
 ```
 
 #### `DiscoveryService`
+
 ```typescript
 class DiscoveryService {
-  start(): void
-  registerNode(node: GhostNode): void
-  findNearbyNodes(center: GeoLocation, radiusKm: number): GhostNode[]
-  broadcast(message: DiscoveryMessage): void
+  start(): void;
+  registerNode(node: GhostNode): void;
+  findNearbyNodes(center: GeoLocation, radiusKm: number): GhostNode[];
+  broadcast(message: DiscoveryMessage): void;
 }
 ```
 
 #### `RoutingManager`
+
 ```typescript
 class RoutingManager {
-  routeQuery(query: Query): Promise<QueryResponse[]>
-  getTargetNodes(scope: string, routingTable: RoutingTable): string[]
-  aggregateResponses(queryId: string, responses: QueryResponse[]): QueryResponse
+  routeQuery(query: Query): Promise<QueryResponse[]>;
+  getTargetNodes(scope: string, routingTable: RoutingTable): string[];
+  aggregateResponses(
+    queryId: string,
+    responses: QueryResponse[],
+  ): QueryResponse;
 }
 ```
 
@@ -193,36 +214,42 @@ class RoutingManager {
 ## Implementation Phases
 
 ### Phase 1: Foundation (Q3 2026)
+
 - [x] Individual node discovery protocol
 - [x] Local cluster formation (50 nodes)
 - [ ] Cluster head election algorithm
 - [ ] Intra-cluster knowledge sharing
 
 ### Phase 2: Metro Scale (Q4 2026)
+
 - [ ] Metro network formation (5 clusters)
 - [ ] Cross-cluster routing
 - [ ] Metro coordinator election
 - [ ] Load balancing between clusters
 
 ### Phase 3: Regional Scale (Q1 2027)
+
 - [ ] Regional network formation (10 metros)
 - [ ] Regional knowledge synthesis
 - [ ] Cross-metro failover
 - [ ] Regional redundancy
 
 ### Phase 4: Continental (Q2-Q3 2027)
+
 - [ ] Continental backbone (20 regions)
 - [ ] Subsea fiber optimization
 - [ ] Continental language models
 - [ ] Cross-regional learning
 
 ### Phase 5: Global (Q4 2027 - Q1 2028)
+
 - [ ] Global mesh interconnection
 - [ ] Planetary routing tables
 - [ ] Global crisis coordination
 - [ ] Universal knowledge synthesis
 
 ### Phase 6: Emergence (2028+)
+
 - [ ] Planetary intelligence emergence
 - [ ] Self-optimizing topology
 - [ ] Autonomous tier formation
@@ -232,14 +259,14 @@ class RoutingManager {
 
 ## Scaling Projections
 
-| Time | Nodes | Local Clusters | Metro | Regional | Continental | Tier Reached |
-|------|-------|----------------|-------|----------|-------------|--------------|
-| **Launch** | 50 | 1 | 0 | 0 | 0 | Tier 2 |
-| **Month 3** | 500 | 10 | 2 | 0 | 0 | Tier 3 |
-| **Month 6** | 5,000 | 100 | 20 | 2 | 0 | Tier 4 |
-| **Year 1** | 50,000 | 1,000 | 200 | 20 | 1 | Tier 5 |
-| **Year 2** | 200,000 | 4,000 | 800 | 80 | 4 | Tier 6 |
-| **Year 5** | 1M+ | 20,000 | 4,000 | 400 | 10+ | Tier 7 |
+| Time        | Nodes   | Local Clusters | Metro | Regional | Continental | Tier Reached |
+| ----------- | ------- | -------------- | ----- | -------- | ----------- | ------------ |
+| **Launch**  | 50      | 1              | 0     | 0        | 0           | Tier 2       |
+| **Month 3** | 500     | 10             | 2     | 0        | 0           | Tier 3       |
+| **Month 6** | 5,000   | 100            | 20    | 2        | 0           | Tier 4       |
+| **Year 1**  | 50,000  | 1,000          | 200   | 20       | 1           | Tier 5       |
+| **Year 2**  | 200,000 | 4,000          | 800   | 80       | 4           | Tier 6       |
+| **Year 5**  | 1M+     | 20,000         | 4,000 | 400      | 10+         | Tier 7       |
 
 ---
 
@@ -275,6 +302,7 @@ Total: 50,000 nodes
 ## Query Routing Example
 
 ### Query: "What's the weather in Lagos?"
+
 ```
 1. Query originates from node in Lagos
 2. RoutingManager checks scope: 'local'
@@ -283,6 +311,7 @@ Total: 50,000 nodes
 ```
 
 ### Query: "What's the global AI research trend?"
+
 ```
 1. Query originates from any node
 2. RoutingManager checks scope: 'global'
@@ -292,6 +321,7 @@ Total: 50,000 nodes
 ```
 
 ### Query: "How do we solve poverty?"
+
 ```
 1. Query originates from any node
 2. RoutingManager checks scope: 'planetary'
@@ -305,21 +335,25 @@ Total: 50,000 nodes
 ## Benefits
 
 ### 1. Scalability
+
 - No single point of failure
 - Each level handles its own traffic
 - Global network doesn't get overwhelmed
 
 ### 2. Latency Optimization
+
 - Local queries stay local (<10ms)
 - Only need to query higher tiers when necessary
 - Adaptive routing based on query scope
 
 ### 3. Privacy & Sovereignty
+
 - Local data stays local (city/regional level)
 - Only aggregated insights go up the hierarchy
 - Each region controls what it shares
 
 ### 4. Resilience
+
 - If African continental backbone goes down:
   - West Africa still works
   - East Africa still works
@@ -340,13 +374,37 @@ interface TierThresholds {
 }
 
 const TIER_THRESHOLDS: TierThresholds[] = [
-  { tier: 1, minUnits: 1,      radiusKm: 0,     maxLatencyMs: 1,    bandwidthGbps: 10 },   // Node
-  { tier: 2, minUnits: 50,     radiusKm: 50,    maxLatencyMs: 10,   bandwidthGbps: 1 },    // Local
-  { tier: 3, minUnits: 250,    radiusKm: 200,   maxLatencyMs: 50,   bandwidthGbps: 10 },   // Metro
-  { tier: 4, minUnits: 2500,   radiusKm: 1000,  maxLatencyMs: 100,  bandwidthGbps: 100 },  // Regional
-  { tier: 5, minUnits: 50000,  radiusKm: 5000,  maxLatencyMs: 200,  bandwidthGbps: 1000 }, // Continental
-  { tier: 6, minUnits: 200000, radiusKm: 20000, maxLatencyMs: 500,  bandwidthGbps: 10000 },// Global
-  { tier: 7, minUnits: 0,      radiusKm: 40000, maxLatencyMs: 0,    bandwidthGbps: 0 },    // Planetary
+  { tier: 1, minUnits: 1, radiusKm: 0, maxLatencyMs: 1, bandwidthGbps: 10 }, // Node
+  { tier: 2, minUnits: 50, radiusKm: 50, maxLatencyMs: 10, bandwidthGbps: 1 }, // Local
+  {
+    tier: 3,
+    minUnits: 250,
+    radiusKm: 200,
+    maxLatencyMs: 50,
+    bandwidthGbps: 10,
+  }, // Metro
+  {
+    tier: 4,
+    minUnits: 2500,
+    radiusKm: 1000,
+    maxLatencyMs: 100,
+    bandwidthGbps: 100,
+  }, // Regional
+  {
+    tier: 5,
+    minUnits: 50000,
+    radiusKm: 5000,
+    maxLatencyMs: 200,
+    bandwidthGbps: 1000,
+  }, // Continental
+  {
+    tier: 6,
+    minUnits: 200000,
+    radiusKm: 20000,
+    maxLatencyMs: 500,
+    bandwidthGbps: 10000,
+  }, // Global
+  { tier: 7, minUnits: 0, radiusKm: 40000, maxLatencyMs: 0, bandwidthGbps: 0 }, // Planetary
 ];
 
 function calculateTier(nodeCount: number, radiusKm: number): NetworkTier {
@@ -365,6 +423,7 @@ function calculateTier(nodeCount: number, radiusKm: number): NetworkTier {
 ## Conclusion
 
 The hierarchical network architecture enables OmniLearn to scale from a single agent to planetary intelligence while maintaining:
+
 - **Low latency** for local queries
 - **High availability** through redundancy
 - **Privacy** through data sovereignty

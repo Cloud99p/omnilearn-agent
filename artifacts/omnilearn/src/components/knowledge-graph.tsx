@@ -217,21 +217,21 @@ const EDGES: Edge[] = [
 ];
 
 const PROTOCOL_COLOR: Record<Edge["protocol"], string> = {
-  kafka:     "#22d3ee",
-  rest:      "#34d399",
-  grpc:      "#a78bfa",
-  event:     "#fb923c",
+  kafka: "#22d3ee",
+  rest: "#34d399",
+  grpc: "#a78bfa",
+  event: "#fb923c",
   broadcast: "#facc15",
-  feedback:  "#f472b6",
+  feedback: "#f472b6",
 };
 
 const PROTOCOL_LABEL: Record<Edge["protocol"], string> = {
-  kafka:     "Kafka",
-  rest:      "REST",
-  grpc:      "gRPC",
-  event:     "Event",
+  kafka: "Kafka",
+  rest: "REST",
+  grpc: "gRPC",
+  event: "Event",
   broadcast: "Broadcast",
-  feedback:  "Feedback",
+  feedback: "Feedback",
 };
 
 const NODE_W = 88;
@@ -254,7 +254,17 @@ function edgePath(from: Node, to: Node): string {
   return `M ${f.cx} ${f.cy} C ${cx1} ${cy1} ${cx2} ${cy2} ${t.cx} ${t.cy}`;
 }
 
-function AnimatedPacket({ path, color, speed, delay }: { path: string; color: string; speed: number; delay: number }) {
+function AnimatedPacket({
+  path,
+  color,
+  speed,
+  delay,
+}: {
+  path: string;
+  color: string;
+  speed: number;
+  delay: number;
+}) {
   return (
     <circle r="4" fill={color} opacity="0.9">
       <animateMotion
@@ -272,13 +282,15 @@ export default function KnowledgeGraph() {
   const [activeNode, setActiveNode] = useState<string | null>(null);
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
 
-  const nodeMap = Object.fromEntries(NODES.map(n => [n.id, n]));
+  const nodeMap = Object.fromEntries(NODES.map((n) => [n.id, n]));
   const selectedNode = activeNode ? nodeMap[activeNode] : null;
 
   return (
     <div className="mt-16">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold tracking-tight mb-2">Module Communication Map</h2>
+        <h2 className="text-2xl font-bold tracking-tight mb-2">
+          Module Communication Map
+        </h2>
         <p className="text-muted-foreground font-mono text-sm">
           Live data flow between all 8 modules. Click any node for details.
         </p>
@@ -295,14 +307,39 @@ export default function KnowledgeGraph() {
             >
               {/* Background grid */}
               <defs>
-                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                <pattern
+                  id="grid"
+                  width="40"
+                  height="40"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path
+                    d="M 40 0 L 0 0 0 40"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.03)"
+                    strokeWidth="1"
+                  />
                 </pattern>
-                <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                <marker
+                  id="arrow"
+                  markerWidth="6"
+                  markerHeight="6"
+                  refX="5"
+                  refY="3"
+                  orient="auto"
+                >
                   <path d="M0,0 L0,6 L6,3 z" fill="hsl(230 25% 20%)" />
                 </marker>
                 {Object.entries(PROTOCOL_COLOR).map(([proto, color]) => (
-                  <marker key={proto} id={`arrow-${proto}`} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <marker
+                    key={proto}
+                    id={`arrow-${proto}`}
+                    markerWidth="6"
+                    markerHeight="6"
+                    refX="5"
+                    refY="3"
+                    orient="auto"
+                  >
                     <path d="M0,0 L0,6 L6,3 z" fill={color} opacity="0.6" />
                   </marker>
                 ))}
@@ -310,14 +347,16 @@ export default function KnowledgeGraph() {
               <rect width="800" height="430" fill="url(#grid)" />
 
               {/* Edges */}
-              {EDGES.map(edge => {
+              {EDGES.map((edge) => {
                 const fromNode = nodeMap[edge.from];
                 const toNode = nodeMap[edge.to];
                 if (!fromNode || !toNode) return null;
                 const d = edgePath(fromNode, toNode);
                 const color = PROTOCOL_COLOR[edge.protocol];
                 const isHovered = hoveredEdge === edge.id;
-                const isRelated = activeNode && (edge.from === activeNode || edge.to === activeNode);
+                const isRelated =
+                  activeNode &&
+                  (edge.from === activeNode || edge.to === activeNode);
                 const isActive = isHovered || isRelated;
 
                 return (
@@ -338,24 +377,50 @@ export default function KnowledgeGraph() {
                       fill="none"
                       stroke={color}
                       strokeWidth={isActive ? 2 : 1}
-                      strokeDasharray={edge.protocol === "broadcast" ? "5 4" : edge.protocol === "feedback" ? "3 3" : undefined}
+                      strokeDasharray={
+                        edge.protocol === "broadcast"
+                          ? "5 4"
+                          : edge.protocol === "feedback"
+                            ? "3 3"
+                            : undefined
+                      }
                       opacity={isActive ? 0.9 : activeNode ? 0.15 : 0.35}
                       markerEnd={`url(#arrow-${edge.protocol})`}
                       style={{ transition: "opacity 0.2s, stroke-width 0.2s" }}
                     />
                     {/* Edge label on hover */}
-                    {isHovered && (() => {
-                      const fromC = getNodeCenter(fromNode);
-                      const toC = getNodeCenter(toNode);
-                      const mx = (fromC.cx + toC.cx) / 2;
-                      const my = (fromC.cy + toC.cy) / 2;
-                      return (
-                        <g>
-                          <rect x={mx - 38} y={my - 10} width={76} height={18} rx={4} fill="hsl(230 25% 9%)" stroke={color} strokeWidth="1" opacity="0.95" />
-                          <text x={mx} y={my + 4} textAnchor="middle" fill={color} fontSize="9" fontFamily="monospace">{PROTOCOL_LABEL[edge.protocol]} · {edge.label}</text>
-                        </g>
-                      );
-                    })()}
+                    {isHovered &&
+                      (() => {
+                        const fromC = getNodeCenter(fromNode);
+                        const toC = getNodeCenter(toNode);
+                        const mx = (fromC.cx + toC.cx) / 2;
+                        const my = (fromC.cy + toC.cy) / 2;
+                        return (
+                          <g>
+                            <rect
+                              x={mx - 38}
+                              y={my - 10}
+                              width={76}
+                              height={18}
+                              rx={4}
+                              fill="hsl(230 25% 9%)"
+                              stroke={color}
+                              strokeWidth="1"
+                              opacity="0.95"
+                            />
+                            <text
+                              x={mx}
+                              y={my + 4}
+                              textAnchor="middle"
+                              fill={color}
+                              fontSize="9"
+                              fontFamily="monospace"
+                            >
+                              {PROTOCOL_LABEL[edge.protocol]} · {edge.label}
+                            </text>
+                          </g>
+                        );
+                      })()}
                     {/* Animated packet */}
                     <AnimatedPacket
                       path={d}
@@ -368,14 +433,27 @@ export default function KnowledgeGraph() {
               })}
 
               {/* Nodes */}
-              {NODES.map(node => {
+              {NODES.map((node) => {
                 const isSelected = activeNode === node.id;
-                const isDimmed = activeNode && !isSelected && !EDGES.some(e => e.from === activeNode && e.to === node.id || e.to === activeNode && e.from === node.id);
-                const color = isSelected ? "#22d3ee" : node.type === "stateful" ? "#a78bfa" : "#64748b";
+                const isDimmed =
+                  activeNode &&
+                  !isSelected &&
+                  !EDGES.some(
+                    (e) =>
+                      (e.from === activeNode && e.to === node.id) ||
+                      (e.to === activeNode && e.from === node.id),
+                  );
+                const color = isSelected
+                  ? "#22d3ee"
+                  : node.type === "stateful"
+                    ? "#a78bfa"
+                    : "#64748b";
                 return (
                   <g
                     key={node.id}
-                    onClick={() => setActiveNode(activeNode === node.id ? null : node.id)}
+                    onClick={() =>
+                      setActiveNode(activeNode === node.id ? null : node.id)
+                    }
                     style={{ cursor: "pointer" }}
                     opacity={isDimmed ? 0.25 : 1}
                   >
@@ -399,7 +477,11 @@ export default function KnowledgeGraph() {
                       width={NODE_W}
                       height={NODE_H}
                       rx={6}
-                      fill={isSelected ? "hsl(180 100% 45% / 0.15)" : "hsl(230 25% 9%)"}
+                      fill={
+                        isSelected
+                          ? "hsl(180 100% 45% / 0.15)"
+                          : "hsl(230 25% 9%)"
+                      }
                       stroke={color}
                       strokeWidth={isSelected ? 1.5 : 1}
                     />
@@ -445,33 +527,60 @@ export default function KnowledgeGraph() {
                 className="bg-card border border-primary/30 rounded-xl p-5 space-y-4"
               >
                 <div>
-                  <div className="font-mono text-xs text-primary uppercase tracking-wider mb-1">{selectedNode.type}</div>
+                  <div className="font-mono text-xs text-primary uppercase tracking-wider mb-1">
+                    {selectedNode.type}
+                  </div>
                   <h3 className="font-bold text-lg">{selectedNode.label}</h3>
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">{selectedNode.desc}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {selectedNode.desc}
+                </p>
 
                 <div>
-                  <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-2">Stack</p>
+                  <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-2">
+                    Stack
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {selectedNode.tools.map(t => (
-                      <span key={t} className="font-mono text-xs px-2 py-1 bg-secondary border border-border rounded text-muted-foreground">{t}</span>
+                    {selectedNode.tools.map((t) => (
+                      <span
+                        key={t}
+                        className="font-mono text-xs px-2 py-1 bg-secondary border border-border rounded text-muted-foreground"
+                      >
+                        {t}
+                      </span>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-2">Connections</p>
+                  <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-2">
+                    Connections
+                  </p>
                   <div className="space-y-1.5">
-                    {EDGES.filter(e => e.from === selectedNode.id || e.to === selectedNode.id).map(e => {
+                    {EDGES.filter(
+                      (e) =>
+                        e.from === selectedNode.id || e.to === selectedNode.id,
+                    ).map((e) => {
                       const isOut = e.from === selectedNode.id;
                       const other = nodeMap[isOut ? e.to : e.from];
                       const color = PROTOCOL_COLOR[e.protocol];
                       return (
-                        <div key={e.id} className="flex items-center gap-2 font-mono text-xs">
-                          <span style={{ color }} className="w-14 shrink-0">{PROTOCOL_LABEL[e.protocol]}</span>
-                          <span className="text-muted-foreground">{isOut ? "→" : "←"}</span>
-                          <span className="text-foreground">{other?.label}</span>
-                          <span className="text-muted-foreground/50 truncate">({e.label})</span>
+                        <div
+                          key={e.id}
+                          className="flex items-center gap-2 font-mono text-xs"
+                        >
+                          <span style={{ color }} className="w-14 shrink-0">
+                            {PROTOCOL_LABEL[e.protocol]}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {isOut ? "→" : "←"}
+                          </span>
+                          <span className="text-foreground">
+                            {other?.label}
+                          </span>
+                          <span className="text-muted-foreground/50 truncate">
+                            ({e.label})
+                          </span>
                         </div>
                       );
                     })}
@@ -488,27 +597,44 @@ export default function KnowledgeGraph() {
                 <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-3">
                   <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
                 </div>
-                <p className="font-mono text-sm text-muted-foreground">Click any module node to inspect its connections and stack.</p>
+                <p className="font-mono text-sm text-muted-foreground">
+                  Click any module node to inspect its connections and stack.
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
 
           {/* Legend */}
           <div className="bg-card border border-border rounded-xl p-4">
-            <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-3">Protocol legend</p>
+            <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-3">
+              Protocol legend
+            </p>
             <div className="space-y-2">
-              {(Object.entries(PROTOCOL_COLOR) as [Edge["protocol"], string][]).map(([proto, color]) => (
+              {(
+                Object.entries(PROTOCOL_COLOR) as [Edge["protocol"], string][]
+              ).map(([proto, color]) => (
                 <div key={proto} className="flex items-center gap-2">
                   <div className="flex items-center gap-1 w-28">
                     <svg width="32" height="8">
                       <line
-                        x1="0" y1="4" x2="28" y2="4"
+                        x1="0"
+                        y1="4"
+                        x2="28"
+                        y2="4"
                         stroke={color}
                         strokeWidth="1.5"
-                        strokeDasharray={proto === "broadcast" ? "4 3" : proto === "feedback" ? "2 2" : undefined}
+                        strokeDasharray={
+                          proto === "broadcast"
+                            ? "4 3"
+                            : proto === "feedback"
+                              ? "2 2"
+                              : undefined
+                        }
                       />
                     </svg>
-                    <span className="font-mono text-xs" style={{ color }}>{PROTOCOL_LABEL[proto]}</span>
+                    <span className="font-mono text-xs" style={{ color }}>
+                      {PROTOCOL_LABEL[proto]}
+                    </span>
                   </div>
                   <span className="text-xs text-muted-foreground">
                     {proto === "kafka" && "Async message queue"}
@@ -524,11 +650,15 @@ export default function KnowledgeGraph() {
             <div className="mt-3 pt-3 border-t border-border space-y-1">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded border border-violet-400/60 bg-violet-400/10" />
-                <span className="font-mono text-xs text-muted-foreground">stateful — holds persistent state</span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  stateful — holds persistent state
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded border border-slate-500/60 bg-slate-500/10" />
-                <span className="font-mono text-xs text-muted-foreground">stateless — horizontally scalable</span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  stateless — horizontally scalable
+                </span>
               </div>
             </div>
           </div>

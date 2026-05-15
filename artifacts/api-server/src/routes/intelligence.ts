@@ -25,7 +25,7 @@ router.get("/stats", async (req, res) => {
         userSatisfaction: 0.0,
       },
     };
-    
+
     res.json(stats);
   } catch (err) {
     req.log.error(err, "Failed to get intelligence stats");
@@ -68,7 +68,7 @@ router.get("/capabilities", async (req, res) => {
         enabled: false,
       },
     ];
-    
+
     res.json({ capabilities });
   } catch (err) {
     req.log.error(err, "Failed to get capabilities");

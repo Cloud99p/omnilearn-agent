@@ -6,7 +6,7 @@ const router: IRouter = Router();
 /**
  * Test endpoint to verify Sentry is working.
  * Throws an intentional error that Sentry should capture.
- * 
+ *
  * Usage: GET /api/debug-sentry
  */
 router.get("/debug-sentry", (_req, res) => {
@@ -21,11 +21,11 @@ router.get("/debug-sentry", (_req, res) => {
   setTimeout(() => {
     const testError = new Error("🧪 TEST ERROR - Sentry verification");
     testError.name = "SentryTestError";
-    
+
     // Add custom tags for easy identification
     Sentry.setTag("test", "sentry-verification");
     Sentry.setTag("environment", process.env.SENTRY_ENVIRONMENT || "unknown");
-    
+
     // Capture the error
     Sentry.captureException(testError, {
       level: "error",
@@ -43,7 +43,7 @@ router.get("/debug-sentry", (_req, res) => {
 /**
  * Test endpoint for performance monitoring.
  * Creates a sample transaction to verify tracing works.
- * 
+ *
  * Usage: GET /api/debug-sentry-transaction
  */
 router.get("/debug-sentry-transaction", async (req, res) => {
@@ -55,10 +55,10 @@ router.get("/debug-sentry-transaction", async (req, res) => {
 
   try {
     // Simulate some work
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     transaction.setTag("test", "transaction-completed");
-    
+
     res.json({
       status: "transaction-completed",
       message: "Check Sentry Performance dashboard for this transaction",
