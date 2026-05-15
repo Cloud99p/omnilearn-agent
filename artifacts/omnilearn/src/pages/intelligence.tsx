@@ -668,45 +668,28 @@ export default function IntelligencePage() {
       // Use FormData for file uploads, JSON for text/URL
       let res;
       try {
+        // Document upload temporarily disabled
         // if (selectedFile && trainSource === "document") {
         //   const formData = new FormData();
         //   formData.append("file", selectedFile);
         //   formData.append("source", "document");
         //   if (trainText.trim()) formData.append("text", trainText);
-        //   
-        //   console.log("[TRAIN] Uploading file:", selectedFile.name, selectedFile.size, "bytes");
-        //   res = await fetch(`${BASE}/api/omni/train`, {
-        //     method: "POST",
-        //     body: formData,
-        //   });
+        //   res = await fetch(`${BASE}/api/omni/train`, { method: "POST", body: formData });
         // } else {
-          const payload: any = { source: trainSource };
-          if (trainSource === "manual") payload.text = trainText;
-          if (trainSource === "web") payload.url = trainUrl;
-          if (trainSource === "research") {
-            payload.urls = trainUrls.split("\n").filter(u => u.trim()).map(u => u.trim());
-          }
-          
-          console.log("[TRAIN] Sending text/URL payload to:", `${BASE}/api/omni/train`);
-          res = await fetch(`${BASE}/api/omni/train`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
+        const payload: any = { source: trainSource };
+        if (trainSource === "manual") payload.text = trainText;
+        if (trainSource === "web") payload.url = trainUrl;
+        if (trainSource === "research") {
+          payload.urls = trainUrls.split("\n").filter(u => u.trim()).map(u => u.trim());
+        }
+        
+        console.log("[TRAIN] Sending text/URL payload to:", `${BASE}/api/omni/train`);
+        res = await fetch(`${BASE}/api/omni/train`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
         // }
-          const payload: any = { source: trainSource };
-          if (trainSource === "manual") payload.text = trainText;
-          if (trainSource === "web") payload.url = trainUrl;
-          if (trainSource === "research") {
-            payload.urls = trainUrls.split("\n").filter(u => u.trim()).map(u => u.trim());
-          }
-          
-          console.log("[TRAIN] Sending text/URL payload to:", `${BASE}/api/omni/train`);
-          res = await fetch(`${BASE}/api/omni/train`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
         }
         
         console.log("[TRAIN] Response status:", res.status, res.ok);
