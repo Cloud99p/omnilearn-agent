@@ -997,10 +997,10 @@ export default function IntelligencePage() {
         const result = await res.json();
         console.log("[TRAIN] Success:", result);
         setTrainResult(result);
-        // Clear inputs based on source type
-        if (trainSource === "manual") {
-          setTrainText("");
-        }
+        // TEMPORARILY DISABLED: Clear inputs based on source type
+        // if (trainSource === "manual") {
+        //   setTrainText("");
+        // }
         // if (trainSource === "document") {
         //   setTrainText("");
         //   setSelectedFile(null);
