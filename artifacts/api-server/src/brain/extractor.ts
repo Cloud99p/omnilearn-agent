@@ -372,26 +372,6 @@ export function extractFacts(text: string): ExtractedFact[] {
     // Trim
     .trim();
 
-  // Check for identity statements FIRST - these are handled specially
-  const identityName = detectIdentityStatement(text);
-  if (identityName) {
-    // Add identity fact with special type
-    facts.push({
-      content: text.trim(),
-      type: "identity",
-      tags: ["identity", "user", identityName.toLowerCase()],
-      confidence: 0.95,
-      userIdentity: true,
-    });
-    // Don't extract other facts from pure identity statements
-    return facts;
-  }
-
-  // Don't extract facts from questions, commands, or requests - they're prompts, not knowledge!
-  if (isNonLearnable(text)) {
-    return facts; // Return empty - no fact extraction
-  }
-
   // 1. Try pattern-based extraction first (high quality)
   for (const { re, type, conf } of FACT_PATTERNS) {
     const pattern = new RegExp(re.source, re.flags);
