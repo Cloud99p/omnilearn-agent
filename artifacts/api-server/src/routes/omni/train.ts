@@ -27,7 +27,10 @@ const upload = multer({
 
 // POST /api/omni/train — ingest text and extract knowledge from it
 // Supports: { text, url, file, source } — if url or file provided, fetches/extracts first
+// NOTE: No auth required - anyone can train
 router.post("/", upload.single("file"), async (req, res) => {
+  // Get clerkId if user is authenticated (optional)
+  const clerkId = (req as any).auth?.userId || null;
   const {
     text,
     url,
@@ -100,7 +103,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     return;
   }
 
-  const result = await trainOnText(textToTrain, extractionMethod, null);
+  const result = await trainOnText(textToTrain, extractionMethod, clerkId);
 
   // Feed extracted knowledge into the shared network brain (fire-and-forget)
   if (result.nodes && result.nodes.length > 0) {
