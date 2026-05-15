@@ -201,9 +201,6 @@ export function hasKnowledgeQuality(text: string): boolean {
     /a a\s+/i, // Repeated articles
     /\n\n\n+/, // Multiple blank lines
     /^\s*[A-Z]\.$/, // Single letter sentences
-    /\[\d+\]/, // Citation markers [1], [2]
-    /fig\.?\s*\d+/i, // Figure references
-    /table\s*\d+/i, // Table references
     /et al\.?/i, // Academic citations
   ];
 
@@ -327,6 +324,23 @@ function isNonLearnable(text: string): boolean {
 export function extractFacts(text: string): ExtractedFact[] {
   const facts: ExtractedFact[] = [];
   const seen = new Set<string>();
+
+  // NORMALIZE TEXT: Fix common OCR/copy-paste errors
+  let normalized = text
+    // Fix spacing around words (OCR errors like "a lso" -> "also", "a t" -> "at")
+    .replace(/\s+(a|an|is|as|at|in|on|to|for|of|and|or|but|not|was|were|be|been|being)\s+(\w)/g, (match, p1, p2) => {
+      const combined = p1 + p2.toLowerCase();
+      if (["also", "into", "onto", "about", "that", "with", "from", "then", "when", "than", "what", "who", "why", "how", "where", "which", "while", "would", "could", "should", "must", "could", "need", "used", "does", "done", "gone", "come", "made", "take", "have", "been", "am", "are", "is", "was", "were"].includes(combined)) {
+        return combined;
+      }
+      return match; // Keep original if not a known combination
+    })
+    // Fix doubled words
+    .replace(/\b(\w+)\s+\1\b/gi, "$1")
+    // Normalize multiple spaces to single space
+    .replace(/\s+/g, " ")
+    // Trim
+    .trim();
 
   // Check for identity statements FIRST - these are handled specially
   const identityName = detectIdentityStatement(text);
