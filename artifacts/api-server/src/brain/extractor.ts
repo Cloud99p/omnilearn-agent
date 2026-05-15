@@ -331,6 +331,29 @@ export function extractFacts(text: string): ExtractedFact[] {
   // DEBUG: Log text preview
   const textPreview = text.slice(0, 100).replace(/\n/g, '\\n');
   console.log(`[EXTRACT] Input text (${text.length} chars): ${textPreview}...`);
+  
+  // Check for identity statements FIRST
+  const identityName = detectIdentityStatement(text);
+  console.log(`[EXTRACT] Identity check: ${identityName ? 'FOUND: ' + identityName : 'none'}`);
+  if (identityName) {
+    console.log(`[EXTRACT] Returning identity fact`);
+    facts.push({
+      content: text.trim(),
+      type: "identity",
+      tags: ["identity", "user", identityName.toLowerCase()],
+      confidence: 0.95,
+      userIdentity: true,
+    });
+    return facts;
+  }
+  
+  // Check if non-learnable
+  const nonLearnable = isNonLearnable(text);
+  console.log(`[EXTRACT] isNonLearnable: ${nonLearnable}`);
+  if (nonLearnable) {
+    console.log(`[EXTRACT] Returning empty - non-learnable`);
+    return facts; // Return empty - no fact extraction
+  }
 
   // NORMALIZE TEXT: Fix common OCR/copy-paste errors
   let normalized = text
