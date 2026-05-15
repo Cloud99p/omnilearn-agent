@@ -103,7 +103,9 @@ router.post("/", upload.single("file"), async (req, res) => {
     return;
   }
 
+  logger.info({ textLength: textToTrain.length, source: extractionMethod }, "Training request received");
   const result = await trainOnText(textToTrain, extractionMethod, clerkId);
+  logger.info({ added: result.added, skipped: result.skipped, total: result.nodes.length }, "Training complete");
 
   // Feed extracted knowledge into the shared network brain (fire-and-forget)
   if (result.nodes && result.nodes.length > 0) {

@@ -389,13 +389,13 @@ export function extractFacts(text: string): ExtractedFact[] {
     }
   }
 
-  // 2. If bulk text (>200 chars), extract sentences as facts (more aggressive)
-  // For long educational content (>300 chars), always extract sentences regardless of pattern matches
+  // 2. If bulk text (>200 chars), extract sentences as facts (ALWAYS for educational content)
   if (text.length > 200) {
-    // Split into sentences
+    // Split into sentences - handle citation markers like .[6][7]
     const sentences = text
-      .split(/[.!?]+\s+/)
-      .filter((s) => s.trim().length > 15 && s.trim().length < 500);
+      .replace(/\]\s*\[/g, '], [') // Normalize citation spacing
+      .split(/[.!?]+(?:\s*\[\d+\])*(?:\s*\[\d+\])*\s+/)
+      .filter((s) => s.trim().length > 20 && s.trim().length < 500);
 
     for (const sentence of sentences) {
       const clean = sentence.trim();
@@ -408,12 +408,13 @@ export function extractFacts(text: string): ExtractedFact[] {
       // Skip questions/commands
       if (isNonLearnable(clean)) continue;
 
-      // Must have a verb
+      // Must have a verb (or be a clear factual statement)
       const hasVerb =
-        /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?|contains?|includes?|consists?|requires?|depends?|affects?|produces?|generates?|forms?|becomes?|remains?)\b/i.test(
+        /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?|contains?|includes?|consists?|requires?|depends?|affects?|produces?|generates?|forms?|becomes?|remains?|show|shows?|indicate|indicates?|suggest|suggests?)\b/i.test(
           clean,
         );
-      if (!hasVerb) continue;
+      // Skip only if no verb AND doesn't look like a fact
+      if (!hasVerb && !/\b(were|are|is|was)\b/i.test(clean)) continue;
 
       // Determine type
       let type: ExtractedFact["type"] = "fact";
