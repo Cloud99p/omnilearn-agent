@@ -324,7 +324,7 @@ function isNonLearnable(text: string): boolean {
   // Direct questions (what, who, where, when, why, how, etc.) - use word boundaries!
   // NOTE: Removed 'is' and 'are' - they appear in statements like 'Dogs are domesticated'
   const questionStarts =
-    /^(what|who|where|when|why|how|can|could|does|will|would|should|tell|explain|describe|show|give|help)\b/i;
+    /^(what|who|where|when|why|how|can|could|does|will|would|should|explain|describe|show|give|help)\b/i;
   if (questionStarts.test(trimmed)) {
     console.log(`[NonLearnable] TRUE - question start: ${trimmed.slice(0, 50)}`);
     return true;
