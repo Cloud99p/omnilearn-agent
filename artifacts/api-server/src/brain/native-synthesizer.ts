@@ -850,8 +850,8 @@ export async function synthesizeNative(
   }
 
   // FACTUAL MODE: Use knowledge graph and/or web search
-  // Filter to relevant nodes (similarity > 0.02 - more lenient)
-  const relevantNodes = nodes.filter((n) => n.similarity > 0.02).slice(0, 8);
+  // Filter to relevant nodes (similarity > 0.01 - very lenient, include almost everything)
+  const relevantNodes = nodes.filter((n) => n.similarity > 0.01).slice(0, 8);
   const nodesUsed = relevantNodes.length;
 
   // CRITICAL: Check if this is an emotional statement (NOT a question)
