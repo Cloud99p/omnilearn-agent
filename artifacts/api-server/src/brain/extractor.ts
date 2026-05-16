@@ -192,10 +192,10 @@ export function hasKnowledgeQuality(text: string): boolean {
   const cleanText = trimmed.replace(/\[\d+\]/g, "").replace(/\[\d+,\s*\d+\]/g, "");
 
   // Too short (likely truncated)
-  if (cleanText.length < 25) return false;
+  if (cleanText.length < 20) return false;
 
   // Too long (likely a full document, not atomic fact)
-  if (cleanText.length > 500) return false;
+  if (cleanText.length > 700) return false;
 
   // Check for obvious garbage patterns
   const garbagePatterns = [
@@ -395,8 +395,9 @@ export function extractFacts(text: string): ExtractedFact[] {
       const obj = match[2]?.trim().toLowerCase().replace(/\s+/g, " ");
 
       if (!subj || !obj) continue;
-      if (subj.split(" ").length > 8 || obj.split(" ").length > 10) continue;
-      if (subj.length < 3 || obj.length < 3) continue;
+      // More lenient length checks
+      if (subj.split(" ").length > 12 || obj.split(" ").length > 15) continue;
+      if (subj.length < 2 || obj.length < 2) continue;
 
       const key = `${subj}::${obj}`;
       if (seen.has(key)) continue;
@@ -416,7 +417,7 @@ export function extractFacts(text: string): ExtractedFact[] {
     const normalized = text.replace(/\]\s*\[/g, '], [');
     const sentences = normalized
       .split(/[.!?]+(?:\s*\[\d+\])*(?:\s*\[\d+\])*\s+/)
-      .filter((s) => s.trim().length > 20 && s.trim().length < 500);
+      .filter((s) => s.trim().length > 15 && s.trim().length < 600);
     
     console.log(`[EXTRACT] Found ${sentences.length} sentences from ${text.length} chars`);
     if (sentences.length > 0) {
@@ -433,6 +434,13 @@ export function extractFacts(text: string): ExtractedFact[] {
 
       // Skip questions/commands
       if (isNonLearnable(clean)) continue;
+
+      // CRITICAL: Skip sentence fragments (not standalone facts)
+      const fragmentStarts = /^(which|that|where|when|who|whom|whose|what|while|although|though|because|since|unless|until|if|though|although|despite|whereas|whereby)\b/i;
+      if (fragmentStarts.test(clean)) {
+        console.log(`[EXTRACT] Skipping fragment: ${clean.slice(0, 80)}`);
+        continue;
+      }
 
       // Must have a verb (or be a clear factual statement)
       const hasVerb =
