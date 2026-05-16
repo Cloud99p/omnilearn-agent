@@ -179,7 +179,7 @@ export async function retrieveRelevantNodes(
   // Filter by similarity threshold AND exclude low-quality matches
   const semanticResults = scored
     .filter((n) => {
-      if (n.similarity <= 0.15) return false;
+      if (n.similarity <= 0.01) return false; // Lowered from 0.15 to catch more relevant nodes
       if (n.type === "rule" && queryType !== "command") return false;
       return true;
     })
