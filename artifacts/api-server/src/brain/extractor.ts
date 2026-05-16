@@ -75,6 +75,70 @@ const IDENTITY_PATTERNS: Array<{
 ];
 
 /**
+ * Split long sentences into atomic facts when they contain clear independent clauses.
+ * Returns array of clauses (includes original if no splitting occurs).
+ * 
+ * Hybrid approach: preserve full sentences for context, but split when:
+ * - Sentence > 150 chars
+ * - Contains clear clause markers (semicolon, " and ", " which ", etc.)
+ * - Each clause can stand alone as a fact
+ */
+export function splitIntoAtomicFacts(sentence: string): string[] {
+  const trimmed = sentence.trim();
+  
+  // Don't split short sentences - keep as-is
+  if (trimmed.length < 150) {
+    return [trimmed];
+  }
+  
+  const clauses: string[] = [];
+  
+  // Strategy 1: Split on semicolons (clear independent clauses)
+  if (trimmed.includes(';')) {
+    const parts = trimmed.split(';').map(p => p.trim()).filter(p => p.length > 20);
+    if (parts.length > 1) {
+      clauses.push(...parts);
+    }
+  }
+  
+  // Strategy 2: Split on ", and " or ", which " when followed by capitalized or verb
+  if (clauses.length === 0) {
+    // Look for patterns like "[clause], and [subject] [verb]..."
+    const andWhichPattern = /(.+?),\s+(and|which)\s+([A-Z][a-zA-Z]+|[a-z]+)\s+(?:is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|result|lead|become|include|contain|consist|work|function|operate|live|exist|occur|appear|seem|remain|stay|continue|begin|start|end|finish|develop|evolve|diverge|domesticate|classify|relate|connect|separate|isolate)\b/i;
+    const match = trimmed.match(andWhichPattern);
+    if (match && match[1]?.length > 30) {
+      clauses.push(match[1].trim());
+      // Add the rest as second clause
+      const rest = trimmed.slice(match[1].length + 2).trim();
+      if (rest.length > 30) {
+        clauses.push(rest);
+      }
+    }
+  }
+  
+  // Strategy 3: Split on " - " (em-dash used as clause separator)
+  if (clauses.length === 0 && trimmed.includes(' - ')) {
+    const parts = trimmed.split(' - ').map(p => p.trim()).filter(p => p.length > 20);
+    if (parts.length > 1) {
+      clauses.push(...parts);
+    }
+  }
+  
+  // If no clean splitting found, keep original
+  if (clauses.length === 0) {
+    return [trimmed];
+  }
+  
+  // Validate each clause has a verb (can stand alone)
+  const validClauses = clauses.filter(clause => {
+    const hasVerb = /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?|contains?|includes?|consists?|requires?|depends?|affects?|produces?|generates?|forms?|becomes?|remains?|show|shows?|indicate|indicates?|suggest|suggests?|diverge|domesticate|classify|relate|connect|separate|isolate|develop|evolve|live|exist|occur|appear|seem|remain|stay|continue|begin|start|end|finish)\b/i.test(clause);
+    return hasVerb && clause.length > 25;
+  });
+  
+  return validClauses.length > 0 ? validClauses : [trimmed];
+}
+
+/**
  * Check if extracted text is a valid name (not a common word or AI self-reference)
  */
 function isValidName(name: string): boolean {
@@ -387,6 +451,9 @@ export function extractFacts(text: string): ExtractedFact[] {
     .trim();
 
   // 1. Try pattern-based extraction first (high quality)
+  // Words that indicate a fragment (not a complete thought)
+  const fragmentStarts = /^(and|or|but|so|yet|nor|for|although|though|because|since|unless|until|while|where|which|that|who|whom|whose|what|when|where|why|how|if|then|else|however|therefore|moreover|furthermore|nevertheless|nonetheless|consequently|accordingly|meanwhile|otherwise|instead|rather|also|too|either|neither|both|all|some|any|most|many|few|several|each|every|either|neither)/i;
+  
   for (const { re, type, conf } of FACT_PATTERNS) {
     const pattern = new RegExp(re.source, re.flags);
     let match;
@@ -395,18 +462,31 @@ export function extractFacts(text: string): ExtractedFact[] {
       const obj = match[2]?.trim().toLowerCase().replace(/\s+/g, " ");
 
       if (!subj || !obj) continue;
+      
+      // REJECT fragments starting with conjunctions/prepositions
+      if (fragmentStarts.test(subj)) {
+        console.log(`[EXTRACT] Skipping fragment start: "${subj.slice(0, 40)}"`);
+        continue;
+      }
+      
       // More lenient length checks
       if (subj.split(" ").length > 12 || obj.split(" ").length > 15) continue;
-      if (subj.length < 2 || obj.length < 2) continue;
+      if (subj.length < 3 || obj.length < 3) continue;
+      
+      // Reject if subject is just a common word
+      const commonWords = new Set(["and", "or", "but", "so", "yet", "it", "this", "that", "these", "those", "there", "here", "then", "now", "also", "too", "either", "neither", "both", "all", "some", "any", "most", "many", "few", "several", "each", "every"]);
+      if (commonWords.has(subj) || commonWords.has(obj)) continue;
 
       const key = `${subj}::${obj}`;
       if (seen.has(key)) continue;
       seen.add(key);
 
-      const content =
-        `${subj} ${match[0].slice(subj.length, match[0].indexOf(obj)).trim()} ${obj}`.trim();
+      // Reconstruct the full match more carefully
+      const fullMatch = match[0].trim();
+      const content = fullMatch.toLowerCase().replace(/\s+/g, " ");
       const tags = extractTags([subj, obj]);
 
+      console.log(`[EXTRACT] Pattern match: "${content.slice(0, 80)}..." (type: ${type}, conf: ${conf})`);
       facts.push({ content, type, tags, confidence: conf });
     }
   }
@@ -430,7 +510,6 @@ export function extractFacts(text: string): ExtractedFact[] {
       // Skip if already extracted
       const key = clean.toLowerCase().slice(0, 50);
       if (seen.has(key)) continue;
-      seen.add(key);
 
       // Skip questions/commands
       if (isNonLearnable(clean)) continue;
@@ -442,35 +521,54 @@ export function extractFacts(text: string): ExtractedFact[] {
         continue;
       }
 
-      // Must have a verb (or be a clear factual statement)
-      const hasVerb =
-        /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?|contains?|includes?|consists?|requires?|depends?|affects?|produces?|generates?|forms?|becomes?|remains?|show|shows?|indicate|indicates?|suggest|suggests?)\b/i.test(
-          clean,
-        );
-      // Skip only if no verb AND doesn't look like a fact
-      if (!hasVerb && !/\b(were|are|is|was)\b/i.test(clean)) continue;
+      // HYBRID SPLITTING: Split long sentences into atomic facts
+      const atomicClauses = splitIntoAtomicFacts(clean);
+      console.log(`[EXTRACT] Sentence split: ${atomicClauses.length} clause(s) from ${clean.length} chars`);
 
-      // Determine type
-      let type: ExtractedFact["type"] = "fact";
-      if (
-        /\b(can|could|enables?|allows?|must|should|requires?)\b/i.test(clean)
-      ) {
-        type = "rule";
-      } else if (/\b(concept|idea|theory|principle|notion)\b/i.test(clean)) {
-        type = "concept";
-      } else if (/\b(think|believe|opinion|feel)\b/i.test(clean)) {
-        type = "opinion";
+      for (const clause of atomicClauses) {
+        // Check for duplicates within split clauses
+        const clauseKey = clause.toLowerCase().slice(0, 50);
+        if (seen.has(clauseKey)) continue;
+        seen.add(clauseKey);
+
+        // Must have a verb (or be a clear factual statement)
+        const hasVerb =
+          /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?|contains?|includes?|consists?|requires?|depends?|affects?|produces?|generates?|forms?|becomes?|remains?|show|shows?|indicate|indicates?|suggest|suggests?)\b/i.test(
+            clause,
+          );
+        console.log(`[EXTRACT] Clause verb check: hasVerb=${hasVerb}, len=${clause.length}`);
+        // Skip only if no verb AND doesn't look like a fact
+        if (!hasVerb && !/\b(were|are|is|was)\b/i.test(clause)) {
+          console.log(`[EXTRACT] Skipping clause - no verb: ${clause.slice(0, 60)}...`);
+          continue;
+        }
+
+        // Determine type
+        let type: ExtractedFact["type"] = "fact";
+        if (
+          /\b(can|could|enables?|allows?|must|should|requires?)\b/i.test(clause)
+        ) {
+          type = "rule";
+        } else if (/\b(concept|idea|theory|principle|notion)\b/i.test(clause)) {
+          type = "concept";
+        } else if (/\b(think|believe|opinion|feel)\b/i.test(clause)) {
+          type = "opinion";
+        }
+
+        // Extract key terms for tags
+        const terms = extractKeyTerms(clause);
+
+        // Higher confidence for atomic clauses (more focused)
+        const confidence = atomicClauses.length > 1 ? 0.68 : 0.65;
+
+        console.log(`[EXTRACT] Clause: "${clause.slice(0, 80)}..." (type: ${type}, conf: ${confidence})`);
+        facts.push({
+          content: clause,
+          type,
+          tags: terms.slice(0, 5),
+          confidence,
+        });
       }
-
-      // Extract key terms for tags
-      const terms = extractKeyTerms(clean);
-
-      facts.push({
-        content: clean,
-        type,
-        tags: terms.slice(0, 5),
-        confidence: 0.65, // Lower confidence for sentence extraction
-      });
     }
   }
 
@@ -500,11 +598,36 @@ export function extractFacts(text: string): ExtractedFact[] {
   return facts.slice(0, 20);
 }
 
+// Common stop words that should NOT be tags
+const STOP_WORDS = new Set([
+  "the", "a", "an", "and", "or", "but", "is", "are", "was", "were", "be", "been", "being",
+  "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "may", "might", "must",
+  "in", "on", "at", "to", "for", "of", "with", "by", "from", "into", "through", "during",
+  "it", "its", "this", "that", "these", "those", "i", "you", "he", "she", "we", "they",
+  "what", "which", "who", "whom", "whose", "when", "where", "why", "how",
+  "all", "each", "every", "both", "few", "more", "most", "other", "some", "such", "no", "nor", "not",
+  "only", "own", "same", "so", "than", "too", "very", "just", "also", "now",
+  "here", "there", "then", "once", "if", "unless", "until", "while", "although", "though",
+  "about", "above", "after", "again", "before", "below", "between", "under", "over",
+]);
+
 export function extractTags(words: string[]): string[] {
-  return words
-    .map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, ""))
-    .filter((w) => w.length > 3)
-    .slice(0, 8);
+  // Split compound words and preserve word boundaries
+  const allWords: string[] = [];
+  for (const word of words) {
+    // Split on spaces first (if input is phrases)
+    const parts = word.split(/\s+/);
+    for (const part of parts) {
+      // Clean each word individually - remove citation markers and non-alpha
+      const cleaned = part.toLowerCase().replace(/[^a-z]/g, "");
+      // Filter: length 3-25, not a stop word, not pure numbers
+      if (cleaned.length >= 3 && cleaned.length <= 25 && !STOP_WORDS.has(cleaned) && /\d/.test(cleaned) === false) {
+        allWords.push(cleaned);
+      }
+    }
+  }
+  // Remove duplicates and limit
+  return [...new Set(allWords)].slice(0, 8);
 }
 
 export function detectQueryType(
@@ -528,26 +651,26 @@ export function detectQueryType(
 }
 
 export function extractKeyTerms(text: string): string[] {
-  // Extract multi-word proper nouns and key concepts
   const terms: string[] = [];
 
-  // Capitalized phrases (likely proper nouns / named concepts)
-  const caps = text.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/g) ?? [];
-  terms.push(...caps.map((t) => t.toLowerCase()));
+  // 1. Capitalized phrases (likely proper nouns / named concepts)
+  const caps = text.match(/\b[A-Z][a-z]+(?:[-\s][A-Z][a-z]+){0,3}\b/g) ?? [];
+  for (const cap of caps) {
+    let lower = cap.toLowerCase();
+    if (lower.startsWith("the ")) lower = lower.slice(4);
+    if (!STOP_WORDS.has(lower) && lower.length >= 3 && lower.length <= 25) {
+      terms.push(lower);
+    }
+  }
 
-  // Words after "about", "regarding", "on", "concerning"
-  const topicMatch = text.match(
-    /(?:about|regarding|on|concerning|understand|know about|tell me about)\s+([a-z][\w\s]{2,30})/gi,
-  );
-  if (topicMatch) {
-    for (const m of topicMatch) {
-      const t = m
-        .replace(
-          /^(about|regarding|on|concerning|understand|know about|tell me about)\s+/i,
-          "",
-        )
-        .trim();
-      if (t) terms.push(t.toLowerCase());
+  // 2. Always also extract significant content words (technical terms, nouns, etc.)
+  const words = text.toLowerCase().split(/\s+/);
+  for (const word of words) {
+    // Remove citation markers and non-alpha chars
+    const cleaned = word.replace(/[^a-z]/g, "");
+    // Skip stop words, short words, very long words, and pure numbers
+    if (cleaned.length >= 4 && cleaned.length <= 25 && !STOP_WORDS.has(cleaned) && /^[a-z]+$/.test(cleaned)) {
+      terms.push(cleaned);
     }
   }
 
