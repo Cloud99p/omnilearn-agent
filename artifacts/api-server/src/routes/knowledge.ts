@@ -128,8 +128,8 @@ router.post("/nodes", async (req, res) => {
       const union = new Set([...contentTokens, ...nodeTokens]).size;
       const similarity = union > 0 ? intersection / union : 0;
 
-      // Only block if 85%+ overlap (near-duplicate, not just same topic)
-      return similarity > 0.85;
+      // Only block if 90%+ overlap (near-duplicate, not just same topic)
+      return similarity > 0.9;
     });
 
     if (duplicate) {
