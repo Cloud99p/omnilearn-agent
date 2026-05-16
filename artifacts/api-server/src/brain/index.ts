@@ -184,6 +184,12 @@ export async function retrieveRelevantNodes(
       return true;
     })
     .slice(0, topK);
+  
+  // DEBUG: Log retrieval results
+  logger.info(
+    { query, totalScored: scored.length, retrieved: semanticResults.length, similarities: semanticResults.map(n => ({ content: n.content.slice(0, 50), similarity: n.similarity })) },
+    "Knowledge retrieval results"
+  );
 
   if (semanticResults.length === 0) {
     // Fallback: direct keyword/content match
