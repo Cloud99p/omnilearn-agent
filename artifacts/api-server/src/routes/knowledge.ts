@@ -99,7 +99,8 @@ router.post("/nodes", async (req, res) => {
       .split(/\s+/)
       .filter((t) => t.length > 3);
 
-    // DUPLICATE DETECTION: Check for similar existing nodes
+    // DUPLICATE DETECTION: Check for near-duplicate nodes
+    // Only block if content is almost identical (not just same topic)
     const existingNodes = await db
       .select({
         id: knowledgeNodes.id,
@@ -107,9 +108,9 @@ router.post("/nodes", async (req, res) => {
         confidence: knowledgeNodes.confidence,
       })
       .from(knowledgeNodes)
-      .limit(100);
+      .limit(200);
 
-    // Simple Jaccard similarity check
+    // Jaccard similarity with HIGH threshold (only block near-duplicates)
     const contentTokens = new Set(tokens);
     const duplicate = existingNodes.find((node) => {
       const nodeTokens = new Set(
@@ -127,7 +128,8 @@ router.post("/nodes", async (req, res) => {
       const union = new Set([...contentTokens, ...nodeTokens]).size;
       const similarity = union > 0 ? intersection / union : 0;
 
-      return similarity > 0.7; // 70% similarity = duplicate
+      // Only block if 85%+ overlap (near-duplicate, not just same topic)
+      return similarity > 0.85;
     });
 
     if (duplicate) {
