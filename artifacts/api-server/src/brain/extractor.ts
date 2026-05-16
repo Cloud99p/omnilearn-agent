@@ -257,18 +257,18 @@ function isNonLearnable(text: string): boolean {
     return true;
   }
 
-  // Direct questions (what, who, where, when, why, how, etc.)
+  // Direct questions (what, who, where, when, why, how, etc.) - use word boundaries!
   // NOTE: Removed 'is' and 'are' - they appear in statements like 'Dogs are domesticated'
   const questionStarts =
-    /^(what|who|where|when|why|how|can|could|does|do|will|would|should|tell|explain|describe|show|give|help)/i;
+    /^(what|who|where|when|why|how|can|could|does|will|would|should|tell|explain|describe|show|give|help)\b/i;
   if (questionStarts.test(trimmed)) {
     console.log(`[NonLearnable] TRUE - question start: ${trimmed.slice(0, 50)}`);
     return true;
   }
 
-  // Commands/requests (imperative mood)
+  // Commands/requests (imperative mood) - use word boundaries!
   const commands =
-    /^(explain|show|tell|give|help|teach|describe|summarize|clarify|elaborate|expand|simplify|rephrase|repeat)/i;
+    /^(explain|show|tell|give|help|teach|describe|summarize|clarify|elaborate|expand|simplify|rephrase|repeat)\b/i;
   if (commands.test(trimmed)) {
     console.log(`[NonLearnable] TRUE - command: ${trimmed.slice(0, 50)}`);
     return true;
