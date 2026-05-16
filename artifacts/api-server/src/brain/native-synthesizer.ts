@@ -1062,6 +1062,21 @@ function detectNeedForWebSearch(
 
   // CRITICAL: Web search should be EXTREMELY RARE - disabled by default
 
+  // 0. NEVER search web when user asks what the AI knows - use stored knowledge!
+  const storedKnowledgePatterns = [
+    /tell me (all )?what you know/,
+    /what do you know (about|of)/,
+    /everything you know/,
+    /your knowledge (about|of)/,
+    /from your knowledge/,
+    /in your memory/,
+    /you learned/,
+    /you remember/,
+  ];
+  if (storedKnowledgePatterns.some((p) => p.test(lower))) {
+    return false; // User wants stored knowledge, NOT web search
+  }
+
   // 1. DISABLE WEB SEARCH BY DEFAULT - only enable for specific factual questions
   // This prevents searching for statements, emotions, casual chat, etc.
 
