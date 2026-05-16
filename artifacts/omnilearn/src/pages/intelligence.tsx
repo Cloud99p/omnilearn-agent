@@ -960,34 +960,37 @@ export default function IntelligencePage() {
       // Use FormData for file uploads, JSON for text/URL
       let res;
       try {
-        // Document upload temporarily disabled
-        // if (selectedFile && trainSource === "document") {
-        //   const formData = new FormData();
-        //   formData.append("file", selectedFile);
-        //   formData.append("source", "document");
-        //   if (trainText.trim()) formData.append("text", trainText);
-        //   res = await fetch(`${BASE}/api/omni/train`, { method: "POST", body: formData });
-        // } else {
-        const payload: any = { source: trainSource };
-        if (trainSource === "manual") payload.text = trainText;
-        if (trainSource === "web") payload.url = trainUrl;
-        if (trainSource === "research") {
-          payload.urls = trainUrls
-            .split("\n")
-            .filter((u) => u.trim())
-            .map((u) => u.trim());
-        }
+        if (selectedFile && trainSource === "document") {
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+          formData.append("source", "document");
+          if (trainText.trim()) formData.append("text", trainText);
+          console.log(
+            "[TRAIN] Sending file upload to:",
+            `${BASE}/api/omni/train`,
+          );
+          res = await fetch(`${BASE}/api/omni/train`, { method: "POST", body: formData });
+        } else {
+          const payload: any = { source: trainSource };
+          if (trainSource === "manual") payload.text = trainText;
+          if (trainSource === "web") payload.url = trainUrl;
+          if (trainSource === "research") {
+            payload.urls = trainUrls
+              .split("\n")
+              .filter((u) => u.trim())
+              .map((u) => u.trim());
+          }
 
-        console.log(
-          "[TRAIN] Sending text/URL payload to:",
-          `${BASE}/api/omni/train`,
-        );
-        res = await fetch(`${BASE}/api/omni/train`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        // }
+          console.log(
+            "[TRAIN] Sending text/URL payload to:",
+            `${BASE}/api/omni/train`,
+          );
+          res = await fetch(`${BASE}/api/omni/train`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+        }
 
         console.log("[TRAIN] Response status:", res.status, res.ok);
 
@@ -1893,7 +1896,7 @@ export default function IntelligencePage() {
               <span className="font-mono text-xs text-muted-foreground pt-2">
                 Source:
               </span>
-              {["manual", "web", "research"].map((src) => (
+              {["manual", "document", "web", "research"].map((src) => (
                 <button
                   key={src}
                   onClick={() => setTrainSource(src)}
@@ -1907,7 +1910,6 @@ export default function IntelligencePage() {
                   {src}
                 </button>
               ))}
-              {/* document button disabled until upload is fixed */}
             </div>
 
             {/* MANUAL: Paste text */}
@@ -1930,8 +1932,8 @@ export default function IntelligencePage() {
               </>
             )}
 
-            {/* DOCUMENT: Upload file OR paste text - DISABLED until upload is fixed */}
-            {/* {trainSource === "document" && (
+            {/* DOCUMENT: Upload file OR paste text */}
+            {trainSource === "document" && (
               <div className="space-y-3">
                 <div>
                   <label className="font-mono text-xs text-muted-foreground mb-2 block">Upload Document File</label>
@@ -2000,7 +2002,7 @@ export default function IntelligencePage() {
                   }
                 </div>
               </div>
-            )} */}
+            )}
 
             {/* WEB: Single URL input */}
             {trainSource === "web" && (
