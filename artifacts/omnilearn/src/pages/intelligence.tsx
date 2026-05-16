@@ -662,8 +662,8 @@ export default function IntelligencePage() {
   const [trainUrl, setTrainUrl] = useState("");
   const [trainUrls, setTrainUrls] = useState(""); // For research mode (multiple URLs)
   const [trainSource, setTrainSource] = useState("manual");
-  // const [selectedFile, setSelectedFile] = useState<File | null>(null); // disabled - document upload not working
-  // const [fileContent, setFileContent] = useState(""); // disabled - document upload not working
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileContent, setFileContent] = useState("");
   const [training, setTraining] = useState(false);
   const [trainResult, setTrainResult] = useState<{
     added: number;
