@@ -936,6 +936,12 @@ export default function IntelligencePage() {
   };
 
   const handleTrain = async () => {
+    // Prevent rapid retries - only allow one training at a time
+    if (training) {
+      console.warn("[TRAIN] Training already in progress");
+      return;
+    }
+
     setTraining(true);
     setTrainResult(null);
     try {
@@ -987,6 +993,12 @@ export default function IntelligencePage() {
 
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}));
+          // Handle rate limiting specifically
+          if (res.status === 429) {
+            throw new Error(
+              "Rate limit exceeded. Please wait a few minutes before trying again.",
+            );
+          }
           throw new Error(
             errorData.error ||
               errorData.message ||
@@ -1019,7 +1031,10 @@ export default function IntelligencePage() {
       console.error("[TRAIN] Final catch:", err);
       setTrainResult({ added: 0, message: err.message || "Training failed" });
     } finally {
-      setTraining(false);
+      // Small delay to prevent rapid re-clicks
+      setTimeout(() => {
+        setTraining(false);
+      }, 500);
     }
   };
 
@@ -2083,10 +2098,19 @@ export default function IntelligencePage() {
                   {trainResult.added > 0 ? (
                     <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   ) : (
-                    <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                    trainResult.message?.includes("Rate limit") ? (
+                      <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                    )
                   )}
                   <p className="font-mono text-sm text-foreground">
                     {trainResult.message}
+                    {trainResult.message?.includes("Rate limit") && (
+                      <span className="block mt-1 text-xs text-amber-400">
+                        ⚠️ Wait 2-3 minutes before trying again
+                      </span>
+                    )}
                   </p>
                 </motion.div>
               )}
