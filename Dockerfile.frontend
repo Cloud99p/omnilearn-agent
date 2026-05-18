@@ -1,0 +1,48 @@
+# OmniLearn Frontend - Multi-stage build
+# For local development and simple deployments
+# For production, use Vercel (recommended)
+
+# Stage 1: Build
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy package files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY artifacts/omnilearn/package.json ./artifacts/omnilearn/
+COPY lib/db/package.json ./lib/db/
+COPY packages/network-hierarchy/package.json ./packages/network-hierarchy/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY artifacts/omnilearn/ ./artifacts/omnilearn/
+COPY lib/db/ ./lib/db/
+COPY packages/network-hierarchy/ ./packages/network-hierarchy/
+
+# Build frontend
+WORKDIR /app/artifacts/omnilearn
+RUN pnpm build
+
+# Stage 2: Serve with nginx
+FROM nginx:alpine
+
+# Copy custom nginx config
+COPY artifacts/omnilearn/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built assets
+COPY --from=builder /app/artifacts/omnilearn/dist /usr/share/nginx/html
+
+# Expose port 80
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
