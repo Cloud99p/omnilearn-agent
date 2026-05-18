@@ -384,12 +384,13 @@ export async function runOntologyReflection(): Promise<{
   proposed: number;
   checks: string[];
 }> {
-  const now = Date.now();
-  if (now - lastReflectionAt < REFLECTION_COOLDOWN_MS) {
-    return { proposed: 0, checks: ["cooldown — skipped"] };
-  }
-  lastReflectionAt = now;
-  logger.info("Ontology reflection cycle starting");
+  try {
+    const now = Date.now();
+    if (now - lastReflectionAt < REFLECTION_COOLDOWN_MS) {
+      return { proposed: 0, checks: ["cooldown — skipped"] };
+    }
+    lastReflectionAt = now;
+    logger.info("Ontology reflection cycle starting");
 
   const proposed: number[] = [];
   const checks: string[] = [];
@@ -622,4 +623,12 @@ export async function runOntologyReflection(): Promise<{
   const totalProposed = proposed.length + demoteCount + mergeCount + splitCount;
   logger.info({ totalProposed, checks }, "Ontology reflection cycle complete");
   return { proposed: totalProposed, checks };
+  } catch (err) {
+    logger.error({ error: err }, "Ontology reflection cycle failed");
+    // Return safe fallback instead of crashing
+    return {
+      proposed: 0,
+      checks: [`error: ${err instanceof Error ? err.message : String(err)}`],
+    };
+  }
 }
