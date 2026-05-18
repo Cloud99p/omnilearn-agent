@@ -203,7 +203,12 @@ function determineConversationMode(
     return "casual";
   }
 
-  // CRITICAL: Casual follow-ups with ? should NOT trigger factual mode
+  // STEP 1: Check greetings first (always casual)
+  if (isGreeting(query)) {
+    return "casual";
+  }
+
+  // STEP 2: Check casual follow-ups (always casual)
   const casualFollowUps = [
     /^(and )?you\??$/i,
     /^(what|how) about you\??$/i,
@@ -220,10 +225,22 @@ function determineConversationMode(
   ];
 
   if (casualFollowUps.some((p) => p.test(lower))) {
-    return "casual"; // These are conversational, not factual
+    return "casual";
   }
 
-  // CRITICAL: Direct questions ALWAYS trigger factual mode
+  // STEP 3: Check for teaching/learning mode
+  if (
+    lower.includes("learn this") ||
+    lower.includes("remember this") ||
+    lower.includes("teach you") ||
+    lower.includes("add this") ||
+    lower.includes("fact:") ||
+    lower.includes("note:")
+  ) {
+    return "learning";
+  }
+
+  // STEP 4: Factual mode ONLY for specific question patterns (NO broad /\?$/ catch-all)
   const factualTriggers = [
     /^what (is|are|was|were|do|does|did|will|would)/,
     /^who (is|are|was|were|do|does|did)/,
@@ -231,22 +248,24 @@ function determineConversationMode(
     /^when (is|are|was|were|did|does)/,
     /^why (is|are|was|were|do|does|did)/,
     /^how (does|do|did|can|could|would|will|are|is)/,
-    /^explain/,
+    /^explain /,
     /^tell me (about|how|what|why|when|where)/,
-    /^define/,
-    /^describe/,
+    /^define /,
+    /^describe /,
     /^what do you know/,
     /^can you (tell|explain|describe)/,
-    /^are you/, // "Are you..." questions
-    /^is (it|this|that|the)/, // "Is it..." questions
-    /^do (you|they|we)/, // "Do you..." questions
-    /^does (it|this|that)/, // "Does it..." questions
-    /\?$/, // Ends with question mark
+    /^are you /, // "Are you..." questions (not "are you okay?")
+    /^is (it|this|that|the) /, // "Is it..." questions
+    /^do (you|they|we) /, // "Do you..." questions
+    /^does (it|this|that) /, // "Does it..." questions
   ];
 
   if (factualTriggers.some((p) => p.test(lower))) {
-    return "factual"; // ALWAYS answer questions!
+    return "factual";
   }
+
+  // STEP 5: Default to casual (everything else is conversation, not queries)
+  return "casual";
 
   // Check if teaching/learning mode (user is sharing facts)
   if (
