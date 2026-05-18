@@ -863,21 +863,27 @@ export default function IntelligencePage() {
   const fetchNetwork = useCallback(async () => {
     setNetLoading(true);
     try {
+      // Add delay between requests to avoid rate limiting
+      const delayedFetch = async (url: string, delayMs: number) => {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        return fetch(url);
+      };
+      
       const [statsRes, neuronsRes, synapsesRes, agentsRes, pulsesRes] =
         await Promise.all([
-          fetch(`${BASE}/api/network/stats`),
-          fetch(`${BASE}/api/network/neurons?limit=40`),
-          fetch(`${BASE}/api/network/synapses?limit=100`),
-          fetch(`${BASE}/api/network/agents`),
-          fetch(`${BASE}/api/network/pulses?limit=30`),
+          delayedFetch(`${BASE}/api/network/stats`, 0),
+          delayedFetch(`${BASE}/api/network/neurons?limit=40`, 200),
+          delayedFetch(`${BASE}/api/network/synapses?limit=100`, 400),
+          delayedFetch(`${BASE}/api/network/agents`, 600),
+          delayedFetch(`${BASE}/api/network/pulses?limit=30`, 800),
         ]);
       if (statsRes.ok) setNetStats(await statsRes.json());
       if (neuronsRes.ok) setNetNeurons(await neuronsRes.json());
       if (synapsesRes.ok) setNetSynapses(await synapsesRes.json());
       if (agentsRes.ok) setNetAgents(await agentsRes.json());
       if (pulsesRes.ok) setNetPulses(await pulsesRes.json());
-    } catch {
-      /* ignore */
+    } catch (err) {
+      console.warn('Network fetch error:', err);
     } finally {
       setNetLoading(false);
     }
