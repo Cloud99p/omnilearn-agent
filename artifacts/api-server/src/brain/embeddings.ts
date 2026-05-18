@@ -18,18 +18,35 @@ async function getEmbedder(): Promise<any> {
       try {
         logger.info({ model: MODEL_ID }, "Loading embedding model...");
         const start = Date.now();
+        
+        // Throttle progress logging to avoid rate limits
+        const throttleMs = 500;
+        let lastLogTime = 0;
+        let lastLoggedProgress = -1;
+        
         embedder = await pipeline("feature-extraction", MODEL_ID, {
           quantized: true,
           progress_callback: (progress: any) => {
             if (progress.status === "progress") {
-              logger.info(
-                {
-                  model: MODEL_ID,
-                  progress: `${Math.round(progress.progress)}%`,
-                  elapsed: Date.now() - start,
-                },
-                "Embedding model loading",
-              );
+              const now = Date.now();
+              const currentProgress = Math.round(progress.progress);
+              
+              // Only log if enough time passed OR significant progress made
+              const timeSinceLastLog = now - lastLogTime;
+              const progressChanged = currentProgress - lastLoggedProgress >= 10;
+              
+              if (timeSinceLastLog >= throttleMs || progressChanged) {
+                logger.info(
+                  {
+                    model: MODEL_ID,
+                    progress: `${currentProgress}%`,
+                    elapsed: now - start,
+                  },
+                  "Embedding model loading",
+                );
+                lastLogTime = now;
+                lastLoggedProgress = currentProgress;
+              }
             }
           },
         });
