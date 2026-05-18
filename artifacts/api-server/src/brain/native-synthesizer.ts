@@ -880,6 +880,17 @@ export async function synthesizeNative(
   const mode = determineConversationMode(query, history, turnNumber);
   CONVERSATION_STATE.mode = mode;
 
+  // LOGGING: Track mode decision for continuous improvement
+  logger.info(
+    {
+      query: query.slice(0, 100),
+      mode,
+      turnNumber,
+      queryLength: query.length,
+    },
+    "[MODE] Conversation mode decision"
+  );
+
   // IDENTITY ENFORCEMENT: Always respond as Omni when asked about identity
   if (isIdentityQuery(query)) {
     return {
@@ -978,6 +989,22 @@ export async function synthesizeNative(
   // Filter to relevant nodes (similarity > 0.01 - very lenient, include almost everything)
   const relevantNodes = nodes.filter((n) => n.similarity > 0.01).slice(0, 8);
   const nodesUsed = relevantNodes.length;
+
+  // LOGGING: Track retrieval results for monitoring
+  const avgSimilarity = relevantNodes.length > 0
+    ? (relevantNodes.reduce((sum, n) => sum + n.similarity, 0) / relevantNodes.length)
+    : 0;
+  
+  logger.info(
+    {
+      query: query.slice(0, 100),
+      nodesRetrieved: relevantNodes.length,
+      avgSimilarity: avgSimilarity.toFixed(3),
+      topSimilarity: relevantNodes.length > 0 ? relevantNodes[0].similarity.toFixed(3) : 0,
+      mode: 'factual',
+    },
+    "[MODE] Factual mode - knowledge retrieval"
+  );
 
   // CRITICAL: Check if this is an emotional statement (NOT a question)
   const isEmotionalStatement =
