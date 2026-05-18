@@ -106,6 +106,8 @@ function isIdentityQuery(query: string): boolean {
  */
 function isGreeting(query: string): boolean {
   const lower = query.toLowerCase().trim();
+  // Strip trailing punctuation for matching (handles "hello?", "hi!", etc.)
+  const cleaned = lower.replace(/[!?.,;]+$/, "");
   const greetings = [
     "hello",
     "hi",
@@ -129,7 +131,7 @@ function isGreeting(query: string): boolean {
     "nice to meet you",
   ];
   return greetings.some(
-    (g) => lower === g || lower.startsWith(g + " ") || lower.endsWith(" " + g),
+    (g) => cleaned === g || cleaned.startsWith(g + " ") || cleaned.endsWith(" " + g),
   );
 }
 
@@ -195,6 +197,11 @@ function determineConversationMode(
   turnNumber: number,
 ): "casual" | "factual" | "learning" {
   const lower = query.toLowerCase().trim();
+
+  // CRITICAL: Check greetings FIRST (even with question marks like "hello?")
+  if (isGreeting(query)) {
+    return "casual";
+  }
 
   // CRITICAL: Direct questions ALWAYS trigger factual mode
   const factualTriggers = [
