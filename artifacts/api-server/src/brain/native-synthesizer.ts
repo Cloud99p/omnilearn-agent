@@ -1662,6 +1662,7 @@ function synthesizeMainContent(
     /thanks for sharing/i,
     /here's what/i,
     /i'll help with/i,
+    /i can help with that/i,
     // Filter out conversational openers (already added by wrapper)
     /^(Great|Good|Sure|Absolutely|Of course|Well|Okay|Alright)\s*!\s*/i,
     /^(Great|Good)\s+question\s*!\s*/i,
@@ -1882,11 +1883,11 @@ function craftOpening(
   // If coming from casual chat, add a conversational bridge
   if (wasCasual && query) {
     const bridges = [
-      `Good question! `,
-      `Great question! `,
-      `Let me tell you about ${topic}: `,
-      `Here's what I know: `,
-      `I can help with that! `,
+      `Sure! `,
+      `So, `,
+      `Basically, `,
+      `Here's the deal: `,
+      ``, // Sometimes no bridge is best
     ];
     const bridge = bridges[Math.floor(Math.random() * bridges.length)];
 
