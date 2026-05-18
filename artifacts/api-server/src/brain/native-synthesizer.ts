@@ -1015,15 +1015,6 @@ export async function synthesizeNative(
   // NEVER search web for emotional statements - just be empathetic
   if (isEmotionalStatement) {
     logger.info({ query: query.slice(0, 100) }, "[MODE] Emotional statement - skipping retrieval");
-
-  // CRITICAL: Check if this is an emotional statement (NOT a question)
-  const isEmotionalStatement =
-    /\b(not fine|stressed|sad|depressed|anxious|tired|exhausted|overwhelmed|frustrated|angry|upset|worried|scared|lonely|hurt|pain|cry|cried|crying|😭|😢|😔|😞|😟)\b/i.test(
-      query,
-    );
-
-  // NEVER search web for emotional statements - just be empathetic
-  if (isEmotionalStatement) {
     const empatheticResponses = [
       "Aww, I'm really sorry you're going through that. Engineering can be tough, but you've got this! 💪 Want to talk about it?",
       "That sounds rough. It's okay to not be okay sometimes. You're doing better than you think! ❤️",
