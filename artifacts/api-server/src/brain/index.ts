@@ -180,7 +180,6 @@ export async function retrieveRelevantNodes(
   const semanticResults = scored
     .filter((n) => {
       if (n.similarity <= 0.01) return false; // Lowered from 0.15 to catch more relevant nodes
-      if (n.type === "rule" && queryType !== "command") return false;
       return true;
     })
     .slice(0, topK);
