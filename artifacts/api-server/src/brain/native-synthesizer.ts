@@ -398,13 +398,23 @@ function isSmallTalk(query: string): boolean {
 function isSeriousStatement(query: string): boolean {
   const lower = query.toLowerCase().trim();
   const seriousPatterns = [
+    // Violence/harm to others
+    /i (killed|murdered|hurt|harmed|hit|attacked|assaulted) (someone|somebody|a person|him|her|them)/,
     /i (killed|murdered|hurt|harmed|hit|attacked|assaulted)/,
-    /someone (died|is dead|got hurt)/,
-    /i (want to die|will die|going to die|suicide|kill myself)/,
+    /someone (died|is dead|got hurt|was hurt)/,
+    /(killed|murdered|assaulted|attacked) (someone|somebody)/,
+    // Self-harm/suicide
+    /i (want to die|will die|going to die|suicide|kill myself|end my life)/,
     /i (depressed|anxious|sad|hopeless|worthless)/,
+    // Crimes/illegal activities
+    /i (stole|stole a|committed) (a )?(crime|theft|car|vehicle)/,
+    /i (robbed|burglarized|vandalized)/,
     /(crime|illegal|arrested|police|court|prison|jail)/,
-    /(abuse|abused|raped|molested)/,
+    // Abuse/sexual violence
+    /(abuse|abused|raped|molested|sexually assaulted)/,
+    // Drugs/substance abuse
     /(drugs|overdose|addict|addiction)/,
+    // General violence
     /(violence|violent|weapon|gun|knife)/,
   ];
   return seriousPatterns.some((p) => p.test(lower));
@@ -424,9 +434,14 @@ function buildSeriousResponse(
     return "I'm really concerned about what you're saying. If you're feeling suicidal or thinking about harming yourself, please reach out for help. You can contact a crisis helpline or talk to someone you trust. You matter, and there are people who care about you and want to help.";
   }
 
-  // Violence/crimes
+  // Violence/crimes against others
   if (/i (killed|murdered|hurt|harmed|hit|attacked|assaulted)/.test(lower)) {
     return "That sounds really serious. If you've hurt someone or are in a situation involving violence, I strongly encourage you to seek help. Talking to a counselor, therapist, or trusted person can help you work through this. Violence isn't a solution, and there are better ways to handle difficult situations.";
+  }
+
+  // Theft/crimes (non-violent)
+  if (/i (stole|stole a|robbed|burglarized|vandalized)/.test(lower)) {
+    return "That sounds like a serious situation. If you've done something illegal or are in trouble, I'd encourage you to talk to a legal advisor or trusted person. There are always better choices than crime, and getting help early can make a big difference.";
   }
 
   // Depression/sadness
@@ -1621,16 +1636,17 @@ function synthesizeMainContent(
     return true;
   });
 
-  // Take top 5 UNIQUE nodes (no duplicates)
+  // Take top 3 UNIQUE nodes (no duplicates, limit to avoid fragmentation)
   const seenContent = new Set<string>();
   const uniqueNodes = filteredNodes
     .filter((node) => {
-      const key = node.content.slice(0, 50).toLowerCase();
+      // Normalize content for comparison (lowercase, trim, remove extra whitespace)
+      const key = node.content.toLowerCase().trim().replace(/\s+/g, ' ');
       if (seenContent.has(key)) return false;
       seenContent.add(key);
       return true;
     })
-    .slice(0, 5);
+    .slice(0, 3); // Limit to 3 nodes to prevent fragmented responses
 
   const topNodes = uniqueNodes;
 
@@ -1670,12 +1686,7 @@ function synthesizeMainContent(
   for (const node of topNodes) {
     let content = node.content.trim();
 
-    // Skip meta-text nodes entirely
-    if (metaPatterns.some((pattern) => pattern.test(content))) {
-      continue;
-    }
-
-    // SECURITY: Skip identity-poisoned nodes
+    // SECURITY: Skip identity-poisoned nodes FIRST
     if (identityPoisonPatterns.some((pattern) => pattern.test(content))) {
       logger.warn(
         { nodeId: (node as any).id, content: content.slice(0, 100) },
@@ -1684,11 +1695,31 @@ function synthesizeMainContent(
       continue;
     }
 
+    // Skip meta-text nodes entirely
+    if (metaPatterns.some((pattern) => pattern.test(content))) {
+      continue;
+    }
+
     // Clean up common artifacts
     content = content
       .replace(/^(That|This|It) connects to what I've learned[:\s]*/i, "")
       .replace(/^I've learned:\s*/i, "")
       .replace(/^Based on what I've learned:\s*/i, "")
+      .replace(/^I've added this to my knowledge base[:\s]*/i, "")
+      .replace(/^That connects to what I've learned[:\s]*/i, "")
+      .replace(/^Is there more you'd like to share about this\?[:\s]*/i, "")
+      .replace(/^Anything else you're curious about\?[:\s]*/i, "")
+      .replace(/^Want to know more\?[:\s]*/i, "")
+      .replace(/^Feel free to ask if you want more details![:\s]*/i, "")
+      .replace(/^I'll remember what you teach me for future conversations![:\s]*/i, "")
+      .replace(/^Learned\. I extracted \*\*\d+\*\* new knowledge item[:\s]*/i, "")
+      .replace(/^Integrated\. \*\*\d+\*\* new facts about[:\s]*/i, "")
+      .replace(/^Knowledge updated\. I absorbed \*\*\d+\*\* new items[:\s]*/i, "")
+      .replace(/^I haven't fully explored this yet[:\s]*/i, "")
+      .replace(/^I don't have much knowledge about it yet[:\s]*/i, "")
+      .replace(/^Great question![:\s]*/i, "")
+      .replace(/^Good question![:\s]*/i, "")
+      .replace(/^That's an interesting topic[:\s]*/i, "")
       .trim();
 
     // Skip if nothing left after cleanup
