@@ -953,22 +953,6 @@ export async function synthesizeNative(
       };
     }
 
-    // Check for name introduction ("I'm Danny", "My name is...")
-    const nameIntro = detectIdentityStatement(query);
-    if (nameIntro) {
-      return {
-        text: `Nice to meet you, ${nameIntro}! I'm **Omni**. How can I help you today?`,
-        nodesUsed: 0,
-        newNodesAdded: 0,
-        learnedFacts: [],
-        character: {
-          curiosity: character.curiosity,
-          confidence: character.confidence,
-          technical: character.technical,
-        },
-      };
-    }
-
     // Small talk and casual chat
     if (isSmallTalk(query) || isCasualStatement(query)) {
       return {
