@@ -203,6 +203,22 @@ function determineConversationMode(
     return "casual";
   }
 
+  // CRITICAL: Casual follow-ups with ? should NOT trigger factual mode
+  const casualFollowUps = [
+    /^(and )?you\??$/i,
+    /^(what|how) about you\??$/i,
+    /^(is )?that okay\??$/i,
+    /^alright\??$/i,
+    /^okay\??$/i,
+    /^sure\??$/i,
+    /^good (and )?you\??$/i,
+    /^fine (and )?you\??$/i,
+  ];
+
+  if (casualFollowUps.some((p) => p.test(lower))) {
+    return "casual"; // These are conversational, not factual
+  }
+
   // CRITICAL: Direct questions ALWAYS trigger factual mode
   const factualTriggers = [
     /^what (is|are|was|were|do|does|did|will|would)/,
@@ -261,6 +277,59 @@ function determineConversationMode(
 
   // Default: factual mode (ready to answer questions)
   return "factual";
+}
+
+/**
+ * Check if query is a casual follow-up question (not seeking facts)
+ */
+function isCasualFollowUp(query: string): boolean {
+  const lower = query.toLowerCase().trim();
+  const followUps = [
+    /^(and )?you\??$/i,
+    /^(what|how) about you\??$/i,
+    /^good (and )?you\??$/i,
+    /^fine (and )?you\??$/i,
+    /^alright(,?) (and )?you\??$/i,
+    /^okay(,?) (and )?you\??$/i,
+    /^sure(,?) (and )?you\??$/i,
+    /^not much(,?) (you)?\??$/i,
+    /^nothing (much|special)(,?) (you)?\??$/i,
+  ];
+  return followUps.some((p) => p.test(lower));
+}
+
+/**
+ * Build response for casual follow-ups
+ */
+function buildFollowUpResponse(
+  query: string,
+  character: CharacterState,
+  history: Array<{ role: string; content: string }>,
+): string {
+  const lower = query.toLowerCase().trim();
+  
+  // Check what the AI said before to contextually respond
+  const lastAiMessage = history.filter((m) => m.role === "assistant").slice(-1)[0];
+  
+  // If AI asked "how are you" and user says "good, you?"
+  if (lastAiMessage && lastAiMessage.content.toLowerCase().includes("how are you")) {
+    const responses = [
+      "I'm doing well, thanks! Just here ready to chat and help out. What's good with you?",
+      "I'm good! Living the digital life 😄 Anything interesting happening on your end?",
+      "Doing great! Thanks for asking. What's new in your world?",
+      "I'm well! Ready to help with whatever you need. How's your day going?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
+  
+  // Generic follow-up responses
+  const responses = [
+    "I'm good! Just hanging out, ready to chat. What's up?",
+    "Doing well! Anything on your mind?",
+    "I'm great! What's the vibe?",
+    "All good here! What's new with you?",
+  ];
+  return responses[Math.floor(Math.random() * responses.length)];
 }
 
 /**
@@ -798,6 +867,21 @@ export async function synthesizeNative(
     if (isGreeting(query)) {
       return {
         text: buildGreetingResponse(query, character, history),
+        nodesUsed: 0,
+        newNodesAdded: 0,
+        learnedFacts: [],
+        character: {
+          curiosity: character.curiosity,
+          confidence: character.confidence,
+          technical: character.technical,
+        },
+      };
+    }
+
+    // Check for casual follow-ups ("and you?", "good and you?", etc.)
+    if (isCasualFollowUp(query)) {
+      return {
+        text: buildFollowUpResponse(query, character, history),
         nodesUsed: 0,
         newNodesAdded: 0,
         learnedFacts: [],
