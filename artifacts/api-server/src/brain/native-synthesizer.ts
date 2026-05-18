@@ -121,10 +121,12 @@ function isGreeting(query: string): boolean {
     "hello there",
     "hey there",
     "yo",
+    "wassup",
     "sup",
     "what's up",
     "whats up",
     "how are you",
+    "how are you doing",
     "how's it going",
     "how are things",
     "how do you do",
@@ -348,20 +350,23 @@ function buildFollowUpResponse(
   // If AI asked "how are you" and user says "good, you?"
   if (lastAiMessage && lastAiMessage.content.toLowerCase().includes("how are you")) {
     const responses = [
-      "I'm doing well, thanks! Just here ready to chat and help out. What's good with you?",
-      "I'm good! Living the digital life 😄 Anything interesting happening on your end?",
-      "Doing great! Thanks for asking. What's new in your world?",
-      "I'm well! Ready to help with whatever you need. How's your day going?",
+      "I'm good! Just chillin'. What's up with you?",
+      "Doing great! Thanks for asking. You good?",
+      "I'm well! What's the vibe today?",
+      "All good here! Anything exciting happening?",
+      "I'm decent! How's your day treating you?",
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
   
   // Generic follow-up responses
   const responses = [
-    "I'm good! Just hanging out, ready to chat. What's up?",
-    "Doing well! Anything on your mind?",
+    "I'm good! What's up?",
+    "Doing well! You?",
     "I'm great! What's the vibe?",
-    "All good here! What's new with you?",
+    "All good! What's new?",
+    "I'm well! How about you?",
+    "Good! What's on your mind?",
   ];
   return responses[Math.floor(Math.random() * responses.length)];
 }
@@ -707,12 +712,12 @@ function buildCasualResponse(
 
   // Default casual — natural and varied
   const defaults = [
-    "I hear you! What else?",
-    "Interesting! Tell me more.",
-    "Got it! What's on your mind?",
-    "Nice! Anything else you want to talk about?",
-    "Aight! What's good?",
-    "I feel you! What's up?",
+    "I feel you! What's good?",
+    "Say less! What's up?",
+    "I got you! What's on your mind?",
+    "Aight bet! What's the vibe?",
+    "I hear you! What's new?",
+    "Same energy! What's good?",
   ];
   return defaults[Math.floor(Math.random() * defaults.length)];
 }
