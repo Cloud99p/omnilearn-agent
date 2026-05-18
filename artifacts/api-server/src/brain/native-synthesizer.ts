@@ -213,6 +213,10 @@ function determineConversationMode(
     /^sure\??$/i,
     /^good (and )?you\??$/i,
     /^fine (and )?you\??$/i,
+    /^nothing much\??$/i,
+    /^not much\??$/i,
+    /^same (here|as always)\??$/i,
+    /^not really\??$/i,
   ];
 
   if (casualFollowUps.some((p) => p.test(lower))) {
@@ -310,6 +314,17 @@ function buildFollowUpResponse(
   
   // Check what the AI said before to contextually respond
   const lastAiMessage = history.filter((m) => m.role === "assistant").slice(-1)[0];
+  
+  // "nothing much" / "not much" responses
+  if (lower.includes("nothing much") || lower.includes("not much")) {
+    const responses = [
+      "Same vibe sometimes! Just here if you need anything. Want to chat about something?",
+      "I feel that! Sometimes chill mode is the best mode. What's good?",
+      "Aight, no stress! Anything on your mind or just vibing?",
+      "Same energy! I'm just hanging out ready to help if you need. What's up?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  }
   
   // If AI asked "how are you" and user says "good, you?"
   if (lastAiMessage && lastAiMessage.content.toLowerCase().includes("how are you")) {
