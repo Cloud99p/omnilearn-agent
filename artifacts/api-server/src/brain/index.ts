@@ -358,7 +358,19 @@ export async function processMessage(
   }
 
   // 1. Extract new knowledge from the user's message
-  const extractedFacts = extractFacts(userMessage);
+  // DON'T learn from: questions, requests for more info, acknowledgments
+  const nonLearnablePatterns = [
+    /^(yes|no|yeah|sure|okay|ok|alright|nice|cool|awesome)[!?.]*$/i,
+    /^(tell me more|i want more|i would like more|give me more|explain more)/i,
+    /^(what do you mean|explain what|clarify|elaborate)/i,
+    /^(how does|why does|can you|could you|will you)/i,
+    /^more (details|info|information|examples)?[!?.]*$/i,
+    /^(i see|i understand|got it|makes sense|interesting)[!?.]*$/i,
+  ];
+  
+  const shouldSkipLearning = nonLearnablePatterns.some(p => p.test(userMessage));
+  const extractedFacts = shouldSkipLearning ? [] : extractFacts(userMessage);
+  
   let newNodesAdded = 0;
   const isTechnical = detectTechnicalContent(userMessage);
   const isEmotional = detectEmotionalContent(userMessage);
