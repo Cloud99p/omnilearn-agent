@@ -132,7 +132,14 @@ router.post("/chat", async (req, res) => {
 
     sendEvent({ done: true, conversationId: convId });
   } catch (err) {
-    req.log.error(err, "Brain processing error");
+    req.log.error(
+      {
+        err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      },
+      "Brain processing error",
+    );
     sendEvent({ error: "Internal brain error", done: true });
   } finally {
     res.end();

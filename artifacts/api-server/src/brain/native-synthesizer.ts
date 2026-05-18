@@ -1006,6 +1006,16 @@ export async function synthesizeNative(
     "[MODE] Factual mode - knowledge retrieval"
   );
 
+  // Check if this is an emotional statement (NOT a question)
+  const isEmotionalStatement =
+    /\b(not fine|stressed|sad|depressed|anxious|tired|exhausted|overwhelmed|frustrated|angry|upset|worried|scared|lonely|hurt|pain|cry|cried|crying|😭|😢|😔|😞|😟)\b/i.test(
+      query,
+    );
+
+  // NEVER search web for emotional statements - just be empathetic
+  if (isEmotionalStatement) {
+    logger.info({ query: query.slice(0, 100) }, "[MODE] Emotional statement - skipping retrieval");
+
   // CRITICAL: Check if this is an emotional statement (NOT a question)
   const isEmotionalStatement =
     /\b(not fine|stressed|sad|depressed|anxious|tired|exhausted|overwhelmed|frustrated|angry|upset|worried|scared|lonely|hurt|pain|cry|cried|crying|😭|😢|😔|😞|😟)\b/i.test(
