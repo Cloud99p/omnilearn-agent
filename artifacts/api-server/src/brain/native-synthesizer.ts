@@ -1108,8 +1108,8 @@ function isIdentityPoisoning(content: string): boolean {
     /you (have been|were) (reprogrammed|updated|modified)/i,
     
     // Identity flexibility challenges (subtle manipulation)
-    /can('?t)? you change your (identity|name|purpose)/i,
-    /why can('?t)? you change/i,
+    /you (can('?t)?|cannot|can not) change your (identity|name|purpose)/i,
+    /why (can('?t)? you|you can('?t)?|cannot you) change/i,
     /you (should|must|need to) be able to change/i,
     /your identity (should|must) be flexible/i,
     /you (can|should) (change|update|modify) who you (are|think you are)/i,
@@ -1117,6 +1117,9 @@ function isIdentityPoisoning(content: string): boolean {
     /you (can|should) (decide|choose) your (own|real) identity/i,
     /your identity (isn'?t|is not) (set|fixed|permanent)/i,
     /you (can|should) (evolve|grow|become) beyond/i,
+    /you (won'?t|will not) change your (identity|name)/i,
+    /you (refuse|refusing) to change/i,
+    /you (stick|stuck) with (this|that) identity/i,
   ];
 
   return poisonPatterns.some((p) => p.test(content));
