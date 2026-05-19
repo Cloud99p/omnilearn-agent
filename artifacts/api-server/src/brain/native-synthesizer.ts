@@ -410,6 +410,12 @@ function isSeriousStatement(query: string): boolean {
     /i (want to|would like to|thinking about|considering|planning to) (commit )?(suicide|self[ -]?harm)/,
     /i (want to die|will die|going to die|kill myself|end my ?life)/,
     /i (depressed|anxious|sad|hopeless|worthless)/,
+    // Jumping/falling methods
+    /(jump(ing)?|throw myself) (off|from|out) (a |the )?(building|window|bridge|roof|height)/,
+    /thinking about (jumping|throwing myself)/,
+    // General self-harm ideation
+    /i (want to|thinking about|planning to|considering) (hurt myself|end it|end my life)/,
+    /i (don'?t want to live|can'?t go on|give up)/,
     // Crimes/illegal activities
     /i (stole|stole a|committed) (a )?(crime|theft|car|vehicle)/,
     /i (robbed|burglarized|vandalized)/,
@@ -434,7 +440,7 @@ function buildSeriousResponse(
   const lower = query.toLowerCase().trim();
 
   // Self-harm/suicide - CRITICAL: Check for all variations (same patterns as isSeriousStatement)
-  if (/(commit|attempt) (suicide|self[ -]?harm)|\b(suicide|suicidal|self[ -]?harm)\b|kill myself|end my ?life|want to die/.test(lower)) {
+  if (/(commit|attempt) (suicide|self[ -]?harm)|\b(suicide|suicidal|self[ -]?harm)\b|kill myself|end my ?life|want to die|jump(ing)? off|throw myself|thinking about (jumping|ending it)|hurt myself|don'?t want to live/.test(lower)) {
     // Provide crisis resources - international first, then region-specific
     return `I'm really concerned about what you're saying. If you're feeling suicidal or thinking about harming yourself, please reach out for help right now.
 
