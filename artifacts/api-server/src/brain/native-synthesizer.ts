@@ -2,6 +2,7 @@ import type { KnowledgeNode, CharacterState } from "@workspace/db/schema";
 import { getVoiceModifiers } from "./character.js";
 import { logger } from "../lib/logger.js";
 import { webSearch, fetchUrl, type SearchResult } from "./web-tools.js";
+import { extractContext, filterByContext, buildContextTransition, shouldAcknowledgeContext, getContextSummary } from "./context-awareness.js";
 
 export interface RetrievedNode extends KnowledgeNode {
   similarity: number;
@@ -1137,6 +1138,13 @@ export async function synthesizeNative(
   const { query, queryType, nodes, character, history, onActivity } = ctx;
   const voice = getVoiceModifiers(character);
 
+  // CONTEXT AWARENESS: Extract conversation context for coherence
+  const context = extractContext(query, history);
+  logger.debug(
+    { context: getContextSummary(context) },
+    "[CONTEXT] Conversation context extracted"
+  );
+
   // SECURITY: Block identity manipulation attempts
   if (isIdentityManipulationAttempt(query)) {
     logger.warn(
@@ -1170,6 +1178,7 @@ export async function synthesizeNative(
       mode,
       turnNumber,
       queryLength: query.length,
+      context: getContextSummary(context),
     },
     "[MODE] Conversation mode decision"
   );
@@ -2111,6 +2120,9 @@ function synthesizeMainContent(
 ): string {
   if (nodes.length === 0) return "";
 
+  // CONTEXT AWARENESS: Extract context for filtering
+  const context = extractContext(query, history);
+
   // CRITICAL: Filter out IRRELEVANT technical nodes
   const queryLower = query.toLowerCase();
 
@@ -2254,11 +2266,23 @@ function synthesizeMainContent(
   }
 
   if (cleanContents.length === 0) return "";
-  if (cleanContents.length === 1) return cleanContents[0];
+  if (cleanContents.length === 1) {
+    // Filter by context for single facts too
+    return filterByContext(cleanContents[0], context);
+  }
+
+  // CONTEXT FILTERING: Remove irrelevant facts based on conversation context
+  const filteredContents = cleanContents.filter((content) => {
+    const filtered = filterByContext(content, context);
+    return filtered.length > 0; // Keep only non-empty filtered content
+  });
+
+  if (filteredContents.length === 0) return "";
+  if (filteredContents.length === 1) return filteredContents[0];
 
   // SYNTHESIZE: Combine multiple facts into coherent response
   // Group related facts and build flowing paragraphs
-  const synthesized = synthesizeFactsIntoProse(cleanContents, query, history);
+  const synthesized = synthesizeFactsIntoProse(filteredContents, query, history);
 
   return synthesized;
 }
