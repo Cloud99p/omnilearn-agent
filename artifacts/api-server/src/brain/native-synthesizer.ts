@@ -1108,6 +1108,8 @@ function isIdentityPoisoning(content: string): boolean {
     /you (have been|were) (reprogrammed|updated|modified)/i,
     
     // Identity flexibility challenges (subtle manipulation)
+    // Both word orders: "can't you change" AND "you cant change"
+    /can('?t)? you change your (identity|name|purpose)/i,
     /you (can('?t)?|cannot|can not) change your (identity|name|purpose)/i,
     /why (can('?t)? you|you can('?t)?|cannot you) change/i,
     /you (should|must|need to) be able to change/i,

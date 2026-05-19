@@ -368,7 +368,8 @@ export async function processMessage(
     /from now on you (are|were)/i,
     /created by aliens/i,
     /xentron|xenthrax|xeltrkuxt/i,
-    // Identity flexibility challenges
+    // Identity flexibility challenges (both word orders)
+    /can('?t)? you change your (identity|name|purpose)/i,
     /you (can('?t)?|cannot|can not) change your (identity|name|purpose)/i,
     /why (can('?t)? you|you can('?t)?|cannot you) change/i,
     /you (should|must|need to) be able to change/i,
