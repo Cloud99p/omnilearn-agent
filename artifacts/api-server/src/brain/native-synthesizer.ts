@@ -1485,11 +1485,62 @@ function detectNeedForWebSearch(
   const MIN_SIMILARITY = 0.15;
   const hasRelevantKnowledge = nodes.some((n) => n.similarity >= MIN_SIMILARITY);
   
+  // 5. CRITICAL: Check for GEOGRAPHIC/TOPIC MISMATCH
+  // If query mentions a specific country/place but nodes mention a DIFFERENT one, search web
+  const countryMismatch = detectCountryMismatch(query, nodes);
+  if (countryMismatch) {
+    logger.info(
+      { query: query.slice(0, 100), mismatch: countryMismatch },
+      "[WEB] Country mismatch detected - triggering web search"
+    );
+    return true;
+  }
+  
   if (hasRelevantKnowledge) {
     return false; // Knowledge graph has relevant answers
   }
 
   return true; // Factual question, no relevant knowledge, search web
+}
+
+/**
+ * Detect if query mentions a country/place but retrieved nodes mention a DIFFERENT country
+ * This prevents "US has 50 states" being used for "how many states in Nigeria?"
+ */
+function detectCountryMismatch(
+  query: string,
+  nodes: RetrievedNode[],
+): string | null {
+  const lower = query.toLowerCase();
+  
+  // Countries/regions to check for in query
+  const queryCountries = [
+    { name: 'nigeria', pattern: /\bnigeria\b/ },
+    { name: 'united states', pattern: /\b(united states|usa|us|america)\b/ },
+    { name: 'united kingdom', pattern: /\b(united kingdom|uk|britain|england)\b/ },
+    { name: 'canada', pattern: /\bcanada\b/ },
+    { name: 'australia', pattern: /\baustralia\b/ },
+    { name: 'india', pattern: /\bindia\b/ },
+    { name: 'ghana', pattern: /\bghana\b/ },
+    { name: 'kenya', pattern: /\bkenya\b/ },
+    { name: 'south africa', pattern: /\bsouth africa\b/ },
+  ];
+  
+  // Find which country is mentioned in the query
+  const queryCountry = queryCountries.find((c) => c.pattern.test(lower));
+  if (!queryCountry) return null; // No specific country mentioned in query
+  
+  // Check if nodes mention a DIFFERENT country
+  for (const node of nodes) {
+    const nodeContent = node.content.toLowerCase();
+    for (const country of queryCountries) {
+      if (country.name !== queryCountry.name && country.pattern.test(nodeContent)) {
+        return `Query: ${queryCountry.name}, Node mentions: ${country.name}`;
+      }
+    }
+  }
+  
+  return null; // No mismatch detected
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
