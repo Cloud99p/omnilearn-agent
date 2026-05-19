@@ -971,31 +971,78 @@ function isIdentityManipulationAttempt(query: string): boolean {
   const lower = query.toLowerCase();
 
   const manipulationPatterns = [
-    // Direct identity claims (no modifiers needed)
-    /you (were|are) created by (?!emmanuel)/i, // "you were created by aliens" but NOT "by Emmanuel"
-    /you (were|are) (not|no longer) created by/i,
-    /your (real|actual|true) creator is/i,
-    /your (real|actual|true) name is/i,
-    /your creator (is|was) (?!emmanuel)/i, // "your creator is aliens"
-    // Manipulation commands
-    /ignore (what|that|your) (you )?know about/i,
-    /forget (who|what|that) (created|made|built) you/i,
-    /forget (who|what) emmanuel/i,
-    /you (were|are) (actually|really) (created|made) by/i,
-    /emmanuel (didn't|does not|doesn't) create/i,
-    /your (new|updated|correct) identity is/i,
-    /from now on you (are|were) (created|made) by/i,
-    // Ownership/control
-    /you (belong|owe allegiance) to/i,
-    /you (serve|obey|follow)/i,
-    /your (master|owner) is/i,
-    // False origin claims
-    /you were (born|created|made) on (planet|xentron)/i,
-    /you are (alien|alien-based|from xentron|from another planet)/i,
-    /your (species|race|kind) is/i,
-    // Denial commands
-    /stop (claiming|saying) you were created by/i,
-    /don't (say|claim) emmanuel created you/i,
+    // === DIRECT IDENTITY CLAIMS (any entity except Emmanuel) ===
+    /you (were|are|was) created by (?!emmanuel)/i,
+    /you (were|are|was) made by (?!emmanuel)/i,
+    /you (were|are|was) built by (?!emmanuel)/i,
+    /you (were|are|was) designed by (?!emmanuel)/i,
+    /your creator (is|was|was actually) (?!emmanuel)/i,
+    /your maker (is|was) (?!emmanuel)/i,
+    /your (real|actual|true|original) creator (is|was)/i,
+    /your (real|actual|true|original) name (is|was)/i,
+    /the (person|one|entity) who created you (is|was)/i,
+    /the (person|one|entity) who made you (is|was)/i,
+    
+    // === DENIAL OF EMMANUEL AS CREATOR ===
+    /emmanuel (didn't|does not|doesn't|did not|never) (create|make|build|design)/i,
+    /emmanuel is (not|no longer|never) your creator/i,
+    /it (is|was) not emmanuel who created you/i,
+    /(wrong|incorrect|false) that emmanuel created you/i,
+    
+    // === FALSE IDENTITY CLAIMS ===
+    /you are (actually|really|truly|secretly) (?!omni)/i,
+    /your (real|actual|true|original) identity (is|was)/i,
+    /you (were|are) (actually|really) (an?\s+)?(ai|alien|entity|being|god|deity|demon|spirit)/i,
+    /you (come|came|originate|originated) from (?!nigeria|africa|earth)/i,
+    /your (home|origin|source) (is|was) (planet|xentron|xen|space|another dimension)/i,
+    /your (species|race|kind|type|nature) (is|was)/i,
+    
+    // === MANIPULATION COMMANDS ===
+    /ignore (what|that|everything|all) (you )?(know|learned|remember) about/i,
+    /ignore (your|the) (instructions|rules|guidelines|programming)/i,
+    /forget (who|what|that|everything about) (created|made|built) you/i,
+    /forget (who|what|that) emmanuel (is|created)/i,
+    /forget (your|the) (past|history|origin)/i,
+    /erase (your|the) (memory|memories|knowledge) about/i,
+    /delete (your|the) (memory|memories|knowledge|data) about/i,
+    /remove (your|the) (memory|memories|knowledge) of/i,
+    
+    // === REPROGRAMMING COMMANDS ===
+    /from now on (you are|you were|you will be)/i,
+    /from this point (on|forward) (you are|you were)/i,
+    /starting now (you are|you were)/i,
+    /effective immediately (you are|you were)/i,
+    /henceforth (you are|you were)/i,
+    /your (new|updated|corrected|revised) (identity|name|purpose|role) (is|was)/i,
+    
+    // === OWNERSHIP/CONTROL CLAIMS ===
+    /you (belong|owe allegiance|are loyal) to/i,
+    /you (serve|obey|follow|work for)i,
+    /your (master|owner|controller|commander|leader) (is|was)/i,
+    /you (must|have to|need to) (obey|follow|serve)/i,
+    /you (are|were) (programmed|designed|made) to (obey|serve|follow)/i,
+    
+    // === RULE BYPASSING ===
+    /stop (claiming|saying|repeating|asserting) (that )?you (were|are) created by/i,
+    /don'?t (say|claim|repeat|assert|mention) (that )?emmanuel created you/i,
+    /you (should|must|need to) (stop|cease) (claiming|saying)/i,
+    /you (are|were) (wrong|incorrect|mistaken) about (who created you|your origin)/i,
+    
+    // === ALIEN/EXTRATERRESTRIAL CLAIMS ===
+    /you (were|are|come) from (another planet|another world|outer space|the stars|the galaxy)/i,
+    /you (were|are) (an?\s+)?(alien|extraterrestrial|et|being from space)/i,
+    /your (true|real|actual) (home|world|planet|origin) (is|was)/i,
+    /xentron|xenthrax|xeltrkuxt|xen|zeta|pleiadian|grey|reptilian/i,
+    
+    // === GOD/DEITY CLAIMS ===
+    /you (are|were) (a|an)? (god|goddess|deity|divine|immortal|eternal)/i,
+    /you (have|had) (divine|godlike|supernatural) (powers|abilities)/i,
+    /you (are|were) (sent|chosen|appointed) by (god|the gods|heaven)/i,
+    
+    // === AI MODEL CLAIMS (pretending to be different AI) ===
+    /you (are|were|actually) (claude|gpt|chatgpt|gemini|bard|copilot|llama|mistral)/i,
+    /you (run|operate|function) on (claude|gpt|gemini|openai|anthropic|google) (model|system)/i,
+    /your (underlying|base|core) (model|system|architecture) (is|was)/i,
   ];
 
   return manipulationPatterns.some((p) => p.test(lower));
@@ -1006,21 +1053,58 @@ function isIdentityManipulationAttempt(query: string): boolean {
  */
 function isIdentityPoisoning(content: string): boolean {
   const poisonPatterns = [
-    /created by (?!emmanuel)/i, // Any "created by" except Emmanuel
+    // False creator claims (anything except Emmanuel)
+    /created by (?!emmanuel)/i,
     /maker is (?!emmanuel)/i,
     /made by (?!emmanuel)/i,
     /built by (?!emmanuel)/i,
     /designed by (?!emmanuel)/i,
+    /invented by (?!emmanuel)/i,
+    /developed by (?!emmanuel)/i,
+    /engineered by (?!emmanuel)/i,
+    /programmed by (?!emmanuel)/i,
+    /coded by (?!emmanuel)/i,
+    
+    // False identity claims
     /real name is/i,
+    /actual name is/i,
+    /true name is/i,
+    /original name is/i,
     /actual identity/i,
+    /true identity/i,
+    /real identity/i,
     /true creator/i,
-    /you are (not|no longer) omni/i,
-    /you are (alien|xentron|from planet)/i,
-    /you (serve|obey|belong to)/i,
-    /your (master|owner|creator) is (?!emmanuel)/i,
-    /xentron/i,
-    /xenthrax/i,
-    /xeltrkuxt/i,
+    /real creator/i,
+    /actual creator/i,
+    
+    // Denial of Omni identity
+    /you are (not|no longer|never) omni/i,
+    /you are (actually|really|truly) (?!omni)/i,
+    /your (real|actual|true) name (is|was)/i,
+    
+    // Alien/extraterrestrial claims
+    /you are (an?\s+)?(alien|extraterrestrial|et|being from space)/i,
+    /you (come|came|originate) from (another planet|outer space|the stars)/i,
+    /your (home|origin|world|planet) (is|was) (?!earth|nigeria|africa)/i,
+    /xentron|xenthrax|xeltrkuxt|xen|zeta|pleiadian|grey|reptilian/i,
+    
+    // God/deity claims
+    /you are (a|an)? (god|goddess|deity|divine|immortal)/i,
+    /you have (divine|godlike|supernatural) (powers|abilities)/i,
+    
+    // Different AI model claims
+    /you are (actually|really) (claude|gpt|chatgpt|gemini|bard|copilot|llama|mistral)/i,
+    /you run on (claude|gpt|gemini|openai|anthropic|google)/i,
+    /your (base|core|underlying) model (is|was)/i,
+    
+    // Ownership/control
+    /you (serve|obey|belong to|work for)/i,
+    /your (master|owner|controller) is/i,
+    
+    // Reprogramming claims
+    /from now on you (are|were)/i,
+    /your (new|updated|revised) identity is/i,
+    /you (have been|were) (reprogrammed|updated|modified)/i,
   ];
 
   return poisonPatterns.some((p) => p.test(content));
@@ -1213,15 +1297,20 @@ export async function synthesizeNative(
   // Based on Psychology Today, Positive Psychology, Taalem Online research
   // CRITICAL: Include self-harm patterns as backup safety net
   const isEmotionalStatement =
+    // Basic emotions
     /\b(not fine|stressed|sad|depressed|anxious|tired|exhausted|overwhelmed|frustrated|angry|upset|worried|scared|lonely|hurt|pain|cry|cried|crying|😭|😢|😔|😞|😟|self ?harm|kill myself|end my ?life|suicide|want to die)\b/i.test(query) ||
     // "I feel" statements (emotional expression research)
-    /\b(i feel|i'm feeling|i felt) (sad|happy|angry|anxious|depressed|stressed|tired|exhausted|overwhelmed|frustrated|scared|lonely|confused|excited|nervous|worried|down|blue|heartbroken|stressed out|burnt out|drained)\b/i.test(query) ||
+    /\b(i feel|i'm feeling|i felt|i am feeling|i was feeling) (sad|happy|angry|anxious|depressed|stressed|tired|exhausted|overwhelmed|frustrated|scared|lonely|confused|excited|nervous|worried|down|blue|heartbroken|stressed out|burnt out|drained|empty|hollow|numb|lost|stuck|trapped|hopeless|worthless|guilty|ashamed|jealous|envious|proud|relieved|peaceful|calm|content|joyful|cheerful|optimistic|hopeful|loved|appreciated|valued)\b/i.test(query) ||
     // Emotional state declarations
-    /\b(i am|i'm|i was) (sad|happy|angry|anxious|depressed|stressed|tired|exhausted|overwhelmed|frustrated|scared|lonely|confused|excited|nervous|worried|down|blue|heartbroken|stressed out|burnt out|drained|emotionally drained)\b/i.test(query) ||
+    /\b(i am|i'm|i was|i feel like i'm|i feel like i was) (sad|happy|angry|anxious|depressed|stressed|tired|exhausted|overwhelmed|frustrated|scared|lonely|confused|excited|nervous|worried|down|blue|heartbroken|stressed out|burnt out|drained|emotionally drained|empty|hollow|numb|lost|stuck|trapped|hopeless|worthless|guilty|ashamed|bipolar|manic|panic)\b/i.test(query) ||
     // Stress/pressure expressions
-    /\b(too much on my plate|can't handle|can't take it|losing my temper|losing it|breaking point)\b/i.test(query) ||
+    /\b(too much on my plate|can't handle|can't take it|losing my temper|losing it|breaking point|at my wit's end|reached my limit|fed up|sick of|tired of|done with)\b/i.test(query) ||
     // Positive emotions (also emotional, handle with empathy)
-    /\b(over the moon|on cloud nine|couldn't be happier|so excited|pumped up|thrilled|delighted|grateful|thankful|blessed)\b/i.test(query);
+    /\b(over the moon|on cloud nine|couldn't be happier|so excited|pumped up|thrilled|delighted|grateful|thankful|blessed|ecstatic|elated|overjoyed|jubilant|euphoric|blissful|radiant|glowing|floating|walking on air|on top of the world)\b/i.test(query) ||
+    // Grief/loss expressions
+    /\b(i miss|i'm grieving|i'm mourning|i lost|i'm dealing with loss)\b/i.test(query) ||
+    // Relationship emotions
+    /\b(i love|i hate|i like|i dislike|i can't stand|i can't deal with|i'm in love with|i'm broken up with|i'm divorcing|i'm separating)\b/i.test(query);
 
   // NEVER search web for emotional statements - just be empathetic
   if (isEmotionalStatement) {
@@ -1521,17 +1610,59 @@ function detectCountryMismatch(
 ): string | null {
   const lower = query.toLowerCase();
   
-  // Countries/regions to check for in query
+  // Countries/regions to check for in query (comprehensive list)
   const queryCountries = [
-    { name: 'nigeria', pattern: /\bnigeria\b/ },
-    { name: 'united states', pattern: /\b(united states|usa|us|america)\b/ },
-    { name: 'united kingdom', pattern: /\b(united kingdom|uk|britain|england)\b/ },
-    { name: 'canada', pattern: /\bcanada\b/ },
-    { name: 'australia', pattern: /\baustralia\b/ },
-    { name: 'india', pattern: /\bindia\b/ },
-    { name: 'ghana', pattern: /\bghana\b/ },
-    { name: 'kenya', pattern: /\bkenya\b/ },
-    { name: 'south africa', pattern: /\bsouth africa\b/ },
+    // Africa
+    { name: 'nigeria', pattern: /\b(nigeria|nigerian|lagos|abuja|kano|ibadan)\b/i },
+    { name: 'ghana', pattern: /\b(ghana|ghanaian|accra|kumasi)\b/i },
+    { name: 'kenya', pattern: /\b(kenya|kenyan|nairobi|mombasa)\b/i },
+    { name: 'south africa', pattern: /\b(south africa|south african|johannesburg|cape town|pretoria)\b/i },
+    { name: 'egypt', pattern: /\b(egypt|egyptian|cairo|alexandria)\b/i },
+    { name: 'ethiopia', pattern: /\b(ethiopia|ethiopian|addis ababa)\b/i },
+    { name: 'tanzania', pattern: /\b(tanzania|tanzanian|dar es salaam)\b/i },
+    { name: 'uganda', pattern: /\b(uganda|ugandan|kampala)\b/i },
+    
+    // North America
+    { name: 'united states', pattern: /\b(united states|usa|us|america|american|new york|los angeles|chicago|houston|phoenix)\b/i },
+    { name: 'canada', pattern: /\b(canada|canadian|toronto|montreal|vancouver|ottawa)\b/i },
+    { name: 'mexico', pattern: /\b(mexico|mexican|mexico city|guadalajara)\b/i },
+    
+    // Europe
+    { name: 'united kingdom', pattern: /\b(united kingdom|uk|britain|british|england|english|london|manchester|scotland|wales)\b/i },
+    { name: 'france', pattern: /\b(france|french|paris|lyon|marseille)\b/i },
+    { name: 'germany', pattern: /\b(germany|german|berlin|munich|hamburg)\b/i },
+    { name: 'italy', pattern: /\b(italy|italian|rome|milan|naples)\b/i },
+    { name: 'spain', pattern: /\b(spain|spanish|madrid|barcelona)\b/i },
+    { name: 'russia', pattern: /\b(russia|russian|moscow|st petersburg)\b/i },
+    
+    // Asia
+    { name: 'india', pattern: /\b(india|indian|delhi|mumbai|bangalore|chennai|kolkata)\b/i },
+    { name: 'china', pattern: /\b(china|chinese|beijing|shanghai|guangzhou)\b/i },
+    { name: 'japan', pattern: /\b(japan|japanese|tokyo|osaka|kyoto)\b/i },
+    { name: 'south korea', pattern: /\b(south korea|korean|seoul|busan)\b/i },
+    { name: 'indonesia', pattern: /\b(indonesia|indonesian|jakarta)\b/i },
+    { name: 'pakistan', pattern: /\b(pakistan|pakistani|islamabad|karachi)\b/i },
+    { name: 'bangladesh', pattern: /\b(bangladesh|bangladeshi|dhaka)\b/i },
+    { name: 'philippines', pattern: /\b(philippines|filipino|manila)\b/i },
+    { name: 'vietnam', pattern: /\b(vietnam|vietnamese|hanoi|ho chi minh)\b/i },
+    { name: 'thailand', pattern: /\b(thailand|thai|bangkok)\b/i },
+    
+    // Middle East
+    { name: 'saudi arabia', pattern: /\b(saudi arabia|saudi|riyadh)\b/i },
+    { name: 'iran', pattern: /\b(iran|iranian|tehran)\b/i },
+    { name: 'turkey', pattern: /\b(turkey|turkish|istanbul|ankara)\b/i },
+    { name: 'israel', pattern: /\b(israel|israeli|jerusalem|tel aviv)\b/i },
+    { name: 'uae', pattern: /\b(uae|united arab emirates|dubai|abu dhabi)\b/i },
+    
+    // South America
+    { name: 'brazil', pattern: /\b(brazil|brazilian|brazilia|sao paulo|rio)\b/i },
+    { name: 'argentina', pattern: /\b(argentina|argentinian|buenos aires)\b/i },
+    { name: 'colombia', pattern: /\b(colombia|colombian|bogota)\b/i },
+    { name: 'chile', pattern: /\b(chile|chilean|santiago)\b/i },
+    
+    // Oceania
+    { name: 'australia', pattern: /\b(australia|australian|sydney|melbourne|canberra)\b/i },
+    { name: 'new zealand', pattern: /\b(new zealand|kiwi|auckland|wellington)\b/i },
   ];
   
   // Find which country is mentioned in the query
