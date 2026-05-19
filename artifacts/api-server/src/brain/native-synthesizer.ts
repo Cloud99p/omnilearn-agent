@@ -1458,65 +1458,110 @@ function synthesizeFromWeb(
 
   // Process fetched content first (full page = more reliable)
   if (fetchedContent) {
-    // AGGRESSIVE CLEANING: Remove Wikipedia/navigation/legal garbage
-    let cleanedText = fetchedContent.text
-      // Remove Wikipedia navigation elements
-      .replace(/\[Jump to content\].*/gi, "")
-      .replace(/\[-?x\]? Main menu/gi, "")
-      .replace(/move to sidebar (hide|show)/gi, "")
-      .replace(/Navigation\s*\*\s*\[Main page\]/gi, "")
-      .replace(/\[Contents\].*/gi, "")
-      .replace(/\[Main page\].*/gi, "")
-      .replace(/Visit the main page \[z\]/gi, "")
-      // Remove markdown links that are navigation
-      .replace(/\*\s*\[.*?\]\(.*?\)\s*".*?"/gi, "")
-      // Remove legal/terms text (LinkedIn, etc.)
-      .replace(
-        /By clicking (Continue|Join|Sign).*?(user agreement|privacy policy|terms).*?\./gi,
-        "",
-      )
-      .replace(
-        /\[?(User Agreement|Privacy Policy|Terms of Service|Cookie Policy)\]?.*?\)?/gi,
-        "",
-      )
-      .replace(/agree to.*?(terms|policy|agreement)/gi, "")
-      // Remove login/signup prompts
-      .replace(/Sign in|Log in|Sign up|Create account|Join .*? for free/gi, "")
-      // Remove short lines (likely navigation)
-      .split("\n")
-      .filter((line) => line.trim().length > 30)
-      .join("\n");
+    let cleanedText = fetchedContent.text;
 
-    // Extract 2-3 key sentences from the cleaned page
+    // STEP 1: Remove ALL markdown links completely
+    cleanedText = cleanedText
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1") // [text](url) -> text
+      .replace(/\[\[([^\]]*)\]\]/g, "$1") // [[text]] -> text
+      .replace(/\[([^\]]*)\]/g, ""); // [text] -> remove (citations)
+
+    // STEP 2: Remove URL patterns
+    cleanedText = cleanedText
+      .replace(/https?:\/\/[^\s]+/g, "")
+      .replace(/www\.[^\s]+/g, "");
+
+    // STEP 3: Remove navigation/UI garbage (aggressive)
+    const navPatterns = [
+      /\b(menu|navigation|sidebar|skip to|jump to|main content|table of contents)/gi,
+      /\b(open|close|hide|show|toggle|expand|collapse)/gi,
+      /\b(sign ?in|sign ?up|log ?in|log ?out|register|login|logout)/gi,
+      /\b(subscribe|unsubscribe|follow|unfollow)/gi,
+      /\b(share|tweet|facebook|linkedin|pinterest|email)/gi,
+      /\b(comments?|replies?|likes?|reposts?)/gi,
+      /\b(related|recommended|trending|popular)/gi,
+      /\b(next|previous|prev|page \d+|continue reading)/gi,
+      /\b(home|about|contact|privacy|terms|cookies?|gdpr)/gi,
+      /\b(search|submit|cancel|ok|yes|no|close)/gi,
+      /\b(advertisement|sponsored|ad\b)/gi,
+      /\b(newsletter|subscribe|sign up for updates)/gi,
+    ];
+    for (const pattern of navPatterns) {
+      cleanedText = cleanedText.replace(pattern, "");
+    }
+
+    // STEP 4: Remove lines with too many special chars (likely UI elements)
+    cleanedText = cleanedText
+      .split("\n")
+      .filter((line) => {
+        const trimmed = line.trim();
+        if (trimmed.length < 20) return false;
+        // Count special chars ratio
+        const specialChars = (trimmed.match(/[\[\](){}|]/g) || []).length;
+        if (specialChars > trimmed.length * 0.1) return false; // >10% special chars = likely UI
+        // Skip lines that are mostly uppercase (headers/titles)
+        const upperCount = (trimmed.match(/[A-Z]/g) || []).length;
+        if (upperCount > trimmed.length * 0.5) return false;
+        return true;
+      })
+      .join(" ");
+
+    // STEP 5: Clean up extra whitespace
+    cleanedText = cleanedText
+      .replace(/\s+/g, " ") // Multiple spaces -> one
+      .replace(/\s+([.,!?;:])/g, "$1") // Space before punctuation
+      .trim();
+
+    // STEP 6: Extract meaningful sentences (15-250 chars, has subject+verb feel)
     const sentences = cleanedText
-      .split(/[.!?]+/)
-      .filter((s) => s.trim().length > 20);
-    const topSentences = sentences.slice(0, 3).map((s) => s.trim() + ".");
-    keyPoints.push(...topSentences);
+      .split(/(?<=[.!?])\s+/)
+      .filter((s) => {
+        const trimmed = s.trim();
+        if (trimmed.length < 15 || trimmed.length > 250) return false;
+        // Must have some lowercase letters (not all caps)
+        const hasLower = /[a-z]/.test(trimmed);
+        // Must not be mostly numbers
+        const numRatio = (trimmed.match(/\d/g) || []).length / trimmed.length;
+        if (numRatio > 0.5) return false;
+        // Skip if starts with common junk
+        const junkStarts = ["by clicking", "agree to", "sign in", "log in", "subscribe"];
+        if (junkStarts.some((j) => trimmed.toLowerCase().startsWith(j))) return false;
+        return hasLower;
+      })
+      .slice(0, 4);
+
+    keyPoints.push(...sentences);
   }
 
-  // Extract key info from snippets
-  for (const result of searchResults.slice(0, 3)) {
-    if (result.snippet && result.snippet.length > 30) {
-      // Clean up the snippet (remove markdown, URLs, etc.)
-      const clean = result.snippet
-        .replace(/!?\[.*?\]\(.*?\)/g, "")
-        .replace(/https?:\/\/\S+/g, "")
-        .replace(/[*_`]/g, "")
-        .trim();
-      if (clean.length > 20) {
-        keyPoints.push(clean);
+  // Extract key info from snippets (fallback if fetched content didn't yield much)
+  if (keyPoints.length < 2) {
+    for (const result of searchResults.slice(0, 3)) {
+      if (result.snippet && result.snippet.length > 30) {
+        let clean = result.snippet
+          .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+          .replace(/\[([^\]]*)\]/g, "")
+          .replace(/https?:\/\/\S+/g, "")
+          .replace(/[*_`|#]/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        
+        if (clean.length > 20 && clean.length < 200) {
+          // Avoid duplicates
+          if (!keyPoints.some((kp) => kp.includes(clean.slice(0, 30)))) {
+            keyPoints.push(clean);
+          }
+        }
       }
     }
   }
 
   // Synthesize into coherent response
   if (keyPoints.length === 0)
-    return "I found some information, but nothing clear.";
+    return "I found some information online, but couldn't extract clear details.";
 
-  // Build natural response
+  // Build natural response - combine points into flowing text
   const intro = getWebIntro(query, keyPoints.length);
-  const synthesized = keyPoints.slice(0, 4).join(" ");
+  const synthesized = keyPoints.join(" ");
 
   if (voice.prefersDetail) {
     return `${intro}\n\n${synthesized}`;
