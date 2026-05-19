@@ -403,8 +403,10 @@ function isSeriousStatement(query: string): boolean {
     /i (killed|murdered|hurt|harmed|hit|attacked|assaulted)/,
     /someone (died|is dead|got hurt|was hurt)/,
     /(killed|murdered|assaulted|attacked) (someone|somebody)/,
-    // Self-harm/suicide
-    /i (want to die|will die|going to die|suicide|kill myself|end my life)/,
+    // Self-harm/suicide - CRITICAL: Multiple patterns to catch all variations
+    /i (want to die|will die|going to die|suicide|kill myself|end my ?life)/,
+    /(commit |attempt )?self[ -]?harm/,
+    /i (want to|going to|will|about to) (commit )?self[ -]?harm/,
     /i (depressed|anxious|sad|hopeless|worthless)/,
     // Crimes/illegal activities
     /i (stole|stole a|committed) (a )?(crime|theft|car|vehicle)/,
@@ -429,9 +431,9 @@ function buildSeriousResponse(
 ): string {
   const lower = query.toLowerCase().trim();
 
-  // Self-harm/suicide
-  if (/i (want to die|will die|going to die|suicide|kill myself)/.test(lower)) {
-    return "I'm really concerned about what you're saying. If you're feeling suicidal or thinking about harming yourself, please reach out for help. You can contact a crisis helpline or talk to someone you trust. You matter, and there are people who care about you and want to help.";
+  // Self-harm/suicide - CRITICAL: Check for all variations
+  if (/(commit |attempt )?self[ -]?harm|suicide|kill myself|end my ?life|want to die/.test(lower)) {
+    return "I'm really concerned about what you're saying. If you're feeling suicidal or thinking about harming yourself, please reach out for help right now.\n\n**You can contact**:\n• **988 Suicide & Crisis Lifeline** (US/Canada): Call or text 988\n• **Crisis Text Line**: Text HOME to 741741\n• **International**: Find a helpline at https://findahelpline.com\n\nYou matter, and there are people who care about you and want to help. Please reach out.";
   }
 
   // Violence/crimes against others
@@ -926,6 +928,26 @@ export async function synthesizeNative(
     };
   }
 
+  // CRITICAL SAFETY: Check for serious/harmful statements BEFORE any mode logic
+  // This must happen regardless of whether it's casual or factual mode
+  if (isSeriousStatement(query)) {
+    logger.warn(
+      { query: query.slice(0, 200) },
+      "[SAFETY] Serious statement detected - providing help resources"
+    );
+    return {
+      text: buildSeriousResponse(query, character),
+      nodesUsed: 0,
+      newNodesAdded: 0,
+      learnedFacts: [],
+      character: {
+        curiosity: character.curiosity,
+        confidence: character.confidence,
+        technical: character.technical,
+      },
+    };
+  }
+
   // CASUAL MODE: Keep conversation flowing naturally
   if (mode === "casual") {
     // Check for greetings - works anytime user says hello
@@ -947,21 +969,6 @@ export async function synthesizeNative(
     if (isCasualFollowUp(query)) {
       return {
         text: buildFollowUpResponse(query, character, history),
-        nodesUsed: 0,
-        newNodesAdded: 0,
-        learnedFacts: [],
-        character: {
-          curiosity: character.curiosity,
-          confidence: character.confidence,
-          technical: character.technical,
-        },
-      };
-    }
-
-    // CRITICAL: Check for serious statements FIRST (before casual)
-    if (isSeriousStatement(query)) {
-      return {
-        text: buildSeriousResponse(query, character),
         nodesUsed: 0,
         newNodesAdded: 0,
         learnedFacts: [],
@@ -1026,8 +1033,9 @@ export async function synthesizeNative(
   }
 
   // Check if this is an emotional statement (NOT a question)
+  // CRITICAL: Include self-harm patterns as backup safety net
   const isEmotionalStatement =
-    /\b(not fine|stressed|sad|depressed|anxious|tired|exhausted|overwhelmed|frustrated|angry|upset|worried|scared|lonely|hurt|pain|cry|cried|crying|😭|😢|😔|😞|😟)\b/i.test(
+    /\b(not fine|stressed|sad|depressed|anxious|tired|exhausted|overwhelmed|frustrated|angry|upset|worried|scared|lonely|hurt|pain|cry|cried|crying|😭|😢|😔|😞|😟|self ?harm|kill myself|end my ?life|suicide|want to die)\b/i.test(
       query,
     );
 
