@@ -102,36 +102,34 @@ function isIdentityQuery(query: string): boolean {
 }
 
 /**
- * Check if query is a greeting
+ * Check if query is a greeting - based on British Council, EnglishClub research
  */
 function isGreeting(query: string): boolean {
   const lower = query.toLowerCase().trim();
   // Strip trailing punctuation for matching (handles "hello?", "hi!", etc.)
   const cleaned = lower.replace(/[!?.,;]+$/, "");
+  
+  // GREETINGS: Standard greetings + time-specific + casual
   const greetings = [
-    "hello",
-    "hi",
-    "hey",
-    "greetings",
-    "howdy",
-    "good morning",
-    "good afternoon",
-    "good evening",
-    "hi there",
-    "hello there",
-    "hey there",
-    "yo",
-    "wassup",
-    "sup",
-    "what's up",
-    "whats up",
-    "how are you",
-    "how are you doing",
-    "how's it going",
-    "how are things",
-    "how do you do",
-    "nice to meet you",
+    // Basic greetings
+    "hello", "hi", "hey", "greetings", "howdy", "yo",
+    // Time-specific
+    "good morning", "good afternoon", "good evening",
+    // Extended greetings
+    "hi there", "hello there", "hey there", "hey y'all",
+    // Casual/slang
+    "wassup", "sup", "what's up", "whats up", "howdy",
+    // Formal greetings
+    "nice to meet you", "pleased to meet you", "how do you do",
+    // Check-in greetings
+    "how are you", "how are you doing", "how's it going", "how are things",
+    "how's life", "how's your day", "how's your week",
+    // Long time no see
+    "long time no see", "it's been a while",
+    // Nigerian/West African greetings (context-aware)
+    "how far", "wetin dey happen", "good afternoon o",
   ];
+  
   return greetings.some(
     (g) => cleaned === g || cleaned.startsWith(g + " ") || cleaned.endsWith(" " + g),
   );
@@ -139,6 +137,7 @@ function isGreeting(query: string): boolean {
 
 /**
  * Check if query is casual statement (not a question, just sharing)
+ * Based on British Council, EnglishClub small talk research
  */
 function isCasualStatement(query: string): boolean {
   const lower = query.toLowerCase().trim();
@@ -158,36 +157,96 @@ function isCasualStatement(query: string): boolean {
     return false; // These need serious, thoughtful responses
   }
 
-  // Casual statements that don't need factual responses
+  // CASUAL STATEMENTS: Based on small talk research
   const casualPatterns = [
+    // Personal state sharing ("I" statements)
     /^i (am|was|feel|think|believe|hope|wish|want|need|like|love|hate)/,
-    /^it'?s (nice|good|bad|cold|hot|early|late)/,
-    /^today (is|was)/,
-    /^just (checking|saying|wondering|thinking)/,
-    /^nothing (much|special|new)/,
-    /^same (here|as always)/,
-    /^yeah,? (yeah|sure|okay|ok|right)/,
-    /^that'?s (cool|nice|awesome|great|interesting)/,
-    /^wow/,
-    /^oh/,
-    /^haha/,
-    /^lol/,
+    /^i'?m (just|really|so|pretty) /,
+    // Weather comments (classic small talk)
+    /^it'?s (nice|good|bad|cold|hot|early|late|beautiful|chilly|humid|freezing)/,
+    /^(beautiful|lovely|nice) (day|weather|morning)/,
+    // Time/day references
+    /^today (is|was)/, /^yesterday (was)/, /^this (morning|afternoon|evening)/,
+    // Casual check-ins
+    /^just (checking|saying|wondering|thinking|looking|asking)/,
+    // Minimal responses
+    /^nothing (much|special|new)/, /^same (here|as always|old)/,
+    /^not (much|really|anything special)/,
+    // Agreement/disagreement
+    /^yeah,? (yeah|sure|okay|ok|right|true)/, /^nope/,
+    /^that'?s (cool|nice|awesome|great|interesting|true|fair|right)/,
+    // Reactions
+    /^wow/, /^oh/, /^haha/, /^lol/, /^lmao/, /^omg/, /^ouch/, /^oops/,
+    // Appreciation
+    /^thanks? (a lot|so much|very much)?/i,
+    /^i appreciate/, /^that'?s (kind|sweet|thoughtful)/,
+    // Slang/informal
+    /^aight/, /^bet/, /^vibe/, /^chill/, /^same energy/,
+    // Nigerian Pidgin/informal (context-aware)
+    /^no wahala/, /^e be like say/, /^na so/, /^I dey/,
   ];
 
-  // Short responses (1-3 words) are usually casual
+  // Short responses (1-4 words) are usually casual
   const wordCount = lower.split(/\s+/).filter((w) => w.length > 0).length;
-  const isShort = wordCount <= 3;
+  const isShort = wordCount <= 4;
+  
+  // Short + no question word = likely casual
+  const hasQuestionWord = 
+    lower.startsWith("what") || lower.startsWith("how") ||
+    lower.startsWith("why") || lower.startsWith("when") ||
+    lower.startsWith("where") || lower.startsWith("who") ||
+    lower.startsWith("which") || lower.startsWith("whose") ||
+    lower.startsWith("can you") || lower.startsWith("could you") ||
+    lower.startsWith("will you") || lower.startsWith("would you") ||
+    lower.startsWith("do you") || lower.startsWith("does") ||
+    lower.startsWith("is ") || lower.startsWith("are ") ||
+    lower.startsWith("was ") || lower.startsWith("were ");
 
   return (
     casualPatterns.some((p) => p.test(lower)) ||
-    (isShort &&
-      !lower.startsWith("what") &&
-      !lower.startsWith("how") &&
-      !lower.startsWith("why") &&
-      !lower.startsWith("when") &&
-      !lower.startsWith("where") &&
-      !lower.startsWith("who"))
+    (isShort && !hasQuestionWord)
   );
+}
+
+/**
+ * Check if query is formal/professional communication
+ * Based on business English research (ESLInfo, PlanetSpark, LoveYouEnglish)
+ */
+function isFormalProfessional(query: string): boolean {
+  const lower = query.toLowerCase().trim();
+  
+  const formalPatterns = [
+    // Professional greetings/openings
+    /^good morning/i, /^good afternoon/i, /^good evening/i,
+    /^i hope (this message finds you well|you are doing well)/i,
+    /^i am writing to/i, /^i wanted to (follow up|inquire|ask)/i,
+    
+    // Business expressions
+    /\b(touch base|circle back|follow up|keep me in the loop|take this offline)\b/i,
+    /\b(reach out|connecting|checking in|sync up|align on)\b/i,
+    /\b(as per our (conversation|discussion|email))\b/i,
+    /\b(please find attached|i've attached|attached is)\b/i,
+    /\b(looking forward to|i would appreciate|kindly|i would like to request)\b/i,
+    
+    // Meeting/presentation language
+    /^let'?s (get started|begin|review the agenda|summarise|wrap up)/i,
+    /^thank you for (your time|joining|your input|your patience)/i,
+    /^from my perspective/i, /^i think we should consider/i,
+    /^i completely agree/i, /^i see your point/i,
+    /^that'?s a fair point/i, /^i understand your concerns/i,
+    
+    // Polite requests
+    /^could you please (provide|clarify|confirm|send|share)/i,
+    /^would you mind (explaining|clarifying|sharing)/i,
+    /^i was wondering if/i, /^may i (ask|request|inquire)/i,
+    
+    // Professional closings
+    /^please let me know/i, /^kindly (send|confirm|provide)/i,
+    /^thanks for your (time|support|help|consideration)/i,
+    /^have a great (day|week|weekend)/i,
+  ];
+  
+  return formalPatterns.some((p) => p.test(lower));
 }
 
 /**
@@ -205,12 +264,17 @@ function determineConversationMode(
     return "casual";
   }
 
-  // STEP 1: Check greetings first (always casual)
+  // STEP 1: Check formal/professional first (treat as factual - needs information/help)
+  if (isFormalProfessional(query)) {
+    return "factual";
+  }
+
+  // STEP 2: Check greetings first (always casual)
   if (isGreeting(query)) {
     return "casual";
   }
 
-  // STEP 2: Check casual follow-ups (always casual)
+  // STEP 3: Check casual follow-ups (always casual)
   const casualFollowUps = [
     /^(and )?you\??$/i,
     /^(what|how) about you\??$/i,
@@ -224,6 +288,10 @@ function determineConversationMode(
     /^not much\??$/i,
     /^same (here|as always)\??$/i,
     /^not really\??$/i,
+    /^yeah\??$/i,
+    /^yep\??$/i,
+    /^cool\??$/i,
+    /^nice\??$/i,
   ];
 
   if (casualFollowUps.some((p) => p.test(lower))) {
@@ -242,24 +310,59 @@ function determineConversationMode(
     return "learning";
   }
 
-  // STEP 4: Factual mode ONLY for specific question patterns (NO broad /\?$/ catch-all)
+  // STEP 4: Factual mode - QUESTION PATTERNS based on English grammar research
+  // (Perfect English Grammar, EnglishClub, LingoHarvest)
   const factualTriggers = [
-    /^what (is|are|was|were|do|does|did|will|would)/,
-    /^who (is|are|was|were|do|does|did)/,
-    /^where (is|are|was|were|can|i)/,
-    /^when (is|are|was|were|did|does)/,
-    /^why (is|are|was|were|do|does|did)/,
-    /^how (does|do|did|can|could|would|will|are|is)/,
-    /^explain /,
-    /^tell me (about|how|what|why|when|where)/,
+    // WH- questions (require information)
+    /^what (is|are|was|were|do|does|did|will|would|has|have|had|can|could|should)/,
+    /^who (is|are|was|were|do|does|did|has|have|had|can|could)/,
+    /^where (is|are|was|were|can|do|does|did|would|could)/,
+    /^when (is|are|was|were|did|does|will|would|can|could)/,
+    /^why (is|are|was|were|do|does|did|will|would|can|could|should)/,
+    /^which (is|are|do|does|would|should)/,
+    /^whose (is|are|do|does)/,
+    /^how (does|do|did|can|could|would|will|are|is|was|were|many|much|long|far|old|often)/,
+    
+    // Yes/No questions (auxiliary verb + subject)
+    /^is (it|this|that|the|there|he|she|they|we|you)/,
+    /^are (you|they|we|there|these|those)/,
+    /^was (it|there|he|she|they|the)/,
+    /^were (you|they|there|we)/,
+    /^do (you|they|we|i) /,
+    /^does (it|this|that|he|she|the)/,
+    /^did (you|they|we|he|she|i|the)/,
+    /^can (you|they|we|i|he|she|it)/,
+    /^could (you|they|we|i|he|she|it)/,
+    /^will (you|they|we|i|he|she|it|there)/,
+    /^would (you|they|we|i|he|she|it)/,
+    /^should (you|they|we|i|he|she|it)/,
+    /^has (it|this|that|he|she|the)/,
+    /^have (you|they|we|i)/,
+    /^had (you|they|we|he|she|i)/,
+    
+    // Information requests
+    /^explain (to me )?(what|how|why|when|where|the|this|that)/,
+    /^tell me (about|how|what|why|when|where|who|which)/,
+    /^can you tell me/,
+    /^could you explain/,
+    /^i want to know/,
+    /^i'd like to know/,
+    /^do you know (what|how|why|when|where|if|whether)/,
+    
+    // Definition/description requests
     /^define /,
     /^describe /,
-    /^what do you know/,
-    /^can you (tell|explain|describe)/,
-    /^are you /, // "Are you..." questions (not "are you okay?")
-    /^is (it|this|that|the) /, // "Is it..." questions
-    /^do (you|they|we) /, // "Do you..." questions
-    /^does (it|this|that) /, // "Does it..." questions
+    /^what is (the |a |an )?[a-z]/,
+    /^what are (the )?[a-z]/,
+    
+    // Knowledge queries
+    /^what do you know (about|of)/,
+    /^do you know (about|if|whether|what|how|why)/,
+    /^can you (tell|explain|describe|show)/,
+    
+    // "Are you" questions about identity/capabilities (not emotional check-ins)
+    /^are you (able|capable|an|a|the|can|willing)/,
+    /^is it (true|possible|correct|right)/,
   ];
 
   if (factualTriggers.some((p) => p.test(lower))) {
@@ -1099,11 +1202,18 @@ export async function synthesizeNative(
   }
 
   // Check if this is an emotional statement (NOT a question)
+  // Based on Psychology Today, Positive Psychology, Taalem Online research
   // CRITICAL: Include self-harm patterns as backup safety net
   const isEmotionalStatement =
-    /\b(not fine|stressed|sad|depressed|anxious|tired|exhausted|overwhelmed|frustrated|angry|upset|worried|scared|lonely|hurt|pain|cry|cried|crying|😭|😢|😔|😞|😟|self ?harm|kill myself|end my ?life|suicide|want to die)\b/i.test(
-      query,
-    );
+    /\b(not fine|stressed|sad|depressed|anxious|tired|exhausted|overwhelmed|frustrated|angry|upset|worried|scared|lonely|hurt|pain|cry|cried|crying|😭|😢|😔|😞|😟|self ?harm|kill myself|end my ?life|suicide|want to die)\b/i.test(query) ||
+    // "I feel" statements (emotional expression research)
+    /\b(i feel|i'm feeling|i felt) (sad|happy|angry|anxious|depressed|stressed|tired|exhausted|overwhelmed|frustrated|scared|lonely|confused|excited|nervous|worried|down|blue|heartbroken|stressed out|burnt out|drained)\b/i.test(query) ||
+    // Emotional state declarations
+    /\b(i am|i'm|i was) (sad|happy|angry|anxious|depressed|stressed|tired|exhausted|overwhelmed|frustrated|scared|lonely|confused|excited|nervous|worried|down|blue|heartbroken|stressed out|burnt out|drained|emotionally drained)\b/i.test(query) ||
+    // Stress/pressure expressions
+    /\b(too much on my plate|can't handle|can't take it|losing my temper|losing it|breaking point)\b/i.test(query) ||
+    // Positive emotions (also emotional, handle with empathy)
+    /\b(over the moon|on cloud nine|couldn't be happier|so excited|pumped up|thrilled|delighted|grateful|thankful|blessed)\b/i.test(query);
 
   // NEVER search web for emotional statements - just be empathetic
   if (isEmotionalStatement) {
