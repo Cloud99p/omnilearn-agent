@@ -990,8 +990,9 @@ export async function synthesizeNative(
   }
 
   // FACTUAL MODE: Use knowledge graph and/or web search
-  // Filter to relevant nodes (similarity > 0.01 - very lenient, include almost everything)
-  const relevantNodes = nodes.filter((n) => n.similarity > 0.01).slice(0, 8);
+  // CRITICAL: Only use nodes with meaningful similarity (>= 0.15)
+  const MIN_SIMILARITY = 0.15;
+  const relevantNodes = nodes.filter((n) => n.similarity >= MIN_SIMILARITY).slice(0, 8);
   const nodesUsed = relevantNodes.length;
 
   // LOGGING: Track retrieval results for monitoring
@@ -1005,10 +1006,24 @@ export async function synthesizeNative(
       nodesRetrieved: relevantNodes.length,
       avgSimilarity: avgSimilarity.toFixed(3),
       topSimilarity: relevantNodes.length > 0 ? relevantNodes[0].similarity.toFixed(3) : 0,
+      allNodesReceived: nodes.length,
+      filteredOut: nodes.length - relevantNodes.length,
       mode: 'factual',
     },
     "[MODE] Factual mode - knowledge retrieval"
   );
+  
+  // DEBUG: Log if nodes were filtered out due to low similarity
+  if (nodes.length > 0 && relevantNodes.length === 0) {
+    logger.warn(
+      {
+        query: query.slice(0, 100),
+        topNodeSimilarity: nodes.length > 0 ? nodes[0].similarity.toFixed(3) : 0,
+        topNodeContent: nodes.length > 0 ? nodes[0].content.slice(0, 100) : '',
+      },
+      "[RETRIEVAL] All nodes filtered out - similarity below threshold"
+    );
+  }
 
   // Check if this is an emotional statement (NOT a question)
   const isEmotionalStatement =
@@ -1281,12 +1296,16 @@ function detectNeedForWebSearch(
     return true; // Time-sensitive = always search
   }
 
-  // 4. If we have knowledge nodes, DON'T search (use what we have)
-  if (nodes.length > 0) {
-    return false; // Knowledge graph has answers
+  // 4. CRITICAL FIX: Check if we have HIGH-QUALITY knowledge nodes
+  // Don't just check length - check similarity scores!
+  const MIN_SIMILARITY = 0.15;
+  const hasRelevantKnowledge = nodes.some((n) => n.similarity >= MIN_SIMILARITY);
+  
+  if (hasRelevantKnowledge) {
+    return false; // Knowledge graph has relevant answers
   }
 
-  return true; // Factual question, no knowledge, worth searching
+  return true; // Factual question, no relevant knowledge, search web
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
