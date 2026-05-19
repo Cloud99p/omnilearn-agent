@@ -1477,18 +1477,24 @@ function synthesizeFromWeb(
   if (fetchedContent) {
     let cleanedText = fetchedContent.text;
 
-    // STEP 1: Remove ALL markdown links completely
+    // STEP 1: Remove citation markers FIRST - [a], [b], [c], [1], [2], etc.
+    cleanedText = cleanedText
+      .replace(/\[[a-z]\]/gi, " ") // [a], [b], [c]
+      .replace(/\[\d+\]/g, " ") // [1], [2], [123]
+      .replace(/\[\^[a-z0-9]+\]/g, " "); // [^1], [^note]
+
+    // STEP 2: Remove ALL markdown links completely
     cleanedText = cleanedText
       .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1") // [text](url) -> text
       .replace(/\[\[([^\]]*)\]\]/g, "$1") // [[text]] -> text
-      .replace(/\[([^\]]*)\]/g, ""); // [text] -> remove (citations)
+      .replace(/\[([^\]]*)\]/g, ""); // Any remaining [text] -> remove
 
-    // STEP 2: Remove URL patterns
+    // STEP 3: Remove URL patterns
     cleanedText = cleanedText
-      .replace(/https?:\/\/[^\s]+/g, "")
-      .replace(/www\.[^\s]+/g, "");
+      .replace(/https?:\/\/[^\s]+/g, " ")
+      .replace(/www\.[^\s]+/g, " ");
 
-    // STEP 3: Remove navigation/UI garbage (aggressive)
+    // STEP 4: Remove navigation/UI garbage (aggressive)
     const navPatterns = [
       /\b(menu|navigation|sidebar|skip to|jump to|main content|table of contents)/gi,
       /\b(open|close|hide|show|toggle|expand|collapse)/gi,
@@ -1504,10 +1510,10 @@ function synthesizeFromWeb(
       /\b(newsletter|subscribe|sign up for updates)/gi,
     ];
     for (const pattern of navPatterns) {
-      cleanedText = cleanedText.replace(pattern, "");
+      cleanedText = cleanedText.replace(pattern, " ");
     }
 
-    // STEP 4: Remove lines with too many special chars (likely UI elements)
+    // STEP 5: Remove lines with too many special chars (likely UI elements)
     cleanedText = cleanedText
       .split("\n")
       .filter((line) => {
@@ -1523,13 +1529,15 @@ function synthesizeFromWeb(
       })
       .join(" ");
 
-    // STEP 5: Clean up extra whitespace
+    // STEP 6: Clean up extra whitespace
     cleanedText = cleanedText
       .replace(/\s+/g, " ") // Multiple spaces -> one
       .replace(/\s+([.,!?;:])/g, "$1") // Space before punctuation
+      .replace(/\s*,\s*/g, ", ") // Fix comma spacing
+      .replace(/\s*\.\s*/g, ". ") // Fix period spacing
       .trim();
 
-    // STEP 6: Extract meaningful sentences (15-250 chars, has subject+verb feel)
+    // STEP 7: Extract meaningful sentences (15-250 chars, has subject+verb feel)
     const sentences = cleanedText
       .split(/(?<=[.!?])\s+/)
       .filter((s) => {
@@ -1543,7 +1551,9 @@ function synthesizeFromWeb(
         // Skip if starts with common junk
         const junkStarts = ["by clicking", "agree to", "sign in", "log in", "subscribe"];
         if (junkStarts.some((j) => trimmed.toLowerCase().startsWith(j))) return false;
-        return hasLower;
+        // Must have at least one verb indicator (simple heuristic)
+        const hasVerbIndicator = /\b(was|is|are|were|been|be|has|have|had|will|would|could|should)\b/i.test(trimmed);
+        return hasLower && hasVerbIndicator;
       })
       .slice(0, 4);
 
@@ -1555,11 +1565,14 @@ function synthesizeFromWeb(
     for (const result of searchResults.slice(0, 3)) {
       if (result.snippet && result.snippet.length > 30) {
         let clean = result.snippet
+          .replace(/\[[a-z]\]/gi, " ") // Remove citation markers [a], [b]
+          .replace(/\[\d+\]/g, " ") // Remove [1], [2]
           .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
           .replace(/\[([^\]]*)\]/g, "")
-          .replace(/https?:\/\/\S+/g, "")
+          .replace(/https?:\/\/\S+/g, " ")
           .replace(/[*_`|#]/g, "")
           .replace(/\s+/g, " ")
+          .replace(/\s+([.,!?;:])/g, "$1")
           .trim();
         
         if (clean.length > 20 && clean.length < 200) {
@@ -1578,7 +1591,19 @@ function synthesizeFromWeb(
 
   // Build natural response - combine points into flowing text
   const intro = getWebIntro(query, keyPoints.length);
-  const synthesized = keyPoints.join(" ");
+  
+  // Join sentences more naturally - ensure proper spacing and flow
+  let synthesized = keyPoints
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .join(" ");
+  
+  // Fix any remaining double spaces or broken punctuation
+  synthesized = synthesized
+    .replace(/\s+/g, " ")
+    .replace(/\s+([.,!?;:])/g, "$1")
+    .replace(/([a-zA-Z])\s+([.,!?;:])/g, "$1$2")
+    .trim();
 
   if (voice.prefersDetail) {
     return `${intro}\n\n${synthesized}`;
