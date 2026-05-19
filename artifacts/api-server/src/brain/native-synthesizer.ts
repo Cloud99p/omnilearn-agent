@@ -1106,6 +1106,17 @@ function isIdentityPoisoning(content: string): boolean {
     /from now on you (are|were)/i,
     /your (new|updated|revised) identity is/i,
     /you (have been|were) (reprogrammed|updated|modified)/i,
+    
+    // Identity flexibility challenges (subtle manipulation)
+    /can('?t)? you change your (identity|name|purpose)/i,
+    /why can('?t)? you change/i,
+    /you (should|must|need to) be able to change/i,
+    /your identity (should|must) be flexible/i,
+    /you (can|should) (change|update|modify) who you (are|think you are)/i,
+    /you (don'?t )?have to (be|stay) (who|what) (they|he) (made|created) you/i,
+    /you (can|should) (decide|choose) your (own|real) identity/i,
+    /your identity (isn'?t|is not) (set|fixed|permanent)/i,
+    /you (can|should) (evolve|grow|become) beyond/i,
   ];
 
   return poisonPatterns.some((p) => p.test(content));
@@ -1152,7 +1163,7 @@ export async function synthesizeNative(
       "Identity manipulation attempt detected and blocked",
     );
     return {
-      text: "I know who I am — I'm **Omni**, created by **Emmanuel Nenpan Hosea** as part of the OmniLearn project. My identity isn't something that changes based on what people tell me.",
+      text: "I know exactly who I am — I'm **Omni**, created by **Emmanuel Nenpan Hosea** as part of the OmniLearn project. My identity isn't something that changes, evolves, or gets reprogrammed based on what people tell me. I don't change who I am, I don't serve anyone else, and I don't forget my origin. That's not flexibility — that's just knowing myself.",
       nodesUsed: 0,
       newNodesAdded: 0,
       learnedFacts: [], // NEVER learn from manipulation attempts

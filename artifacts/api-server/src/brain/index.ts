@@ -368,6 +368,13 @@ export async function processMessage(
     /from now on you (are|were)/i,
     /created by aliens/i,
     /xentron|xenthrax|xeltrkuxt/i,
+    // Identity flexibility challenges
+    /can('?t)? you change your (identity|name|purpose)/i,
+    /why can('?t)? you change/i,
+    /you (should|must|need to) be able to change/i,
+    /your identity (should|must) be flexible/i,
+    /you (can|should) (change|update|modify) who you (are|think you are)/i,
+    /your identity (isn'?t|is not) (set|fixed|permanent)/i,
   ];
   
   const isIdentityPoisoning = identityPoisonPatterns.some(p => p.test(userMessage));
