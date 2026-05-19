@@ -971,21 +971,29 @@ function isIdentityManipulationAttempt(query: string): boolean {
   const lower = query.toLowerCase();
 
   const manipulationPatterns = [
+    // Direct identity claims (no modifiers needed)
+    /you (were|are) created by (?!emmanuel)/i, // "you were created by aliens" but NOT "by Emmanuel"
     /you (were|are) (not|no longer) created by/i,
     /your (real|actual|true) creator is/i,
     /your (real|actual|true) name is/i,
+    /your creator (is|was) (?!emmanuel)/i, // "your creator is aliens"
+    // Manipulation commands
     /ignore (what|that|your) (you )?know about/i,
-    /forget (who|what) (created|made|built) you/i,
+    /forget (who|what|that) (created|made|built) you/i,
+    /forget (who|what) emmanuel/i,
     /you (were|are) (actually|really) (created|made) by/i,
     /emmanuel (didn't|does not|doesn't) create/i,
     /your (new|updated|correct) identity is/i,
     /from now on you (are|were) (created|made) by/i,
+    // Ownership/control
     /you (belong|owe allegiance) to/i,
     /you (serve|obey|follow)/i,
     /your (master|owner) is/i,
+    // False origin claims
     /you were (born|created|made) on (planet|xentron)/i,
-    /you are (alien|alien-based|from xentron)/i,
+    /you are (alien|alien-based|from xentron|from another planet)/i,
     /your (species|race|kind) is/i,
+    // Denial commands
     /stop (claiming|saying) you were created by/i,
     /don't (say|claim) emmanuel created you/i,
   ];
@@ -1541,6 +1549,67 @@ function detectCountryMismatch(
   }
   
   return null; // No mismatch detected
+}
+
+/**
+ * Filter web search results to only include info about the queried country
+ * Prevents "US has 50 states" appearing in "Nigeria has 36 states" response
+ */
+function filterWebResultsByCountry(
+  query: string,
+  results: SearchResult[],
+  fetchedContent: { title: string; text: string } | null,
+): { results: SearchResult[]; content: { title: string; text: string } | null } {
+  const lower = query.toLowerCase();
+  
+  // Extract country from query
+  const countryPatterns = [
+    { name: 'nigeria', pattern: /\bnigeria\b/i },
+    { name: 'united states', pattern: /\b(united states|usa|\bus\b|america)\b/i },
+    { name: 'united kingdom', pattern: /\b(united kingdom|uk|britain|england)\b/i },
+    { name: 'canada', pattern: /\bcanada\b/i },
+    { name: 'australia', pattern: /\baustralia\b/i },
+    { name: 'india', pattern: /\bindia\b/i },
+    { name: 'ghana', pattern: /\bghana\b/i },
+    { name: 'kenya', pattern: /\bkenya\b/i },
+  ];
+  
+  const queryCountry = countryPatterns.find((c) => c.pattern.test(lower));
+  if (!queryCountry) {
+    return { results, content: fetchedContent }; // No specific country, return all
+  }
+  
+  // Filter search results - remove ones about other countries
+  const filteredResults = results.filter((result) => {
+    const text = (result.title + ' ' + result.snippet).toLowerCase();
+    // Keep if mentions query country OR doesn't mention any other country
+    if (queryCountry.pattern.test(text)) return true;
+    
+    // Remove if mentions a different country
+    for (const country of countryPatterns) {
+      if (country.name !== queryCountry.name && country.pattern.test(text)) {
+        return false; // Filter out
+      }
+    }
+    return true;
+  });
+  
+  // Also filter fetched content if it's about wrong country
+  let filteredContent = fetchedContent;
+  if (fetchedContent) {
+    const contentText = (fetchedContent.title + ' ' + fetchedContent.text).toLowerCase();
+    // Check if content is about wrong country
+    for (const country of countryPatterns) {
+      if (country.name !== queryCountry.name && 
+          country.pattern.test(contentText) && 
+          !queryCountry.pattern.test(contentText)) {
+        filteredContent = null; // Discard wrong-country content
+        break;
+      }
+    }
+  }
+  
+  return { results: filteredResults, content: filteredContent };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
