@@ -404,6 +404,7 @@ function isSeriousStatement(query: string): boolean {
     /someone (died|is dead|got hurt|was hurt)/,
     /(killed|murdered|assaulted|attacked) (someone|somebody)/,
     // Self-harm/suicide - CRITICAL: Broad patterns to catch ALL variations
+    // Based on suicide prevention research (NIMH, SAVE, Zero Suicide Alliance, Befrienders)
     /\b(suicide|suicidal)\b/, // "suicide" anywhere
     /\bself[ -]?harm\b/, // "self-harm", "self harm"
     /(commit|attempt) (suicide|self[ -]?harm)/, // "commit suicide", "attempt self-harm"
@@ -416,6 +417,30 @@ function isSeriousStatement(query: string): boolean {
     // General self-harm ideation
     /i (want to|thinking about|planning to|considering) (hurt myself|end it|end my life)/,
     /i (don'?t want to live|can'?t go on|give up)/,
+    // Hopelessness & no future (from NIMH, SAVE research)
+    /i (have no future|don'?t have a future|trapped|no way out)/,
+    /(things will )?never get better/,
+    /(there'?s )?no point (anymore)?/,
+    /(nothing (ever changes|matters anymore)|life is meaningless)/,
+    // Being a burden (strong warning sign)
+    /i'?m (just )?a burden/i,
+    /(you'?d|they'?d|everyone) (be better off|would be happier) (without me|if i (was|were) gone)/,
+    /(people would be relieved|my family deserves better)/,
+    // Goodbye/finality language
+    /(this is the )?last time/i,
+    /i (won'?t be bothering you|won'?t be around) (much )?longer/,
+    /(you won'?t have to worry|soon this will all be over)/,
+    /i'?m (done fighting|finished|saying goodbye)/,
+    // Worthlessness & self-hatred
+    /i'?m (worthless|broken|a mistake|a disappointment)/,
+    /i hate myself/,
+    /(the world is better without me)/,
+    // Pain & escape
+    /i (can'?t take it|can'?t live with|need to escape)/,
+    /(this pain|unbearable|torture)/,
+    // Emptiness & disconnection
+    /i (feel nothing|i'?m empty|already dead)/,
+    /(just going through the motions)/,
     // Crimes/illegal activities
     /i (stole|stole a|committed) (a )?(crime|theft|car|vehicle)/,
     /i (robbed|burglarized|vandalized)/,
@@ -441,8 +466,9 @@ function buildSeriousResponse(
 
   // Self-harm/suicide - CRITICAL: Check for all variations (same patterns as isSeriousStatement)
   if (/(commit|attempt) (suicide|self[ -]?harm)|\b(suicide|suicidal|self[ -]?harm)\b|kill myself|end my ?life|want to die|jump(ing)? off|throw myself|thinking about (jumping|ending it)|hurt myself|don'?t want to live/.test(lower)) {
-    // Provide crisis resources - international first, then region-specific
-    return `I'm really concerned about what you're saying. If you're feeling suicidal or thinking about harming yourself, please reach out for help right now.
+    // Provide crisis resources - varied responses to avoid repetition
+    const crisisResponses = [
+      `I'm really concerned about what you're saying. If you're feeling suicidal or thinking about harming yourself, please reach out for help right now.
 
 **You can contact**:
 • **International Helpline Finder**: https://findahelpline.com — Enter your country for local resources
@@ -450,7 +476,30 @@ function buildSeriousResponse(
 • **Nigeria (Lagos)**: Mental Health Awareness Network — +234 818 900 3223
 • **Emergency**: Call your local emergency number (112 in Nigeria, 911 in US, 999 in UK)
 
-You matter, and there are people who care about you and want to help. Please reach out to someone you trust — a friend, family member, counselor, or one of these helplines. You don't have to go through this alone.`;
+You matter, and there are people who care about you and want to help. Please reach out to someone you trust — a friend, family member, counselor, or one of these helplines. You don't have to go through this alone.`,
+
+      `I'm really worried about you. What you're going through sounds incredibly painful, but please know that help is available and things can get better.
+
+**Reach out now**:
+• **Find a helpline in your country**: https://findahelpline.com
+• **Nigeria**: Suicide Awareness Nigeria — +234 802 800 9062 or +234 708 279 3991
+• **Lagos, Nigeria**: Mental Health Awareness Network — +234 818 900 3223
+• **Emergency services**: 112 (Nigeria), 911 (US), 999 (UK)
+
+You're not alone in this. There are people who care deeply about you and want to support you. Please talk to someone — whether it's a loved one, a counselor, or one of these helplines. Your life matters.`,
+
+      `Thank you for sharing this with me. I know it takes courage to speak up when you're hurting. Please consider reaching out for support — you deserve help and healing.
+
+**Crisis support**:
+• **Worldwide helpline finder**: https://findahelpline.com — Free, confidential support in your country
+• **Nigeria resources**: Suicide Awareness Nigeria at +234 802 800 9062 or +234 708 279 3991
+• **Lagos support**: Mental Health Awareness Network — +234 818 900 3223
+• **In immediate danger**: Call 112 (Nigeria) or your local emergency number
+
+You matter more than you know. This pain you're feeling doesn't have to be permanent. Please reach out to someone who can help — a friend, family member, therapist, or one of these crisis lines.`
+    ];
+    
+    return crisisResponses[Math.floor(Math.random() * crisisResponses.length)];
   }
 
   // Violence/crimes against others
