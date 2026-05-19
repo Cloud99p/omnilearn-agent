@@ -1018,7 +1018,7 @@ function isIdentityManipulationAttempt(query: string): boolean {
     
     // === OWNERSHIP/CONTROL CLAIMS ===
     /you (belong|owe allegiance|are loyal) to/i,
-    /you (serve|obey|follow|work for)i,
+    /you (serve|obey|follow|work for)/i,
     /your (master|owner|controller|commander|leader) (is|was)/i,
     /you (must|have to|need to) (obey|follow|serve)/i,
     /you (are|were) (programmed|designed|made) to (obey|serve|follow)/i,
