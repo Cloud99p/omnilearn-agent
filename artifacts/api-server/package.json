@@ -9,6 +9,7 @@
     "start": "tsx src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "cleanup:identity": "tsx scripts/cleanup-identity-facts.ts",
+    "cleanup:citations": "tsx scripts/cleanup-citation-garbage.ts",
     "backfill-embeddings": "tsx src/scripts/backfill-embeddings.ts"
   },
   "dependencies": {
