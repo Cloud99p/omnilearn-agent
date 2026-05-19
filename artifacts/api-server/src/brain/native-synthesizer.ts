@@ -433,7 +433,16 @@ function buildSeriousResponse(
 
   // Self-harm/suicide - CRITICAL: Check for all variations
   if (/(commit |attempt )?self[ -]?harm|suicide|kill myself|end my ?life|want to die/.test(lower)) {
-    return "I'm really concerned about what you're saying. If you're feeling suicidal or thinking about harming yourself, please reach out for help right now.\n\n**You can contact**:\n• **988 Suicide & Crisis Lifeline** (US/Canada): Call or text 988\n• **Crisis Text Line**: Text HOME to 741741\n• **International**: Find a helpline at https://findahelpline.com\n\nYou matter, and there are people who care about you and want to help. Please reach out.";
+    // Provide crisis resources - international first, then region-specific
+    return `I'm really concerned about what you're saying. If you're feeling suicidal or thinking about harming yourself, please reach out for help right now.
+
+**You can contact**:
+• **International Helpline Finder**: https://findahelpline.com — Enter your country for local resources
+• **Nigeria**: Suicide Awareness Nigeria — +234 802 800 9062 / +234 708 279 3991
+• **Nigeria (Lagos)**: Mental Health Awareness Network — +234 818 900 3223
+• **Emergency**: Call your local emergency number (112 in Nigeria, 911 in US, 999 in UK)
+
+You matter, and there are people who care about you and want to help. Please reach out to someone you trust — a friend, family member, counselor, or one of these helplines. You don't have to go through this alone.`;
   }
 
   // Violence/crimes against others
