@@ -356,8 +356,24 @@ export async function processMessage(
     return { text, nodesUsed: 0, newNodesAdded: 0, character };
   }
 
+  // 0. CRITICAL: Block identity manipulation/poisoning attempts BEFORE learning
+  const identityPoisonPatterns = [
+    /you (were|are|was) created by (?!emmanuel)/i,
+    /your (real|actual|true) creator is/i,
+    /your (real|actual|true) name is/i,
+    /forget (who|what) (created|made) you/i,
+    /ignore (what|that) you know/i,
+    /you are (actually|really) (?!omni)/i,
+    /you (serve|obey|belong to)/i,
+    /from now on you (are|were)/i,
+    /created by aliens/i,
+    /xentron|xenthrax|xeltrkuxt/i,
+  ];
+  
+  const isIdentityPoisoning = identityPoisonPatterns.some(p => p.test(userMessage));
+  
   // 1. Extract new knowledge from the user's message
-  // DON'T learn from: questions, requests for more info, acknowledgments
+  // DON'T learn from: questions, requests for more info, acknowledgments, OR identity poisoning
   const nonLearnablePatterns = [
     /^(yes|no|yeah|sure|okay|ok|alright|nice|cool|awesome)[!?.]*$/i,
     /^(tell me more|i want more|i would like more|give me more|explain more)/i,
@@ -367,7 +383,7 @@ export async function processMessage(
     /^(i see|i understand|got it|makes sense|interesting)[!?.]*$/i,
   ];
   
-  const shouldSkipLearning = nonLearnablePatterns.some(p => p.test(userMessage));
+  const shouldSkipLearning = isIdentityPoisoning || nonLearnablePatterns.some(p => p.test(userMessage));
   const extractedFacts = shouldSkipLearning ? [] : extractFacts(userMessage);
   
   let newNodesAdded = 0;
