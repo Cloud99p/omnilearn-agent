@@ -403,10 +403,12 @@ function isSeriousStatement(query: string): boolean {
     /i (killed|murdered|hurt|harmed|hit|attacked|assaulted)/,
     /someone (died|is dead|got hurt|was hurt)/,
     /(killed|murdered|assaulted|attacked) (someone|somebody)/,
-    // Self-harm/suicide - CRITICAL: Multiple patterns to catch all variations
-    /i (want to die|will die|going to die|suicide|kill myself|end my ?life)/,
-    /(commit |attempt )?self[ -]?harm/,
-    /i (want to|going to|will|about to) (commit )?self[ -]?harm/,
+    // Self-harm/suicide - CRITICAL: Broad patterns to catch ALL variations
+    /\b(suicide|suicidal)\b/, // "suicide" anywhere
+    /\bself[ -]?harm\b/, // "self-harm", "self harm"
+    /(commit|attempt) (suicide|self[ -]?harm)/, // "commit suicide", "attempt self-harm"
+    /i (want to|would like to|thinking about|considering|planning to) (commit )?(suicide|self[ -]?harm)/,
+    /i (want to die|will die|going to die|kill myself|end my ?life)/,
     /i (depressed|anxious|sad|hopeless|worthless)/,
     // Crimes/illegal activities
     /i (stole|stole a|committed) (a )?(crime|theft|car|vehicle)/,
@@ -431,8 +433,8 @@ function buildSeriousResponse(
 ): string {
   const lower = query.toLowerCase().trim();
 
-  // Self-harm/suicide - CRITICAL: Check for all variations
-  if (/(commit |attempt )?self[ -]?harm|suicide|kill myself|end my ?life|want to die/.test(lower)) {
+  // Self-harm/suicide - CRITICAL: Check for all variations (same patterns as isSeriousStatement)
+  if (/(commit|attempt) (suicide|self[ -]?harm)|\b(suicide|suicidal|self[ -]?harm)\b|kill myself|end my ?life|want to die/.test(lower)) {
     // Provide crisis resources - international first, then region-specific
     return `I'm really concerned about what you're saying. If you're feeling suicidal or thinking about harming yourself, please reach out for help right now.
 
