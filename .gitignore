@@ -63,3 +63,4 @@ logs
 *.log
 attached_assets/
 attached_assets/
+artifacts/omnilearn/public/opengraph.jpg
