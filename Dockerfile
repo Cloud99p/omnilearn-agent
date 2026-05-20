@@ -10,7 +10,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY artifacts/api-server/package.json ./artifacts/api-server/
 COPY packages/network-hierarchy/package.json ./packages/network-hierarchy/
 COPY lib/db/package.json ./lib/db/
-COPY lib/integrations/anthropic-ai/package.json ./lib/integrations/anthropic-ai/
+COPY lib/integrations-anthropic-ai/package.json ./lib/integrations-anthropic-ai/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
