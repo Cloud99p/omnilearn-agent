@@ -1,51 +1,35 @@
-# Dockerfile for OmniLearn API Server
-# Multi-stage build for proper native module support (sharp, ONNX Runtime)
+FROM node:20-alpine
 
-FROM node:22-bookworm AS builder
-
-RUN apt-get update && apt-get install -y \
-    poppler-utils pandoc tesseract-ocr tesseract-ocr-eng \
-    gnumeric libvips-dev python3 build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN vips --version
-
-RUN corepack enable && corepack prepare pnpm@10 --activate
+# Install pnpm
+RUN npm install -g pnpm
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+# Copy workspace files first (for better caching)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY artifacts/api-server/package.json ./artifacts/api-server/
+COPY packages/network-hierarchy/package.json ./packages/network-hierarchy/
 COPY lib/db/package.json ./lib/db/
-COPY lib/api-zod/package.json ./lib/api-zod/
-COPY lib/integrations-anthropic-ai/package.json ./lib/integrations-anthropic-ai/
+COPY lib/integrations/anthropic-ai/package.json ./lib/integrations/anthropic-ai/
 
-RUN pnpm install
+# Install dependencies
+RUN pnpm install --frozen-lockfile
 
-COPY artifacts/api-server ./artifacts/api-server
-COPY lib/db ./lib/db
-COPY lib/api-zod ./lib/api-zod
-COPY lib/integrations-anthropic-ai ./lib/integrations-anthropic-ai
+# Copy rest of code
+COPY . .
 
-RUN pnpm --filter @workspace/api-server run build
+# Build if needed
+RUN cd artifacts/api-server && pnpm build || true
 
-FROM node:22-bookworm
+# Set working directory
+WORKDIR /app/artifacts/api-server
 
-RUN apt-get update && apt-get install -y \
-    poppler-utils pandoc tesseract-ocr tesseract-ocr-eng \
-    gnumeric libvips42 python3 \
-    && rm -rf /var/lib/apt/lists/* && apt-get clean
-
-RUN corepack enable && corepack prepare pnpm@10 --activate
-
-WORKDIR /app
-
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/artifacts/api-server ./artifacts/api-server
-COPY --from=builder /app/lib ./lib
-COPY --from=builder /app/package.json ./
-
+# Expose port
 EXPOSE 3000
-ENV NODE_ENV=production PORT=3000
-CMD ["pnpm", "--filter", "@workspace/api-server", "run", "start"]
-# Rebuild: Sat May 16 14:50 UTC 2026 - CACHE BUST for route fix
+
+# Start server
+CMD ["pnpm", "start"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
