@@ -13,7 +13,7 @@ COPY lib/db/package.json ./lib/db/
 COPY lib/integrations-anthropic-ai/package.json ./lib/integrations-anthropic-ai/
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 
 # Copy rest of code
 COPY . .
