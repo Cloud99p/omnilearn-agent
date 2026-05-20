@@ -3,7 +3,7 @@
  * Wires the 7-tier mesh network into the API server
  */
 
-import { ClusterManager } from "@workspace/network-hierarchy";
+import { ClusterManager } from "@omnilearn/network-hierarchy";
 import { db } from "./lib/db.js";
 import { ghostNodes } from "@workspace/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
