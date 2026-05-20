@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { ghostNodes } from "@workspace/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { clusterManager, getAllClusters, getNetworkHierarchyStats } from "../../network-hierarchy.js";
 
 const router = Router();
 
@@ -25,6 +26,8 @@ router.get("/status", async (req, res) => {
           nodes.filter((n) => n.avgResponseMs).length
         : null;
 
+    const clusterStats = getNetworkHierarchyStats();
+    
     res.json({
       total: nodes.length,
       online: online.length,
@@ -32,6 +35,10 @@ router.get("/status", async (req, res) => {
       totalTasksProcessed: totalTasks,
       avgResponseMs: avgMs,
       selfEndpoint: `${req.protocol}://${req.get("host")}`,
+      // 7-tier mesh network stats
+      clusters: clusterStats.clusters,
+      nodesPerTier: clusterStats.nodesPerTier,
+      largestClusterSize: clusterStats.largestClusterSize,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get ghost status");
@@ -107,6 +114,25 @@ router.post("/nodes", async (req, res) => {
     res
       .status(201)
       .json({ ...node, secretKey: "••••••••", pingStatus, pingMs });
+      
+    // Register node with cluster manager (fire-and-forget)
+    try {
+      const ghostNode: any = {
+        id: node.id.toString(),
+        name: node.name,
+        endpoint: node.endpoint,
+        secretKey: node.secretKey,
+        region: region?.trim() || "unknown",
+        status: pingStatus,
+        location: { // Default to region center
+          lat: region === "lagos" ? 6.5244 : region === "abuja" ? 9.0765 : 0,
+          lng: region === "lagos" ? 3.3792 : region === "abuja" ? 7.3986 : 0,
+        },
+      };
+      clusterManager.registerNode(ghostNode);
+    } catch (err) {
+      req.log.warn({ err }, "Failed to register node with cluster manager");
+    }
   } catch (err) {
     req.log.error({ err }, "Failed to register ghost node");
     res.status(500).json({ error: "Failed to register node" });
@@ -251,6 +277,42 @@ router.delete("/nodes/:id", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to delete node");
     res.status(500).json({ error: "Failed to delete node" });
+  }
+});
+
+// GET /api/ghost/clusters — get 7-tier mesh cluster information
+router.get("/clusters", async (req, res) => {
+  try {
+    const clusters = getAllClusters();
+    const stats = getNetworkHierarchyStats();
+    
+    res.json({
+      clusters: clusters.map((c) => ({
+        id: c.id,
+        tier: c.tier,
+        tierName: c.name,
+        name: c.name,
+        location: c.location,
+        radiusKm: c.radiusKm,
+        totalNodes: c.totalNodes,
+        onlineNodes: c.onlineNodes,
+        capacity: c.capacity,
+        load: c.load,
+        childIds: c.childIds,
+        nodeIds: c.nodeIds,
+        createdAt: c.createdAt,
+      })),
+      stats: {
+        totalNodes: stats.totalNodes,
+        totalClusters: stats.clusters,
+        nodesPerTier: stats.nodesPerTier,
+        largestClusterSize: stats.largestClusterSize,
+        avgClusterSize: stats.avgClusterSize,
+      },
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get clusters");
+    res.status(500).json({ error: "Failed to get cluster information" });
   }
 });
 

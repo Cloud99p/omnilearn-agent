@@ -1158,7 +1158,7 @@ export default function IntelligencePage() {
               OmniLearn Intelligence
             </h1>
             <p className="text-sm text-muted-foreground font-mono">
-              Native learning engine — distributed neural network
+              Native learning engine — knowledge graph & character evolution
             </p>
           </div>
         </div>

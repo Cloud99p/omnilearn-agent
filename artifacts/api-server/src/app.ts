@@ -10,6 +10,7 @@ import {
   clerkProxyMiddleware,
 } from "./middlewares/clerkProxyMiddleware";
 import { runOntologyReflection } from "./brain/ontology.js";
+import { initializeClusterManager } from "./network-hierarchy.js";
 import {
   initSentry,
   sentryRequestHandler,
@@ -18,6 +19,11 @@ import {
 
 // Initialize Sentry (must be first, before any other imports)
 initSentry();
+
+// Initialize 7-tier mesh network cluster manager
+initializeClusterManager().catch((err) =>
+  logger.error(err, "Failed to initialize cluster manager"),
+);
 
 const app: Express = express();
 

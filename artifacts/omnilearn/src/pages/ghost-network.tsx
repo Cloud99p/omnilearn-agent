@@ -81,6 +81,9 @@ interface NetworkStatus {
   totalTasksProcessed: number;
   avgResponseMs: number | null;
   selfEndpoint: string;
+  clusters: number;
+  nodesPerTier: Record<number, number>;
+  largestClusterSize: number;
 }
 
 function timeSince(dateStr: string | null): string {
@@ -855,6 +858,47 @@ export default function GhostNetworkPage() {
               </div>
               <span className={cn("font-mono text-2xl font-bold", color)}>
                 {value}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 7-tier mesh network stats */}
+      {status && status.clusters > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          <div className="rounded-xl border border-border/40 bg-card/30 p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Globe className={cn("w-3.5 h-3.5", "text-cyan-400")} />
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                Clusters
+              </span>
+            </div>
+            <span className="font-mono text-2xl font-bold text-cyan-400">
+              {status.clusters}
+            </span>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-card/30 p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Users className={cn("w-3.5 h-3.5", "text-fuchsia-400")} />
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                Largest cluster
+              </span>
+            </div>
+            <span className="font-mono text-2xl font-bold text-fuchsia-400">
+              {status.largestClusterSize}
+            </span>
+          </div>
+          {status.nodesPerTier && Object.entries(status.nodesPerTier).map(([tier, count]) => (
+            <div key={tier} className="rounded-xl border border-border/40 bg-card/30 p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Activity className={cn("w-3.5 h-3.5", "text-amber-400")} />
+                <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                  Tier {tier}
+                </span>
+              </div>
+              <span className="font-mono text-2xl font-bold text-amber-400">
+                {count}
               </span>
             </div>
           ))}

@@ -24,6 +24,12 @@ export const ghostNodes = pgTable("ghost_nodes", {
   avgResponseMs: real("avg_response_ms"),
   isSelf: boolean("is_self").notNull().default(false),
   notes: text("notes"),
+  // 7-tier mesh network fields
+  clusterId: text("cluster_id"),
+  tier: integer("tier").notNull().default(1), // 1-7 tier level
+  location: text("location"), // JSON: { lat: number, lng: number }
+  joinedAt: timestamp("joined_at", { withTimezone: true }),
+  capacity: integer("capacity").notNull().default(100),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
