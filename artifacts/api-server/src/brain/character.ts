@@ -1,3 +1,9 @@
+/**
+ * OmniLearn Agent
+ * Copyright (c) 2026 Emmanuel Nenpan Hosea
+ * Licensed under the MIT License
+ */
+
 import type { CharacterState } from "@workspace/db/schema";
 
 export interface TraitDelta {

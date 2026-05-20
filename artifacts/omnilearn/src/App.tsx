@@ -1,3 +1,9 @@
+/**
+ * OmniLearn Agent
+ * Copyright (c) 2026 Emmanuel Nenpan Hosea
+ * Licensed under the MIT License
+ */
+
 import { useEffect, useRef } from "react";
 import {
   ClerkProvider,

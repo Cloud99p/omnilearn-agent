@@ -3,6 +3,12 @@
  * Wires the 7-tier mesh network into the API server
  */
 
+/**
+ * OmniLearn Agent
+ * Copyright (c) 2026 Emmanuel Nenpan Hosea
+ * Licensed under the MIT License
+ */
+
 import { ClusterManager } from "@omnilearn/network-hierarchy";
 import { db } from "./lib/db.js";
 import { ghostNodes } from "@workspace/db/schema";

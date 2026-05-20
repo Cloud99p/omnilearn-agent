@@ -1,5 +1,7 @@
 /**
  * Cluster Manager - Handles cluster formation, maintenance, and fusion
+ * Copyright (c) 2026 Emmanuel Nenpan Hosea
+ * Licensed under the MIT License
  */
 
 import { Cluster, GhostNode, NetworkTier, calculateTier } from "./types.js";

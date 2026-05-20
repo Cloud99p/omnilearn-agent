@@ -1,5 +1,8 @@
 # OmniLearn Agent
 
+**Created by:** Emmanuel Nenpan Hosea  
+**License:** MIT
+
 An open-source AI agent with persistent knowledge graphs, evolving character, and distributed neural network capabilities.
 
 ## 🚀 Quick Start
