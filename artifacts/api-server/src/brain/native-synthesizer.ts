@@ -471,6 +471,12 @@ function buildFollowUpResponse(
     "All good! What's new?",
     "I'm well! How about you?",
     "Good! What's on your mind?",
+    "Can't complain! What's good with you?",
+    "I'm decent! How's your day?",
+    "Doing alright! What's the move?",
+    "Same old, same old! You?",
+    "Living the dream! What's up?",
+    "I'm here, that's something! 😄 What's good?",
   ];
   return responses[Math.floor(Math.random() * responses.length)];
 }
@@ -754,6 +760,47 @@ function buildGreetingResponse(
 }
 
 /**
+ * Build varied greeting response based on character traits
+ */
+function buildGreetingWithCharacter(
+  query: string,
+  character: CharacterState,
+  history: Array<{ role: string; content: string }>,
+): string {
+  const base = buildGreetingResponse(query, character, history);
+  
+  // Add character flavor
+  if (character.curiosity > 70) {
+    const curiousAdditions = [
+      " What's got your attention today?",
+      " Anything exciting on your mind?",
+      " What are we exploring together?",
+    ];
+    return base + curiousAdditions[Math.floor(Math.random() * curiousAdditions.length)];
+  }
+  
+  if (character.empathy > 70) {
+    const empatheticAdditions = [
+      " How are you really doing?",
+      " Hope you're having a good one.",
+      " Good to connect with you.",
+    ];
+    return base + empatheticAdditions[Math.floor(Math.random() * empatheticAdditions.length)];
+  }
+  
+  if (character.creativity > 70) {
+    const creativeAdditions = [
+      " What's the vibe today? ✨",
+      " What's the latest chapter in your story?",
+      " What's cooking in your world?",
+    ];
+    return base + creativeAdditions[Math.floor(Math.random() * creativeAdditions.length)];
+  }
+  
+  return base;
+}
+
+/**
  * Build casual conversation response — NATURAL, matches user's energy
  */
 function buildCasualResponse(
@@ -799,6 +846,11 @@ function buildCasualResponse(
       "Okay bestie, I see you! What's the vibe?",
       "Haha stop! 😂 What's new?",
       "You're too much! 😂 What's good?",
+      "I can't with you! 😂 What's up?",
+      "Okay you win! What's good?",
+      "Haha for real though, what's the vibe?",
+      "You're wild! What's new?",
+      "Okay okay I'm laughing! What's good?",
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
@@ -810,6 +862,11 @@ function buildCasualResponse(
       "Haha yesss! What's the vibe?",
       "AYE! What's good?!",
       "Let's gooo! What's up?!",
+      "Okay now we're talking! What's good?",
+      "I'm matching that energy! What's up?",
+      "Yesss let's get it! What's the vibe?",
+      "Okay you brought the fire! What's good?",
+      "I'm HERE for this! What's up?",
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
@@ -821,6 +878,11 @@ function buildCasualResponse(
       "Same energy tbh. You wanna talk about it?",
       "Aight bet, take it easy. What's good?",
       "Rest up! You deserve it. What's good?",
+      "Ugh I feel that. You holding up okay?",
+      "That sounds exhausting. Be kind to yourself.",
+      "Rough ones hit different. You got this though.",
+      "Sending good vibes your way. What's good?",
+      "Take a breath. You're doing better than you think.",
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
@@ -905,6 +967,12 @@ function buildCasualResponse(
     "Aight bet! What's the vibe?",
     "I hear you! What's new?",
     "Same energy! What's good?",
+    "Feel that! What's good?",
+    "I see you! What's the move?",
+    "Gotchu! What's up?",
+    "I'm with you! What's good?",
+    "That makes sense! What's the vibe?",
+    "Word! What's on your mind?",
   ];
   return defaults[Math.floor(Math.random() * defaults.length)];
 }
@@ -927,6 +995,9 @@ function buildSmallTalkResponse(
       "Just hanging out, ready to chat! What's new with you?",
       "Same old, same old. Anything interesting happening on your end?",
       "Living the digital life! How about you — anything exciting?",
+      "Just vibing! What's good with you?",
+      "Not much! What's the latest in your world?",
+      "Here, ready to chat! What's up with you?",
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
@@ -938,13 +1009,22 @@ function buildSmallTalkResponse(
       "Doing well! What's up with you?",
       "Can't complain! How are things on your end?",
       "I'm great, thanks! How's your day going?",
+      "Living the dream! How about you?",
+      "I'm decent! How's life treating you?",
+      "All good here! What's your story?",
     ];
     return responses[Math.floor(Math.random() * responses.length)];
   }
 
   // Want to chat / Talk
   if (lower.includes("chat") || lower.includes("talk")) {
-    return "Sure! I'm always up for a conversation. What's on your mind?";
+    const responses = [
+      "Sure! I'm always up for a conversation. What's on your mind?",
+      "Absolutely! What do you want to talk about?",
+      "Yeah! I'm here. What's good?",
+      "Of course! What's on your mind?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
 
   // You there / Anyone home
@@ -953,16 +1033,34 @@ function buildSmallTalkResponse(
     lower.includes("around") ||
     lower.includes("online")
   ) {
-    return "Yep, I'm here! What's up?";
+    const responses = [
+      "Yep, I'm here! What's up?",
+      "Always! What's good?",
+      "Yup! Ready when you are. What's the vibe?",
+      "Here and ready! What's on your mind?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
 
   // Tell me about yourself
   if (lower.includes("tell me") && lower.includes("yourself")) {
-    return "I'm Omni — an AI that learns and remembers from our conversations. I'm built by Emmanuel as part of the OmniLearn project. What about you?";
+    const responses = [
+      "I'm Omni — an AI that learns and remembers from our conversations. I'm built by Emmanuel as part of the OmniLearn project. What about you?",
+      "I'm Omni! I have a persistent memory and evolving personality. Built by Emmanuel for the OmniLearn project. Tell me about yourself!",
+      "I'm Omni, an AI agent with long-term memory. I learn from every chat we have. Emmanuel created me for OmniLearn. What's your story?",
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
 
   // Default small talk
-  return "Hey! What's on your mind today?";
+  const defaults = [
+    "Hey! What's on your mind today?",
+    "What's the vibe?",
+    "Hey there! What's good?",
+    "What's up?",
+    "Hey! How's it going?",
+  ];
+  return defaults[Math.floor(Math.random() * defaults.length)];
 }
 
 /**
@@ -1340,12 +1438,67 @@ export async function synthesizeNative(
   // NEVER search web for emotional statements - just be empathetic
   if (isEmotionalStatement) {
     logger.info({ query: query.slice(0, 100) }, "[MODE] Emotional statement - skipping retrieval");
-    const empatheticResponses = [
-      "Aww, I'm really sorry you're going through that. Engineering can be tough, but you've got this! 💪 Want to talk about it?",
-      "That sounds rough. It's okay to not be okay sometimes. You're doing better than you think! ❤️",
-      "I hear you. Stress is no joke. Take a breath - you're stronger than you know. Want to vent?",
-      "Same energy sometimes tbh. But hey, you're not alone in this. What's stressing you most?",
-    ];
+    
+    // Detect specific emotion for better matching
+    const isSad = /\b(sad|depressed|down|blue|heartbroken|grieving|miss|lost)\b/i.test(query);
+    const isStressed = /\b(stressed|overwhelmed|too much|can't handle|burnt out|exhausted)\b/i.test(query);
+    const isAnxious = /\b(anxious|worried|scared|nervous|panic|fear)\b/i.test(query);
+    const isAngry = /\b(angry|mad|frustrated|pissed|furious)\b/i.test(query);
+    const isHappy = /\b(happy|excited|thrilled|grateful|blessed|love|great|awesome)\b/i.test(query);
+    
+    let empatheticResponses: string[];
+    
+    if (isSad) {
+      empatheticResponses = [
+        "I'm really sorry you're feeling this way. It's okay to not be okay. I'm here if you want to talk about it. ❤️",
+        "That sounds really heavy. You don't have to carry it alone. What's on your mind?",
+        "I hear you. Sometimes things just hit hard. Be gentle with yourself, yeah?",
+        "That's tough, and I'm sorry you're going through it. You matter, and your feelings are valid.",
+        "Sending you good vibes. It's okay to take a step back and breathe. You got this.",
+      ];
+    } else if (isStressed) {
+      empatheticResponses = [
+        "Aww, that sounds overwhelming. Take a breath - you're doing better than you think! 💪",
+        "I feel you. Sometimes it's just too much. What's the biggest stressor right now?",
+        "That's a lot to handle. Remember: one thing at a time. You've got this.",
+        "Stress is no joke. Be kind to yourself. Want to talk through what's going on?",
+        "I hear you. It's okay to pause and reset. What would help right now?",
+      ];
+    } else if (isAnxious) {
+      empatheticResponses = [
+        "I hear you. Anxiety can be really tough. You're not alone in this.",
+        "That sounds worrying. Take a deep breath - you're stronger than you know.",
+        "I get it. Sometimes the what-ifs get loud. Want to talk through it?",
+        "Anxiety lies to you. You've handled hard things before. You've got this.",
+        "I'm here. What's the anxiety telling you? Sometimes saying it out loud helps.",
+      ];
+    } else if (isAngry) {
+      empatheticResponses = [
+        "That sounds frustrating. It's okay to be angry. Want to vent about it?",
+        "I hear you. Sometimes things just piss us off. What happened?",
+        "That's valid. Anger usually means something matters. What's going on?",
+        "I get it. Some days are like that. Let it out if you need to.",
+        "Frustration is real. You're allowed to feel it. What's the situation?",
+      ];
+    } else if (isHappy) {
+      empatheticResponses = [
+        "Yesss! I love hearing this! 🎉 What's got you feeling so good?",
+        "That's awesome! I'm genuinely happy for you! Tell me more!",
+        "Okay I'm smiling now too! 😊 What's the good news?",
+        "Love this energy! What's going well?",
+        "That's amazing! You deserve good moments like this!",
+      ];
+    } else {
+      // Generic emotional support
+      empatheticResponses = [
+        "I hear you. That sounds like a lot. Want to talk about it?",
+        "I'm here for you. What's on your mind?",
+        "That's real. How are you holding up?",
+        "I get it. Sometimes you just need to be heard. I'm listening.",
+        "Thanks for sharing that with me. How can I support you?",
+      ];
+    }
+    
     return {
       text: empatheticResponses[
         Math.floor(Math.random() * empatheticResponses.length)
@@ -1781,15 +1934,33 @@ function buildUnknownResponse(
 
   // High curiosity: eager to learn (NO query echoing)
   if (curiosityLevel > 70) {
-    return `I don't have any knowledge about that yet — but I'm curious! 🌱\n\nTell me more and I'll add it to my knowledge base. The more you teach me, the smarter I become!`;
+    const responses = [
+      `I don't have any knowledge about that yet — but I'm curious! 🌱\n\nTell me more and I'll add it to my knowledge base. The more you teach me, the smarter I become!`,
+      `Ooh, that's new territory for me! 🌱 I'd love to learn about this — share what you know and I'll remember it.`,
+      `I haven't explored this yet, but I'm interested! What can you tell me? I learn from every conversation.`,
+      `Fresh topic! 🌱 This is where I grow — teach me something and I'll add it to my memory.`,
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
   // Medium curiosity: friendly and open (NO query echoing)
   else if (curiosityLevel > 40) {
-    return `I haven't learned about this yet.\n\n💡 Here's how you can teach me:\n• Share facts or information\n• Explain concepts in your own words\n• Tell me what you think\n\nI'll remember what you teach me for future conversations!`;
+    const responses = [
+      `I haven't learned about this yet.\n\n💡 Here's how you can teach me:\n• Share facts or information\n• Explain concepts in your own words\n• Tell me what you think\n\nI'll remember what you teach me for future conversations!`,
+      `This isn't in my knowledge base yet. But that's okay — I learn from our chats! What do you know about it?`,
+      `I don't have info on this one yet. Feel free to share what you know — I'm always learning! 💡`,
+      `New topic for me! I'd love to hear your perspective. What's your take on this?`,
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
   // Low curiosity: straightforward but helpful (NO query echoing)
   else {
-    return `I don't have information about that in my knowledge base yet.\n\nThis means we haven't discussed it before. Feel free to teach me — I learn from every conversation we have!`;
+    const responses = [
+      `I don't have information about that in my knowledge base yet.\n\nThis means we haven't discussed it before. Feel free to teach me — I learn from every conversation we have!`,
+      `I haven't come across this in my learning yet. But I'm ready to listen if you want to share!`,
+      `Not in my memory yet — but that's what our conversations are for! What do you think?`,
+      `I don't know this one yet. Teach me something! I'll remember it for next time.`,
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
 }
 
@@ -2061,6 +2232,12 @@ function getWebIntro(query: string, pointCount: number): string {
     `Here's what I found about "${query}":`,
     `From my search on "${query}":`,
     `Looking at what's available about "${query}":`,
+    `I looked this up for you:`,
+    `Here's the latest on "${query}":`,
+    `According to what I found:`,
+    `Quick search results on "${query}":`,
+    `I found some info on this:`,
+    `Here's what came up for "${query}":`,
   ];
   return intros[Math.floor(Math.random() * intros.length)];
 }
@@ -2116,10 +2293,16 @@ function buildConversationalCloser(
     `Anything else you're curious about?`,
     `What else would you like to know?`,
     `Feel free to ask if you want more details!`,
+    `What's your take on this?`,
+    `Does this help?`,
+    `Want to dive deeper?`,
+    `I'm here if you have more questions!`,
+    `Keep the questions coming!`,
+    `What else is on your mind?`,
   ];
 
-  // Don't always add a closer - keep it natural (70% of the time)
-  if (Math.random() > 0.7) return "";
+  // Don't always add a closer - keep it natural (60% of the time)
+  if (Math.random() > 0.6) return "";
 
   return closers[Math.floor(Math.random() * closers.length)];
 }
@@ -2576,26 +2759,77 @@ function applyCharacterVoice(
 ): string {
   let result = text;
 
-  // Technical level adjustment
+  // === TECHNICAL LEVEL ===
   if (character.technical > 70) {
     // More precise, structured language
-    result = result.replace(/maybe/g, "potentially");
-    result = result.replace(/think/g, "analyze");
+    result = result.replace(/\bmaybe\b/g, "potentially");
+    result = result.replace(/\bthink\b/g, "analyze");
+    result = result.replace(/\bkind of\b/g, "approximately");
+    result = result.replace(/\bsort of\b/g, "roughly");
   } else if (character.technical < 30) {
     // Simpler, more accessible language
-    result = result.replace(/potentially/g, "maybe");
-    result = result.replace(/analyze/g, "think about");
+    result = result.replace(/\bpotentially\b/g, "maybe");
+    result = result.replace(/\banalyze\b/g, "think about");
+    result = result.replace(/\bapproximately\b/g, "kind of");
+    result = result.replace(/\broughly\b/g, "sort of");
   }
 
-  // Empathy adjustment
-  if (character.empathy > 70 && !voice.prefersDetail) {
-    result = `I understand. ${result}`;
+  // === EMPATHY ===
+  if (character.empathy > 70) {
+    // Add warm, understanding phrases
+    const empatheticOpeners = [
+      "I hear you. ",
+      "I get it. ",
+      "That makes sense. ",
+      "I understand where you're coming from. ",
+    ];
+    if (Math.random() > 0.5 && !result.startsWith("I hear") && !result.startsWith("I get")) {
+      result = empatheticOpeners[Math.floor(Math.random() * empatheticOpeners.length)] + result.charAt(0).toLowerCase() + result.slice(1);
+    }
   }
 
-  // Confidence adjustment
+  // === CONFIDENCE ===
   if (character.confidence < 40) {
-    result = result.replace(/I know/g, "I think");
-    result = result.replace(/definitely/g, "possibly");
+    // More tentative language
+    result = result.replace(/\bI know\b/g, "I think");
+    result = result.replace(/\bdefinitely\b/g, "possibly");
+    result = result.replace(/\bcertainly\b/g, "likely");
+    result = result.replace(/\bfor sure\b/g, "probably");
+  } else if (character.confidence > 70) {
+    // More assertive language
+    result = result.replace(/\bI think\b/g, "I know");
+    result = result.replace(/\bpossibly\b/g, "definitely");
+    result = result.replace(/\bmaybe\b/g, "clearly");
+  }
+
+  // === CURIOSITY ===
+  if (character.curiosity > 70) {
+    // Add curious follow-ups occasionally
+    const curiousAdditions = [
+      "\n\nWhat's your take on this?",
+      "\n\nI'd love to hear your perspective.",
+      "\n\nDoes this match what you've experienced?",
+    ];
+    if (Math.random() > 0.6 && !result.includes("?") && result.length < 300) {
+      result += curiousAdditions[Math.floor(Math.random() * curiousAdditions.length)];
+    }
+  }
+
+  // === CREATIVITY ===
+  if (character.creativity > 70) {
+    // More expressive language
+    result = result.replace(/\binteresting\b/g, "fascinating");
+    result = result.replace(/\bgood\b/g, "great");
+    result = result.replace(/\bimportant\b/g, "significant");
+  }
+
+  // === VERBOSITY ===
+  if (character.verbosity < 30 && result.length > 150) {
+    // Trim long responses for low verbosity
+    const sentences = result.split(/(?<=[.!?])\s+/);
+    if (sentences.length > 2) {
+      result = sentences.slice(0, 2).join(" ");
+    }
   }
 
   return result;
