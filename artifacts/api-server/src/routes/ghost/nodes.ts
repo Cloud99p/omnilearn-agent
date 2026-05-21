@@ -6,16 +6,17 @@
 
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { ghostNodes } from "@workspace/db/schema";
+import { ghostNodes, networkGhostNodes } from "@workspace/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { clusterManager, getAllClusters, getNetworkHierarchyStats } from "../../network-hierarchy.js";
+import { getNetworkService, getAllClusters, getHierarchyStats } from "../../network-hierarchy.js";
+import type { GhostNode } from "@omnilearn/network-hierarchy";
 
 const router = Router();
 
 // GET /api/ghost/status
 router.get("/status", async (req, res) => {
   try {
-    const nodes = await db.select().from(ghostNodes);
+    const nodes = await db.select().from(networkGhostNodes);
     const now = Date.now();
     const online = nodes.filter(
       (n) =>
@@ -32,7 +33,7 @@ router.get("/status", async (req, res) => {
           nodes.filter((n) => n.avgResponseMs).length
         : null;
 
-    const clusterStats = getNetworkHierarchyStats();
+    const stats = getHierarchyStats();
     
     res.json({
       total: nodes.length,
@@ -42,9 +43,9 @@ router.get("/status", async (req, res) => {
       avgResponseMs: avgMs,
       selfEndpoint: `${req.protocol}://${req.get("host")}`,
       // 7-tier mesh network stats
-      clusters: clusterStats.clusters,
-      nodesPerTier: clusterStats.nodesPerTier,
-      largestClusterSize: clusterStats.largestClusterSize,
+      clusters: stats.totalClusters,
+      nodesPerTier: stats.nodesPerTier,
+      largestClusterSize: stats.largestClusterSize,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get ghost status");

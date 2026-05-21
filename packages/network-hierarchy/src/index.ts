@@ -2,7 +2,7 @@
  * OmniLearn Network Hierarchy
  * 7-tier self-organizing mesh network
  * Copyright (c) 2026 Emmanuel Nenpan Hosea
- * Licensed under the MIT License
+ * Licensed under the AGPL v3 License
  */
 
 export * from "./types.js";

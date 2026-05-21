@@ -2,7 +2,7 @@
  * OmniLearn 7-Tier Hierarchical Network Architecture
  * Self-organizing mesh network from local clusters to planetary intelligence
  * Copyright (c) 2026 Emmanuel Nenpan Hosea
- * Licensed under the MIT License
+ * Licensed under the AGPL v3 License
  */
 
 // ─── Network Tiers ──────────────────────────────────────────────────────────

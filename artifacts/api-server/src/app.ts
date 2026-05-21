@@ -16,7 +16,7 @@ import {
   clerkProxyMiddleware,
 } from "./middlewares/clerkProxyMiddleware";
 import { runOntologyReflection } from "./brain/ontology.js";
-import { initializeClusterManager } from "./network-hierarchy.js";
+import { NetworkService } from "./lib/network-service.js";
 import { DiscoveryServer } from "./lib/discovery-server.js";
 import {
   initSentry,
@@ -27,9 +27,10 @@ import {
 // Initialize Sentry (must be first, before any other imports)
 initSentry();
 
-// Initialize 7-tier mesh network cluster manager
-initializeClusterManager().catch((err) =>
-  logger.error(err, "Failed to initialize cluster manager"),
+// Initialize network service (ClusterManager + Database)
+const networkService = new NetworkService();
+networkService.initialize().catch((err) =>
+  logger.error(err, "Failed to initialize network service"),
 );
 
 // Initialize WebSocket discovery server for real-time node communication
@@ -42,14 +43,17 @@ try {
   // Handle node events
   discoveryServer.on("node-hello", (nodeId, message) => {
     logger.info({ nodeId, message }, "Node joined network");
+    networkService.recordHeartbeat(nodeId, "online");
   });
   
   discoveryServer.on("heartbeat", (nodeId, message) => {
     logger.debug({ nodeId, load: message.data?.load }, "Node heartbeat");
+    networkService.recordHeartbeat(nodeId, "online", message.data?.load);
   });
   
   discoveryServer.on("node-goodbye", (nodeId, message) => {
     logger.info({ nodeId }, "Node left network");
+    networkService.recordHeartbeat(nodeId, "offline");
   });
   
   logger.info(
