@@ -11,8 +11,8 @@ COPY . .
 # Install with all build scripts allowed (safe in isolated Docker build)
 RUN pnpm install --dangerously-allow-all-builds
 
-# Build all workspace packages
-RUN pnpm -r build
+# Build only network-hierarchy (api-server doesn't have a build step)
+RUN cd packages/network-hierarchy && pnpm build
 
 # Set working directory
 WORKDIR /app/artifacts/api-server
