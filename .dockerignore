@@ -8,6 +8,10 @@ npm-debug.log
 !.env.example
 .vercel
 dist
-artifacts/omnilearn
-artifacts/mockup-sandbox
 .github
+
+# Exclude heavy build artifacts but keep package.json for workspace install
+artifacts/omnilearn/*
+!artifacts/omnilearn/package.json
+artifacts/mockup-sandbox/*
+!artifacts/mockup-sandbox/package.json
