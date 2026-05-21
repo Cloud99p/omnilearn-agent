@@ -35,6 +35,103 @@ export type ProposalType = 'new' | 'update' | 'delete';
 export type ProposalStatus = 'pending' | 'ratified' | 'rejected';
 export type ShareLevel = 'private' | 'cluster' | 'metro' | 'regional' | 'global';
 
+/**
+ * Automatically determine share level based on content type
+ * Users don't control this - system decides based on knowledge type
+ */
+export function classifyShareLevel(content: string, type: string, tags: string[]): ShareLevel {
+  const lower = content.toLowerCase();
+  
+  // ALWAYS PRIVATE: Personal, identity, sensitive topics
+  const privatePatterns = [
+    /\b(i|my|me|mine|our|we)\b.*\b(feel|think|believe|want|need|love|hate)\b/i,
+    /\b(secret|password|key|token|credential|private|confidential)\b/i,
+    /\b(address|phone|email|ssn|credit.?card|bank)\b/i,
+    /\b(died|death|killed|murder|suicide|funeral)\b/i,
+    /\b(cancer|disease|illness|diagnosis|medical|doctor|hospital)\b/i,
+    /\b(therapy|therapist|depressed|anxious|mental.?health)\b/i,
+    /\b(my (mom|dad|parent|child|kid|spouse|partner|boyfriend|girlfriend))\b/i,
+    /\b(i live|i work|i went|i traveled)\b/i, // Personal experiences
+    /\b(my name|your name|clerk id|user id)\b/i, // Identity
+  ];
+  
+  for (const pattern of privatePatterns) {
+    if (pattern.test(lower)) {
+      return 'private';
+    }
+  }
+  
+  // Check type-based classification
+  if (type === 'identity' || type === 'personal' || type === 'conversation') {
+    return 'private';
+  }
+  
+  // GLOBAL: Universal facts (science, math, history, tech)
+  const globalPatterns = [
+    /\b(science|physics|chemistry|biology|mathematics|math)\b/i,
+    /\b(universe|planet|earth|sun|moon|star|galaxy)\b/i,
+    /\b(atom|molecule|electron|proton|neutron|quantum)\b/i,
+    /\b(python|javascript|typescript|react|node|api|database)\b/i,
+    /\b(history|ancient|civilization|empire|war|treaty)\b/i,
+    /\b(equation|formula|theorem|theory|law of)\b/i,
+    /\b(element|compound|reaction|periodic)\b/i,
+  ];
+  
+  for (const pattern of globalPatterns) {
+    if (pattern.test(lower)) {
+      return 'global';
+    }
+  }
+  
+  // Check tags for global topics
+  const globalTags = ['science', 'math', 'physics', 'chemistry', 'biology', 'technology', 'programming', 'history'];
+  if (tags.some(tag => globalTags.includes(tag.toLowerCase()))) {
+    return 'global';
+  }
+  
+  // CLUSTER: Local knowledge, regional info, community-specific
+  const clusterPatterns = [
+    /\b(local|community|neighborhood|city|town)\b/i,
+    /\b(restaurant|shop|store|park|gym)\b/i,
+    /\b(event|festival|concert|meeting)\b/i,
+  ];
+  
+  for (const pattern of clusterPatterns) {
+    if (pattern.test(lower)) {
+      return 'cluster';
+    }
+  }
+  
+  // REGIONAL: State/country level knowledge
+  const regionalPatterns = [
+    /\b(california|texas|new york|london|paris|tokyo|china|usa|europe)\b/i,
+    /\b(governor|senator|congress|parliament|prime.?minister)\b/i,
+    /\b(highway|interstate|route)\b/i,
+  ];
+  
+  for (const pattern of regionalPatterns) {
+    if (pattern.test(lower)) {
+      return 'regional';
+    }
+  }
+  
+  // METRO: Mid-level knowledge (between cluster and regional)
+  const metroPatterns = [
+    /\b(metro|metropolitan|county|district)\b/i,
+    /\b(university|college|school)\b/i,
+    /\b(hospital|clinic|medical.?center)\b/i,
+  ];
+  
+  for (const pattern of metroPatterns) {
+    if (pattern.test(lower)) {
+      return 'metro';
+    }
+  }
+  
+  // DEFAULT: Cluster (safe middle ground)
+  return 'cluster';
+}
+
 export interface KnowledgeSyncMessage {
   type: 'KNOWLEDGE_SYNC';
   fromNodeId: string;

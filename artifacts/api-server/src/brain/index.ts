@@ -23,7 +23,7 @@ import {
 } from "./tfidf.js";
 import { extractFacts, detectQueryType, extractKeyTerms } from "./extractor.js";
 import { embedText, cosineSimilarity } from "./embeddings.js";
-import { broadcastKnowledgeToCluster } from "../lib/knowledge-sync.js";
+import { broadcastKnowledgeToCluster, classifyShareLevel } from "../lib/knowledge-sync.js";
 import {
   applyDeltas,
   computeTraitDeltaFromLearning,
@@ -324,17 +324,22 @@ async function insertNode(
       tfidfVector,
       embedding,
       clerkId: userIdentity ? clerkId : clerkId, // Identity facts MUST have clerkId
-      shareLevel: 'cluster', // Default: share with cluster
-      sharedByUser: true, // User is teaching, so they're sharing
+      shareLevel: classifyShareLevel(content, type, tags), // Auto-classify based on content
+      sharedByUser: false, // System decides, not user
     })
     .returning();
 
   // Broadcast to cluster with proposal system (Phase 2 full implementation)
-  try {
-    await broadcastKnowledgeToCluster(node, node.clusterId || 'default-cluster', 'brain-instance-1');
-    logger.info({ nodeId: node.id, clusterId: node.clusterId }, "Knowledge broadcast with proposal created");
-  } catch (err) {
-    logger.warn({ err, nodeId: node.id }, "Failed to broadcast knowledge to cluster");
+  // Only broadcast if share level allows it
+  if (node.shareLevel !== 'private') {
+    try {
+      await broadcastKnowledgeToCluster(node, node.clusterId || 'default-cluster', 'brain-instance-1');
+      logger.info({ nodeId: node.id, clusterId: node.clusterId, shareLevel: node.shareLevel }, "Knowledge broadcast with proposal created");
+    } catch (err) {
+      logger.warn({ err, nodeId: node.id }, "Failed to broadcast knowledge to cluster");
+    }
+  } else {
+    logger.debug({ nodeId: node.id, content: content.slice(0, 100) }, "Knowledge marked private - not broadcasting");
   }
 
   return node;
