@@ -210,9 +210,11 @@ export class ClusterManager {
     const nodes = this.getAllNodes();
     const clusters = this.getAllClusters();
 
+    // Count nodes by cluster tier (nodes themselves don't have tier)
     const nodesPerTier: Record<number, number> = {};
     nodes.forEach((node) => {
-      const tier = node.tier || 1;
+      // Nodes are Tier 1 if not in cluster, or match their cluster's tier
+      const tier = node.clusterId ? 2 : 1; // Individual or Local Cluster
       nodesPerTier[tier] = (nodesPerTier[tier] || 0) + 1;
     });
 
