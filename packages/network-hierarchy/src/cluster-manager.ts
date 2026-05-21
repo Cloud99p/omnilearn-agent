@@ -4,7 +4,7 @@
  * Licensed under the MIT License
  */
 
-import { Cluster, GhostNode, NetworkTier, calculateTier } from "./types.js";
+import { Cluster, FusionProposal, GhostNode, NetworkTier, calculateTier } from "./types.js";
 
 export class ClusterManager {
   private clusters: Map<string, Cluster> = new Map();
