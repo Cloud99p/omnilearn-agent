@@ -552,3 +552,4 @@ export async function getProposalStats(clusterId: string): Promise<{
     rejectedProposals: 0,
   };
 }
+// Force rebuild Thu May 21 16:23:10 UTC 2026
