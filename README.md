@@ -1,7 +1,7 @@
 # OmniLearn Agent
 
 **Created by:** Emmanuel Nenpan Hosea  
-**License:** MIT
+**License:** AGPL v3
 
 An open-source AI agent with persistent knowledge graphs, evolving character, and distributed neural network capabilities.
 
@@ -52,6 +52,16 @@ omnilearn-agent/
 │   └── integrations-anthropic-ai/
 └── scripts/
 ```
+
+## 📚 Documentation
+
+| Document | Purpose |
+|----------|----------|
+| **[WHAT_WORKS_NOW.md](WHAT_WORKS_NOW.md)** | What's actually shipped today (start here!) |
+| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Complete deployment guide |
+| **[ARCHITECTURE.md](ARCHITECTURE.md)** | System architecture including 7-tier network |
+| **[ROADMAP.md](ROADMAP.md)** | Development timeline |
+| **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to contribute |
 
 ## 🧠 Core Features
 
@@ -169,26 +179,12 @@ Runs every 10 minutes:
 
 ## 🚀 Deployment
 
-### Vercel
+For complete deployment instructions, see **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
-1. Connect your GitHub repository to Vercel
-2. Set environment variables in Vercel dashboard
-3. Deploy — `vercel.json` configures build automatically
-
-### Self-Hosted
-
-```bash
-# Build for production
-pnpm run build
-
-# Set environment variables
-export DATABASE_URL="postgresql://..."
-export CLERK_SECRET_KEY="..."
-export ANTHROPIC_API_KEY="..."
-
-# Start server
-pnpm --filter @workspace/api-server run start
-```
+Quick options:
+- **Cloud (Recommended):** Vercel (frontend) + Railway (backend) + Supabase (database) — Free tier
+- **Single Server:** Docker Compose on a $5/month VPS
+- **Local Dev:** See [DEPLOYMENT.md](DEPLOYMENT.md) for setup
 
 ## 🧪 Development
 
@@ -237,7 +233,15 @@ Key endpoints:
 
 ## 📄 License
 
-MIT License — see [LICENSE](LICENSE) for details.
+AGPL v3 License — see [LICENSE](LICENSE) for details.
+
+**What this means:**
+- You can use, modify, and distribute this code
+- If you distribute modifications, you must open-source them
+- If you run this as a service, you must open-source your modifications
+- You cannot use this code in closed-source commercial products
+
+For commercial licensing options, contact: emmanuel@omnilearn.dpdns.org
 
 ## 🙏 Acknowledgments
 
