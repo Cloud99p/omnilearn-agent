@@ -8,8 +8,8 @@ WORKDIR /app
 # Copy everything at once
 COPY . .
 
-# Install dependencies
-RUN pnpm install
+# Install dependencies with build scripts allowed for esbuild and sharp
+RUN pnpm install --allow-build esbuild sharp @sentry-internal/node-cpu-profiler protobufjs @clerk/shared
 
 # Build if needed
 RUN cd artifacts/api-server && pnpm build || true
