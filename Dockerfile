@@ -8,7 +8,9 @@ WORKDIR /app
 # Copy everything at once
 COPY . .
 
-# Install dependencies (config in .npmrc)
+# Enable scripts via environment and install
+ENV PNPM_ENABLE_PRE_POST_SCRIPTS=true
+ENV PNPM_ONLY_BUILT_DEPENDENCIES="@clerk/shared,@sentry-internal/node-cpu-profiler,esbuild,protobufjs,sharp,@swc/core,msw,unrs-resolver"
 RUN pnpm install
 
 # Build if needed
