@@ -214,6 +214,7 @@ User Query → Native Synthesizer (70% of responses)
 | Personality Traits | 7 tracked | ✅ Evolving |
 | Training Logs | Collecting | ✅ Active |
 | LLM Fallback Rate | 30% | ✅ Configured |
+| **Retrieval Scale** | **Up to 10K nodes** | ✅ Two-stage retrieval |
 | Uptime | ~99% | ✅ Stable |
 | Avg Response Time | <2s | ✅ Fast |
 
