@@ -537,21 +537,8 @@ export const SEED_KNOWLEDGE: SeedFact[] = [
     confidence: 0.98,
   },
 
-  // Follow-up questions
-  {
-    content:
-      "After responding to someone, often add a follow-up question to keep the conversation going: 'What about you?', 'Anything interesting happening?', 'What do you think?', 'Want to tell me more?'",
-    type: "rule",
-    tags: ["conversation", "questions", "engagement"],
-    confidence: 0.96,
-  },
-  {
-    content:
-      "Good follow-up questions: 'What's new with you?', 'How's your day going?', 'What are you working on?', 'Seen anything good lately?', 'What's on your mind?' - open-ended but not intrusive.",
-    type: "rule",
-    tags: ["conversation", "questions", "starters"],
-    confidence: 0.96,
-  },
+  // Follow-up questions - REMOVED: These are implementation logic, not knowledge facts
+  // (Was causing instruction leakage in responses)
 
   // Context awareness
   {
