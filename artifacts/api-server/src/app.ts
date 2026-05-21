@@ -17,6 +17,7 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import { runOntologyReflection } from "./brain/ontology.js";
 import { initializeClusterManager } from "./network-hierarchy.js";
+import { DiscoveryServer } from "./lib/discovery-server.js";
 import {
   initSentry,
   sentryRequestHandler,
@@ -30,6 +31,34 @@ initSentry();
 initializeClusterManager().catch((err) =>
   logger.error(err, "Failed to initialize cluster manager"),
 );
+
+// Initialize WebSocket discovery server for real-time node communication
+const DISCOVERY_PORT = parseInt(process.env.DISCOVERY_PORT || "8765", 10);
+let discoveryServer: DiscoveryServer | null = null;
+
+try {
+  discoveryServer = new DiscoveryServer(DISCOVERY_PORT);
+  
+  // Handle node events
+  discoveryServer.on("node-hello", (nodeId, message) => {
+    logger.info({ nodeId, message }, "Node joined network");
+  });
+  
+  discoveryServer.on("heartbeat", (nodeId, message) => {
+    logger.debug({ nodeId, load: message.data?.load }, "Node heartbeat");
+  });
+  
+  discoveryServer.on("node-goodbye", (nodeId, message) => {
+    logger.info({ nodeId }, "Node left network");
+  });
+  
+  logger.info(
+    { port: DISCOVERY_PORT },
+    "WebSocket discovery server initialized",
+  );
+} catch (err) {
+  logger.error({ err }, "Failed to initialize discovery server");
+}
 
 const app: Express = express();
 
