@@ -255,7 +255,7 @@ AGPL v3 License — see [LICENSE](LICENSE) for details.
 - If you run this as a service, you must open-source your modifications
 - You cannot use this code in closed-source commercial products
 
-For commercial licensing options, contact: emmanuel@omnilearn.dpdns.org
+For commercial licensing options, contact: emmanuelhosea09@gmail.com
 
 ## 🙏 Acknowledgments
 
