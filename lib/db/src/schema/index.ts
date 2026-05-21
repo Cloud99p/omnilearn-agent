@@ -14,3 +14,5 @@ export * from "./hebbian-proposals";
 export * from "./ontology";
 export * from "./training-logs";
 export * from "./network-clusters";
+export * from "./knowledge-sync";
+export * from "./knowledge-proposals";
