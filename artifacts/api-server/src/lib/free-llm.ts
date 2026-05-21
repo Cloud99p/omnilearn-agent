@@ -130,13 +130,13 @@ Criteria:
 Return ONLY a number 1-10, no explanation.
 `;
 
-  const response = await openai.chat.completions.create({
+  const scoreResult = await openai.chat.completions.create({
     model: "auto",
     messages: [{ role: "user", content: prompt }],
     stream: false,
   });
 
-  const content = response.choices[0]?.message?.content || "5";
+  const content = scoreResult.choices[0]?.message?.content || "5";
   const score = parseInt(content.trim(), 10);
   return isNaN(score) ? 5 : Math.max(1, Math.min(10, score));
 }
