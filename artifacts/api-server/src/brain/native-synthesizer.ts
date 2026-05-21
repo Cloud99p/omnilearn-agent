@@ -2502,20 +2502,26 @@ function synthesizeFactsIntoProse(
   history?: Array<{ role: string; content: string }>,
 ): string {
   if (facts.length === 0) return "";
-  if (facts.length === 1) return facts[0];
+  if (facts.length === 1) {
+    // Strip citation markers and clean up single facts
+    return cleanFactForSpeech(facts[0]);
+  }
 
   // STRATEGY: Don't just concatenate — weave facts into coherent narrative
 
-  // Step 1: Identify the main topic (from first fact)
-  const firstFact = facts[0];
+  // Step 1: Clean all facts first (strip citations, headings, etc.)
+  const cleanedFacts = facts.map(f => cleanFactForSpeech(f));
+  
+  // Step 2: Identify the main topic (from first fact)
+  const firstFact = cleanedFacts[0];
   const mainTopic = extractMainTopic(firstFact);
 
-  // Step 2: Group facts by relevance to main topic
+  // Step 3: Group facts by relevance to main topic
   const primaryFacts = [firstFact];
   const supportingFacts: string[] = [];
 
-  for (let i = 1; i < facts.length; i++) {
-    const fact = facts[i];
+  for (let i = 1; i < cleanedFacts.length; i++) {
+    const fact = cleanedFacts[i];
     // If fact shares key terms with first fact, it's supporting
     if (sharesKeyTerms(firstFact, fact, 2)) {
       supportingFacts.push(fact);
@@ -2524,11 +2530,11 @@ function synthesizeFactsIntoProse(
     }
   }
 
-  // Step 3: Build flowing response with context awareness
+  // Step 4: Build flowing response with NATURAL conversational opening
   const paragraphs: string[] = [];
 
-  // Opening: State the main concept clearly, with conversational lead-in
-  const opening = craftOpening(mainTopic, primaryFacts[0], query, history);
+  // Opening: Make it conversational, not textbook
+  const opening = craftNaturalOpening(mainTopic, firstFact, query);
   if (opening) paragraphs.push(opening);
 
   // Middle: Weave supporting facts naturally
@@ -2611,6 +2617,79 @@ function sharesKeyTerms(
     if (shared >= minShared) return true;
   }
   return false;
+}
+
+// Strip citation markers, headings, and make facts speech-ready
+function cleanFactForSpeech(fact: string): string {
+  let cleaned = fact
+    // Remove citation markers [1], [2], etc.
+    .replace(/\[\d+\]/g, '')
+    // Remove "Comprehensive list of..." heading style
+    .replace(/^Comprehensive list of[^.]*\.?\s*/i, '')
+    // Remove "See the names..." meta references
+    .replace(/^See the names[^.]*\.?\s*/i, '')
+    // Clean up double spaces and awkward punctuation
+    .replace(/\s+/g, ' ')
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/\s*\.\s*/g, '. ')
+    .trim();
+  
+  // If it starts with ", " or similar, fix it
+  if (/^[,;.]/.test(cleaned)) {
+    cleaned = cleaned.substring(1).trim();
+  }
+  
+  // Capitalize first letter
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+  
+  return cleaned;
+}
+
+// Craft a natural, conversational opening (not textbook-style)
+function craftNaturalOpening(
+  topic: string,
+  fact: string,
+  query?: string,
+): string {
+  // Casual conversation starters based on topic type
+  const isPlace = /\b(nigeria|state|country|city|lagos|abuja|africa|ghana|kenya)\b/i.test(topic);
+  const isPerson = /\b(was|is|born|person|who)\b/i.test(query || '');
+  const isConcept = /\b(what|how|why|explain|define)\b/i.test(query || '');
+  
+  let opener = '';
+  
+  if (isPlace) {
+    const openers = [
+      `So, `, `Here's the thing: `, `Basically, `, ``,
+    ];
+    opener = openers[Math.floor(Math.random() * openers.length)];
+  } else if (isPerson) {
+    const openers = [
+      `Alright, `, `So basically, `, ``,
+    ];
+    opener = openers[Math.floor(Math.random() * openers.length)];
+  } else if (isConcept) {
+    const openers = [
+      `Sure! `, `So, `, `Basically, `, ``,
+    ];
+    opener = openers[Math.floor(Math.random() * openers.length)];
+  }
+  
+  // Use the fact as-is if it's already a good sentence
+  if (fact.length < 200 && fact.includes(' ')) {
+    return opener + fact.charAt(0).toLowerCase() + fact.slice(1);
+  }
+  
+  // For longer facts, extract first sentence
+  const sentences = fact.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  if (sentences.length > 0) {
+    const first = sentences[0].trim();
+    return opener + first.charAt(0).toLowerCase() + first.slice(1) + '.';
+  }
+  
+  return fact;
 }
 
 function craftOpening(
