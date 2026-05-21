@@ -10,7 +10,7 @@
  * - Training mode: Log both responses for analysis
  */
 
-import { createClient } from "openai";
+import OpenAI from "openai";
 
 const FREE_LLM_API_URL = process.env.FREELLM_API_URL || "http://localhost:3001/v1";
 const FREE_LLM_API_KEY = process.env.FREELLM_API_KEY;
@@ -38,7 +38,7 @@ export async function callFreeLLM(
     throw new Error("FREELLM_API_KEY not configured");
   }
 
-  const openai = new createClient({
+  const openai = new OpenAI({
     baseURL: FREE_LLM_API_URL,
     apiKey: FREE_LLM_API_KEY,
   });
@@ -54,18 +54,18 @@ export async function callFreeLLM(
     },
   ];
 
-  const response = await openai.chat.completions.create({
+  const apiResponse = await openai.chat.completions.create({
     model: "auto", // Let the router pick the best available model
     messages,
     stream: false,
   });
 
-  const content = response.choices[0]?.message?.content || "";
-  const routedVia = response.headers?.get("x-routed-via") || "unknown";
+  const content = apiResponse.choices[0]?.message?.content || "";
+  const routedVia = apiResponse.headers?.get("x-routed-via") || "unknown";
 
   return {
     response: content,
-    model: response.model,
+    model: apiResponse.model,
     routedVia,
   };
 }
@@ -110,7 +110,7 @@ export async function scoreResponse(
     return 5; // Default score if LLM unavailable
   }
 
-  const openai = new createClient({
+  const openai = new OpenAI({
     baseURL: FREE_LLM_API_URL,
     apiKey: FREE_LLM_API_KEY,
   });
