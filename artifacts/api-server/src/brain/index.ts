@@ -23,6 +23,7 @@ import {
 } from "./tfidf.js";
 import { extractFacts, detectQueryType, extractKeyTerms } from "./extractor.js";
 import { embedText, cosineSimilarity } from "./embeddings.js";
+import { broadcastKnowledgeToCluster } from "../lib/knowledge-sync.js";
 import {
   applyDeltas,
   computeTraitDeltaFromLearning,
@@ -323,8 +324,16 @@ async function insertNode(
       tfidfVector,
       embedding,
       clerkId: userIdentity ? clerkId : clerkId, // Identity facts MUST have clerkId
+      shareLevel: 'cluster', // Default: share with cluster (user can change later)
     })
     .returning();
+
+  // Broadcast to cluster if shareable
+  try {
+    await broadcastKnowledgeToCluster(node, node.clusterId || 'default-cluster', 'brain-instance-1');
+  } catch (err) {
+    logger.warn({ err, nodeId: node.id }, "Failed to broadcast knowledge to cluster");
+  }
 
   return node;
 }
