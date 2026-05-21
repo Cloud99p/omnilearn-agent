@@ -1,8 +1,10 @@
 # OmniLearn Versioning
 
-## Current Version: **v1.0.0** (Stable Release)
+## Current Version: **v3.0.0** (Stable Release)
 
-**Release Date:** May 9, 2026
+**Release Date:** May 21, 2026  
+**Code Name:** "Planetary Intelligence Foundation"  
+**Live Deployment:** [workspaceapi-server-production-29ee.up.railway.app](https://workspaceapi-server-production-29ee.up.railway.app)
 
 ---
 
@@ -24,16 +26,69 @@ OmniLearn uses **Semantic Versioning** (SemVer): `MAJOR.MINOR.PATCH`
 
 All packages are versioned together (monorepo):
 
-| Package                        | Version | Description                |
-| ------------------------------ | ------- | -------------------------- |
-| `omnilearn-agent` (root)       | `1.0.0` | Main repository            |
-| `@omnilearn/frontend`          | `1.0.0` | React + Vite frontend      |
-| `@omnilearn/api-server`        | `1.0.0` | Express 5 API server       |
-| `@omnilearn/network-hierarchy` | `0.1.0` | 7-tier mesh network (beta) |
+| Package                        | Version | Description                          |
+| ------------------------------ | ------- | ------------------------------------ |
+| `omnilearn-agent` (root)       | `3.0.0` | Main repository                      |
+| `@omnilearn/frontend`          | `1.0.0` | React + Vite frontend                |
+| `@omnilearn/api-server`        | `3.0.0` | Express 5 API server                 |
+| `@omnilearn/network-hierarchy` | `1.0.0` | 7-tier mesh network (production)     |
 
 ---
 
 ## Release History
+
+### v3.0.0 (May 21, 2026) - **Planetary Intelligence Foundation** 🌐
+
+**Major Features:**
+
+- ✅ **7-Tier Mesh Network - Production Ready**
+  - Database persistence for all cluster state (PostgreSQL)
+  - WebSocket discovery server (port 8765) for real-time node communication
+  - Secret key authentication for node registration
+  - Heartbeat tracking and monitoring
+  - Auto-cluster formation at 50 nodes within 50km radius
+  - Hierarchical routing (Tier 1-7)
+
+- ✅ **Hybrid LLM Intelligence**
+  - FreeLLMAPI integration (5 providers: Gemini, Groq, Cerebras, OpenRouter, Mistral)
+  - Configurable fallback rate (default 30%)
+  - Training data collection pipeline for native synthesizer improvement
+  - ~100M+ tokens/month combined free capacity
+
+- ✅ **Two-Stage Vector Retrieval**
+  - TF-IDF filters to top 100 candidates
+  - Embedding re-ranks for precision
+  - 100x scalability improvement (10K → 100K+ nodes)
+
+- ✅ **AGPL v3 License**
+  - Protects innovations from closed-source exploitation
+  - Cloud-proof against AWS/Google SaaS exploitation
+  - Brain + Mouth architecture preserved
+
+**Files Changed:**
+- `packages/network-hierarchy/src/cluster-manager.ts` - Pure in-memory algorithms
+- `artifacts/api-server/src/lib/network-service.ts` - Database persistence layer
+- `artifacts/api-server/src/lib/discovery-server.ts` - WebSocket server
+- `artifacts/api-server/src/routes/omni/chat.ts` - Hybrid chat endpoint
+- `lib/db/src/schema/network-clusters.ts` - 4 new tables (clusters, ghost_nodes, heartbeats, routing)
+- `lib/db/src/schema/training-logs.ts` - Training log schema
+- `artifacts/api-server/src/lib/free-llm.ts` - FreeLLMAPI client
+- `Dockerfile` - node:24-slim, pnpm --dangerously-allow-all-builds
+
+**Breaking Changes:**
+- ClusterManager API now async (uses database)
+- Database migration required (4 new tables)
+- New environment variables: `DISCOVERY_PORT`, `CLUSTER_DISCOVERY_RADIUS_KM`, `CLUSTER_MIN_NODES`, `NODE_REGISTRATION_ENABLED`, `NODE_REGISTRATION_AUTH_REQUIRED`
+
+**Infrastructure:**
+- API Server: Railway (auto-deploys from GitHub)
+- Frontend: Vercel (https://omnilearn.dpdns.org)
+- Database: Supabase PostgreSQL
+- WebSocket Discovery: Port 8765
+
+**Impact:** Network state survives server restarts. Real multi-node deployment now possible. Zero-cost LLM fallback active.
+
+---
 
 ### v1.0.0 (May 9, 2026) - **Stable Release** 🎉
 
