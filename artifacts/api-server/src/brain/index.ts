@@ -324,13 +324,15 @@ async function insertNode(
       tfidfVector,
       embedding,
       clerkId: userIdentity ? clerkId : clerkId, // Identity facts MUST have clerkId
-      shareLevel: 'cluster', // Default: share with cluster (user can change later)
+      shareLevel: 'cluster', // Default: share with cluster
+      sharedByUser: true, // User is teaching, so they're sharing
     })
     .returning();
 
-  // Broadcast to cluster if shareable
+  // Broadcast to cluster with proposal system (Phase 2 full implementation)
   try {
     await broadcastKnowledgeToCluster(node, node.clusterId || 'default-cluster', 'brain-instance-1');
+    logger.info({ nodeId: node.id, clusterId: node.clusterId }, "Knowledge broadcast with proposal created");
   } catch (err) {
     logger.warn({ err, nodeId: node.id }, "Failed to broadcast knowledge to cluster");
   }

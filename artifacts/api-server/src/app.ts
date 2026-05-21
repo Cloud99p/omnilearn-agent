@@ -10,6 +10,7 @@ import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import * as Sentry from "@sentry/node";
 import router from "./routes";
+import syncRouter from "./routes/sync/index.js";
 import { logger } from "./lib/logger";
 import {
   CLERK_PROXY_PATH,
@@ -121,6 +122,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(clerkMiddleware());
 
 app.use("/api", router);
+app.use("/api/sync", syncRouter);
 
 // Sentry error handler (must be last, after all routes)
 app.use(sentryErrorHandler());
