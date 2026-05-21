@@ -8,9 +8,8 @@ WORKDIR /app
 # Copy everything at once
 COPY . .
 
-# Enable scripts and install
-ENV PNPM_ENABLE_PRE_POST_SCRIPTS=true
-RUN pnpm install --force
+# Install dependencies (config in .npmrc)
+RUN pnpm install
 
 # Build if needed
 RUN cd artifacts/api-server && pnpm build || true
