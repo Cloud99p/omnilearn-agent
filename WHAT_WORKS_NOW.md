@@ -1,7 +1,28 @@
 # OmniLearn Agent — What Works NOW
 
 **Current Version:** 3.0.0 (Production Mesh Network + Hybrid Intelligence)  
-**Last Updated:** May 21, 2026
+**Last Updated:** May 21, 2026  
+**Live Deployment:** [workspaceapi-server-production-29ee.up.railway.app](https://workspaceapi-server-production-29ee.up.railway.app)
+
+---
+
+## 🚀 Deployment Status
+
+### **API Server** ✅ LIVE
+- **URL:** `https://workspaceapi-server-production-29ee.up.railway.app`
+- **Platform:** Railway (auto-deploys from GitHub main branch)
+- **Database:** Supabase PostgreSQL
+- **Health Check:** `/api/healthz` returns status + DB latency
+
+### **Frontend** ✅ LIVE
+- **URL:** `https://omnilearn.dpdns.org`
+- **Platform:** Vercel
+
+### **Mesh Network** ✅ READY
+- WebSocket discovery server on port 8765
+- Node registration endpoint active
+- Database persistence for clusters/nodes
+- Auto-cluster formation at 50 nodes in 50km radius
 
 ---
 
