@@ -8,8 +8,9 @@ WORKDIR /app
 # Copy everything at once
 COPY . .
 
-# Install dependencies (builds configured in pnpm-workspace.yaml)
-RUN pnpm install
+# Enable scripts and install
+ENV PNPM_ENABLE_PRE_POST_SCRIPTS=true
+RUN pnpm install --force
 
 # Build if needed
 RUN cd artifacts/api-server && pnpm build || true
