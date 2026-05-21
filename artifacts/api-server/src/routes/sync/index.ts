@@ -13,8 +13,8 @@ import {
   getPendingProposals,
   voteOnProposal,
   getProposalStats,
-} from "../lib/knowledge-sync.js";
-import { logger } from "../lib/logger.js";
+} from "../../lib/knowledge-sync.js";
+import { logger } from "../../lib/logger.js";
 
 const router = Router();
 
