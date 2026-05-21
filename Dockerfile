@@ -11,8 +11,8 @@ COPY . .
 # Install with all build scripts allowed (safe in isolated Docker build)
 RUN pnpm install --dangerously-allow-all-builds
 
-# Build if needed
-RUN cd artifacts/api-server && pnpm build || true
+# Build all workspace packages
+RUN pnpm -r build
 
 # Set working directory
 WORKDIR /app/artifacts/api-server
