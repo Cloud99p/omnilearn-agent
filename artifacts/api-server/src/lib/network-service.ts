@@ -6,7 +6,7 @@
 import { db } from "@workspace/db";
 import {
   networkClusters,
-  networkGhostNodes,
+  ghostNodes,
   networkHeartbeats,
   networkRoutingTables,
 } from "@workspace/db/schema";
@@ -34,7 +34,7 @@ export class NetworkService {
       });
 
       // Load nodes
-      const nodes = await db.select().from(networkGhostNodes);
+      const nodes = await db.select().from(ghostNodes);
       nodes.forEach((n) => {
         const ghostNode: GhostNode = {
           id: n.id,
@@ -73,7 +73,7 @@ export class NetworkService {
   ): Promise<{ success: boolean; nodeId?: string; error?: string }> {
     try {
       // Insert into database
-      await db.insert(networkGhostNodes).values({
+      await db.insert(ghostNodes).values({
         id: node.id,
         name: node.name,
         endpoint: node.endpoint,
@@ -155,14 +155,14 @@ export class NetworkService {
       const nodes = this.clusterManager.getAllNodes();
       for (const node of nodes) {
         await db
-          .update(networkGhostNodes)
+          .update(ghostNodes)
           .set({
             clusterId: node.clusterId || null,
             tier: node.tier,
             lastSeen: node.lastSeen,
             updatedAt: new Date(),
           })
-          .where(eq(networkGhostNodes.id, node.id));
+          .where(eq(ghostNodes.id, node.id));
       }
     } catch (err) {
       logger.error({ err }, "Failed to sync cluster state");
@@ -187,13 +187,13 @@ export class NetworkService {
 
       // Update node lastSeen
       await db
-        .update(networkGhostNodes)
+        .update(ghostNodes)
         .set({
           lastSeen: new Date(),
           status,
           load: load || null,
         })
-        .where(eq(networkGhostNodes.id, nodeId));
+        .where(eq(ghostNodes.id, nodeId));
     } catch (err) {
       logger.error({ err, nodeId }, "Failed to record heartbeat");
     }
