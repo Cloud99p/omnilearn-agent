@@ -14,7 +14,7 @@ import {
   serial,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { networkGhostNodes } from "./ghost-nodes.js";
+import { ghostNodes } from "./ghost-nodes.js";
 
 export const networkClusters = pgTable("network_clusters", {
   id: text("id").primaryKey(),
@@ -45,7 +45,7 @@ export const networkClustersRelations = relations(
       relationName: "clusterHierarchy",
     }),
     children: many(networkClusters, { relationName: "clusterHierarchy" }),
-    nodes: many(networkGhostNodes),
+    nodes: many(ghostNodes),
   }),
 );
 
