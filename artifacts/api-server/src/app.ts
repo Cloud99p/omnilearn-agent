@@ -19,6 +19,7 @@ import {
 import { runOntologyReflection } from "./brain/ontology.js";
 import { NetworkService } from "./lib/network-service.js";
 import { DiscoveryServer } from "./lib/discovery-server.js";
+import { setDiscoveryServer } from "./lib/knowledge-sync.js";
 import {
   initSentry,
   sentryRequestHandler,
@@ -40,6 +41,9 @@ let discoveryServer: DiscoveryServer | null = null;
 
 try {
   discoveryServer = new DiscoveryServer(DISCOVERY_PORT);
+  
+  // Initialize knowledge sync with discovery server
+  setDiscoveryServer(discoveryServer);
   
   // Handle node events
   discoveryServer.on("node-hello", (nodeId, message) => {

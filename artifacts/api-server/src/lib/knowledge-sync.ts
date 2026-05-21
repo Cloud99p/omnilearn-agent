@@ -15,8 +15,15 @@ import {
   networkGhostNodes,
 } from "@workspace/db/schema";
 import { eq, and, desc, sql, gt, lt } from "drizzle-orm";
-import { discoveryServer } from "./discovery-server.js";
+import type { DiscoveryServer } from "./discovery-server.js";
 import { logger } from "./logger.js";
+
+// Discovery server instance (set by app.ts on initialization)
+let discoveryServer: DiscoveryServer | null = null;
+
+export function setDiscoveryServer(server: DiscoveryServer): void {
+  discoveryServer = server;
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
