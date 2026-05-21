@@ -27,9 +27,9 @@ export const trainingLogs = pgTable("training_logs", {
   
   // Quality signals
   llmScore: real("llm_score"), // LLM self-score 1-10 if requested
-  timestamps: {
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
+  
+  // Timestamp (must be at top level, not nested)
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const insertTrainingLogSchema = createInsertSchema(trainingLogs).omit({
