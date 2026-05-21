@@ -140,7 +140,27 @@ export async function retrieveRelevantNodes(
     (n) => n.tfidfVector as Record<string, number>,
   );
 
-  // HYBRID RETRIEVAL: Combine semantic embeddings + TF-IDF
+  // SCALABLE HYBRID RETRIEVAL:
+  // Problem: Loading all embeddings + O(n) JS cosine similarity breaks at ~10K nodes
+  // Solution: Two-stage retrieval
+  //   Stage 1: TF-IDF filters to top 100 candidates (fast, scalable)
+  //   Stage 2: Embedding re-ranks top 100 (expensive, but only on small set)
+  
+  const TFIDF_CANDIDATE_COUNT = Math.min(100, filteredNodes.length);
+  
+  // Stage 1: TF-IDF pre-filtering (O(n) but lightweight)
+  const tfidfScored = filteredNodes
+    .map((node) => {
+      const nodeVec = node.tfidfVector as Record<string, number>;
+      const nodeTokens = node.tokens as string[];
+      const score = queryScore(queryTokens, nodeTokens, nodeVec, allVectors);
+      return { node, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, TFIDF_CANDIDATE_COUNT)
+    .map((r) => r.node);
+
+  // Stage 2: Embedding re-ranking on candidates only
   let queryEmbedding: number[] | null = null;
   try {
     queryEmbedding = await embedText(query);
@@ -148,20 +168,23 @@ export async function retrieveRelevantNodes(
     logger.warn({ err }, "Embedding generation failed, using TF-IDF only");
   }
 
-  // Score nodes using both methods
-  const scored: RetrievedNode[] = filteredNodes
+  const candidateVectors = tfidfScored.map(
+    (n) => n.tfidfVector as Record<string, number>,
+  );
+
+  const scored: RetrievedNode[] = tfidfScored
     .map((node) => {
-      // TF-IDF score
+      // TF-IDF score (already computed, but normalize to 0-1 range)
       const nodeVec = node.tfidfVector as Record<string, number>;
       const nodeTokens = node.tokens as string[];
       const tfidfScore = queryScore(
         queryTokens,
         nodeTokens,
         nodeVec,
-        allVectors,
+        candidateVectors,
       );
 
-      // Embedding score (if available)
+      // Embedding score (only on candidates)
       let embeddingScore = 0;
       if (
         queryEmbedding &&
