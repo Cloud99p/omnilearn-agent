@@ -12,3 +12,4 @@ export * from "./ghost-workers";
 export * from "./network";
 export * from "./hebbian-proposals";
 export * from "./ontology";
+export * from "./training-logs";

@@ -1,16 +1,22 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { conversations, messages } from "@workspace/db/schema";
+import { conversations, messages, trainingLogs } from "@workspace/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { processMessage, seedIfEmpty, trainOnText } from "../../brain/index.js";
+import { callFreeLLM, scoreResponse } from "../../lib/free-llm.js";
 
 const router = Router();
 
-// POST /api/omni/chat  — SSE streaming native intelligence chat
+// Configuration
+const USE_LLM_FALLBACK = process.env.USE_LLM_FALLBACK === "true" || false;
+const LLM_FALLBACK_RATE = parseFloat(process.env.LLM_FALLBACK_RATE || "0.3"); // 30% of requests
+
+// POST /api/omni/chat  — SSE streaming native intelligence chat with optional LLM fallback
 router.post("/chat", async (req, res) => {
-  const { content, conversationId } = req.body as {
+  const { content, conversationId, useLLM } = req.body as {
     content: string;
     conversationId?: number;
+    useLLM?: boolean;
   };
 
   if (!content?.trim()) {
@@ -52,7 +58,7 @@ router.post("/chat", async (req, res) => {
         .insert(conversations)
         .values({
           title,
-          mode: "native",
+          mode: "hybrid", // Changed from "native" to "hybrid"
         })
         .returning();
       convId = conv.id;
@@ -67,6 +73,7 @@ router.post("/chat", async (req, res) => {
     });
 
     const clerkId = null; // Future: extract from auth
+    const query = content.trim();
 
     // Activity callback — streams search/fetch events to the client in real time
     const onActivity = (event: {
@@ -84,16 +91,40 @@ router.post("/chat", async (req, res) => {
         sendEvent({ fetchDone: true, pageTitle: event.title });
     };
 
-    // Process through brain (now uses Claude with tool_use + web access)
-    const result = await processMessage(
-      content.trim(),
+    // Determine if we should use LLM fallback
+    const shouldUseLLM = useLLM || (USE_LLM_FALLBACK && Math.random() < LLM_FALLBACK_RATE);
+
+    // Process through brain (native synthesizer)
+    const nativeResult = await processMessage(
+      query,
       clerkId,
       history,
       onActivity,
     );
 
+    let finalResponse = nativeResult.text;
+    let llmResponse = null;
+
+    // Optional: Call FreeLLMAPI as fallback or teacher
+    if (shouldUseLLM) {
+      try {
+        const llmResult = await callFreeLLM(query, {
+          retrievedNodes: [], // Could pass retrieved nodes here
+          systemPrompt: `You are OmniLearn, an AI assistant. Answer conversationally, not like a textbook. Match the user's tone. If they're casual, be casual. If they're serious, be serious.`,
+        });
+        llmResponse = llmResult.response;
+        
+        // For hybrid mode, use LLM response; otherwise just log for training
+        finalResponse = llmResult.response;
+        sendEvent({ meta: { useLLM: true, model: llmResult.model, routedVia: llmResult.routedVia } });
+      } catch (err) {
+        req.log.warn({ err }, "FreeLLMAPI call failed, using native response");
+        // Fall back to native response
+      }
+    }
+
     // Stream the response token-by-token
-    const words = result.text.split(/(\s+)/);
+    const words = finalResponse.split(/(\s+)/);
     for (const word of words) {
       sendEvent({ content: word });
       const delay = word.match(/[.!?]$/)
@@ -109,13 +140,17 @@ router.post("/chat", async (req, res) => {
     // Send metadata event
     sendEvent({
       meta: {
-        nodesUsed: result.nodesUsed,
-        newNodesAdded: result.newNodesAdded,
+        nodesUsed: nativeResult.nodesUsed,
+        newNodesAdded: nativeResult.newNodesAdded,
         character: {
-          curiosity: result.character.curiosity,
-          confidence: result.character.confidence,
-          technical: result.character.technical,
+          curiosity: nativeResult.character.curiosity,
+          confidence: nativeResult.character.confidence,
+          technical: nativeResult.character.technical,
+          empathy: nativeResult.character.empathy || 50,
+          creativity: nativeResult.character.creativity || 50,
+          verbosity: nativeResult.character.verbosity || 50,
         },
+        useLLM: shouldUseLLM && llmResponse !== null,
       },
     });
 
@@ -123,12 +158,44 @@ router.post("/chat", async (req, res) => {
     await db.insert(messages).values({
       conversationId: convId,
       role: "assistant",
-      content: result.text,
+      content: finalResponse,
     });
 
-    trainOnText(result.text, "chat-response", clerkId).catch((err) => {
+    trainOnText(finalResponse, "chat-response", clerkId).catch((err) => {
       req.log.warn({ err }, "Failed to learn from chat response");
     });
+
+    // Log training data
+    try {
+      await db.insert(trainingLogs).values({
+        query,
+        retrievedNodes: nativeResult.nodes?.map((n) => ({
+          content: n.content,
+          similarity: n.similarity,
+        })) || [],
+        responseType: shouldUseLLM && llmResponse !== null ? "hybrid" : "native",
+        nativeResponse: nativeResult.text,
+        llmResponse,
+        finalResponse,
+        nodesUsed: nativeResult.nodesUsed,
+        avgSimilarity: nativeResult.nodes?.length > 0
+          ? nativeResult.nodes.reduce((sum, n) => sum + n.similarity, 0) / nativeResult.nodes.length
+          : null,
+        characterState: {
+          curiosity: nativeResult.character.curiosity,
+          confidence: nativeResult.character.confidence,
+          technical: nativeResult.character.technical,
+          empathy: nativeResult.character.empathy || 50,
+          creativity: nativeResult.character.creativity || 50,
+          verbosity: nativeResult.character.verbosity || 50,
+        },
+        conversationId: convId,
+        userReplied: false, // Will be updated when user replies
+        conversationTurns: 1,
+      });
+    } catch (err) {
+      req.log.warn({ err }, "Failed to log training data");
+    }
 
     sendEvent({ done: true, conversationId: convId });
   } catch (err) {
@@ -143,6 +210,56 @@ router.post("/chat", async (req, res) => {
     sendEvent({ error: "Internal brain error", done: true });
   } finally {
     res.end();
+  }
+});
+
+// GET /api/omni/chat/engagement/:conversationId — Update engagement tracking
+router.get("/engagement/:conversationId", async (req, res) => {
+  const { conversationId } = req.params as { conversationId: string };
+  const convId = parseInt(conversationId, 10);
+
+  try {
+    // Get last message
+    const lastMessage = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, convId))
+      .orderBy(desc(messages.createdAt))
+      .limit(1);
+
+    if (lastMessage.length === 0) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+
+    // Check if there's a follow-up query (user replied)
+    const userMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, convId))
+      .orderBy(desc(messages.createdAt));
+
+    const userReplied = userMessages.length > 1;
+    const followUpQuery = userReplied ? userMessages[1].content : null;
+    const conversationTurns = userMessages.length;
+
+    // Update training log
+    await db
+      .update(trainingLogs)
+      .set({
+        userReplied,
+        followUpQuery,
+        conversationTurns,
+      })
+      .where(eq(trainingLogs.conversationId, convId));
+
+    res.json({
+      userReplied,
+      followUpQuery,
+      conversationTurns,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to update engagement tracking");
+    res.status(500).json({ error: "Failed to update engagement" });
   }
 });
 
