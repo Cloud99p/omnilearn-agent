@@ -6,7 +6,7 @@
 /**
  * OmniLearn Agent
  * Copyright (c) 2026 Emmanuel Nenpan Hosea
- * Licensed under the MIT License
+ * Licensed under the AGPL v3 License
  */
 
 import { ClusterManager } from "@omnilearn/network-hierarchy";

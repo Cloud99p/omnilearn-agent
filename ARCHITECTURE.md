@@ -7,9 +7,9 @@
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    THE BRAIN (Yours)                    │
-│  - 7-tier mesh network infrastructure                   │
-│  - Knowledge graph with TF-IDF retrieval                │
-│  - Ontology self-reflection                             │
+│  - 7-tier mesh network infrastructure (in-memory)       │
+│  - Knowledge graph with TF-IDF + Embedding retrieval    │
+│  - Ontology self-reflection (10-min interval)           │
 │  - Hebbian learning with proof chains                   │
 │  - 7 evolving personality traits                        │
 │  - Mode detection (casual/factual/serious)              │
@@ -20,9 +20,10 @@
                           ↓
 ┌─────────────────────────────────────────────────────────┐
 │                    THE MOUTH (LLM)                      │
-│  - 5 free LLM providers via FreeLLMAPI                  │
+│  - FreeLLMAPI (5 providers: Gemini, Groq, Cerebras,     │
+│    OpenRouter, Mistral)                                 │
 │  - Natural language synthesis only                      │
-│  - 30% fallback rate (70% handled natively)             │
+│  - Configurable fallback rate (default: 30%)            │
 │  - Training data collected to improve native synthesis  │
 │  - Zero cost (100M+ tokens/month free capacity)         │
 └─────────────────────────────────────────────────────────┘
@@ -40,7 +41,7 @@
 
 OmniLearn uses a **7-tier self-organizing mesh network** that scales from a single agent to planetary intelligence.
 
-**Current State:** Single-agent deployment (Tier 1). Network infrastructure ready, waiting for scale.
+**Current State:** In-memory implementation with simulated transport. Real network transport (WebSocket/gRPC) planned for Q3 2026.
 
 ---
 
@@ -50,29 +51,35 @@ OmniLearn uses a **7-tier self-organizing mesh network** that scales from a sing
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **Single-Agent Knowledge Graph** | ✅ Production | 132+ nodes, TF-IDF retrieval |
-| **7 Personality Traits** | ✅ Production | Evolving based on interactions |
+| **Single-Agent Knowledge Graph** | ✅ Production | 132+ nodes, TF-IDF + Embedding retrieval |
+| **7 Personality Traits** | ✅ Production | curiosity, caution, confidence, verbosity, technical, empathy, creativity |
 | **Mode Detection** | ✅ Production | Casual/factual/serious/emotional |
 | **Content Moderation** | ✅ Production | Multi-layer safety |
-| **Hybrid LLM System** | ✅ Production | 70% native + 30% LLM fallback |
+| **Hybrid LLM System** | ✅ Production | FreeLLMAPI fallback (configurable rate) |
 | **Training Pipeline** | ✅ Production | Collecting data for analysis |
 | **Web Search** | ✅ Production | DuckDuckGo + URL fetching |
 | **User Auth** | ✅ Production | Clerk integration |
+| **Ontology Reflection** | ✅ Production | Runs every 10 min |
+| **Rate Limiting** | ✅ Production | express-rate-limit (100 req/15min) |
 
-### 🚧 Infrastructure Ready (Single-Agent Mode)
+### 📦 Infrastructure Ready (In-Memory Only)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **7-Tier Network Package** | ✅ Built | `@omnilearn/network-hierarchy` complete |
+| **7-Tier Network Package** | ✅ Coded | `@omnilearn/network-hierarchy` complete |
+| **ClusterManager** | ✅ Implemented | Haversine distance, cluster formation |
+| **DiscoveryService** | ✅ Implemented | In-memory broadcast (console.log) |
+| **RoutingManager** | ✅ Implemented | Simulated routing |
 | **Ghost Nodes** | ✅ Deployed | Infrastructure for multi-agent |
 | **Cluster Manager** | ✅ Ready | Auto-clustering at 50 nodes |
-| **Hierarchical Routing** | ✅ Coded | Waits for network scale |
+
+**⚠️ Important:** Network package uses in-memory state with `console.log` broadcast. No real network transport yet.
 
 ### ❌ Vision (Not Yet Deployed)
 
 | Component | Timeline | Notes |
 |-----------|----------|-------|
-| **Local Cluster (Tier 2)** | Q3 2026 | Requires 50 nodes in 50km |
+| **Local Cluster (Tier 2)** | Q3 2026 | Requires 50 nodes in 50km + real transport |
 | **Metro Network (Tier 3)** | Q4 2026 | Requires 5 clusters |
 | **Regional+ (Tier 4-7)** | 2027+ | Requires geographic scale |
 

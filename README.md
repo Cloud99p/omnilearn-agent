@@ -67,15 +67,18 @@ omnilearn-agent/
 
 ### Persistent Knowledge Graph
 
-- TF-IDF based semantic retrieval
+- **Hybrid retrieval:** TF-IDF (fast filtering) + Embeddings (semantic re-ranking)
+- **Embeddings:** @xenova/transformers with all-MiniLM-L6-v2 (384-dim, fast, no GPU)
+- **Two-stage retrieval:** Scales to 100K+ nodes (TF-IDF filters to top 100, then embedding re-ranks)
 - Hebbian learning with cryptographic proof chains
 - Ontology self-reflection (merge/split/demote proposals)
 
 ### Evolving Character
 
-- 7 personality traits that adapt over interactions
-- Curiosity, caution, confidence, verbosity, technical, empathy, creativity
-- Evolution log with historical snapshots
+- 7 evolving personality traits: **curiosity, caution, confidence, verbosity, technical, empathy, creativity**
+- Traits range 0-100 and evolve based on conversation patterns
+- Influences response tone, depth, and style
+- Survives across sessions (persistent character state)
 
 ### Distributed Neural Network
 
@@ -111,7 +114,11 @@ omnilearn-agent/
 | `CLERK_SECRET_KEY`           | ✅       | Clerk API secret key                   |
 | `CLERK_PUBLISHABLE_KEY`      | ✅       | Clerk publishable key                  |
 | `VITE_CLERK_PUBLISHABLE_KEY` | ✅       | Client-side Clerk key                  |
-| `ANTHROPIC_API_KEY`          | ✅       | Anthropic API key                      |
+| `ANTHROPIC_API_KEY`          | ✅       | Anthropic API key (primary LLM)        |
+| `USE_LLM_FALLBACK`           | ❌       | Enable hybrid mode (`true`/`false`)    |
+| `LLM_FALLBACK_RATE`          | ❌       | LLM fallback rate (default: `0.3`)     |
+| `FREELLM_API_URL`            | ❌       | FreeLLMAPI endpoint URL                |
+| `FREELLM_API_KEY`            | ❌       | FreeLLMAPI API key                     |
 | `GITHUB_TOKEN`               | ❌       | GitHub OAuth token (for repo features) |
 | `PORT`                       | ❌       | Server port (default: 3000)            |
 | `BASE_PATH`                  | ❌       | Base path for deployment (default: /)  |
@@ -211,11 +218,18 @@ API routes are documented in `lib/api-spec/openapi.yaml`.
 
 Key endpoints:
 
-- `POST /api/omni/chat` — SSE streaming chat
+- `POST /api/omni/chat` — SSE streaming chat (hybrid: native + LLM fallback)
 - `GET /api/omni/knowledge` — Browse knowledge nodes
 - `POST /api/omni/train` — Manual training
 - `GET /api/omni/character` — Character state
 - `POST /api/omni/benchmark` — Run intelligence benchmarks
+
+## 🛡️ Rate Limiting
+
+Rate limiting is enabled on all API endpoints using `express-rate-limit`:
+- Default: 100 requests per 15 minutes per IP
+- Configured in `artifacts/api-server/src/middlewares/rateLimit.ts`
+- Trust proxy disabled (works behind Railway/Vercel proxies)
 
 ## 🤝 Contributing
 

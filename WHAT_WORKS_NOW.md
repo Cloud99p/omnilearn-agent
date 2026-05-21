@@ -34,7 +34,7 @@ Omni: [Retrieves from knowledge graph, synthesizes natural response]
 ### 2. **7-Tier Personality System** (100% Complete)
 
 **What it does:**
-- 7 evolving personality traits: curiosity, confidence, technical depth, empathy, humor, formality, detail-orientation
+- 7 evolving personality traits: **curiosity, caution, confidence, verbosity, technical, empathy, creativity**
 - Traits range 0-100 and evolve based on conversation patterns
 - Influences response tone, depth, and style
 - Survives across sessions (persistent character state)
@@ -123,14 +123,14 @@ User debates aggressively → Confidence may increase or decrease based on resol
 ### 9. **Hybrid LLM Intelligence** (100% Complete) ✨ NEW
 
 **What it does:**
-- **70% native synthesis** - Your knowledge graph, ontology, and 7-tier reasoning (the BRAIN)
-- **30% LLM fallback** - Natural language synthesis from 5 free LLM providers (the MOUTH)
+- **Native synthesis** - Your knowledge graph, ontology, and reasoning (the BRAIN)
+- **LLM fallback** - Natural language synthesis from FreeLLMAPI (the MOUTH)
+- **Configurable fallback rate** - Default 30% of unknown queries use LLM
 - **Training data collection** - Logs all interactions to improve native synthesizer over time
-- **Zero cost** - Uses FreeLLMAPI with 100M+ tokens/month combined capacity
 
 **Live Status:** ✅ Deployed and actively learning
 
-**LLM Providers:**
+**LLM Providers (via FreeLLMAPI):**
 - Google Gemini (free tier)
 - Groq (free tier)
 - Cerebras (free tier)
@@ -139,11 +139,19 @@ User debates aggressively → Confidence may increase or decrease based on resol
 
 **How it works:**
 ```
-User Query → Native Synthesizer (70% of responses)
+User Query → Native Synthesizer
            ↓
-    Unknown/Complex → LLM Fallback (30% of responses)
+    Unknown/Complex → LLM Fallback (30% of requests)
            ↓
     Log interaction → Train native synthesizer → Improve over time
+```
+
+**Environment Variables:**
+```bash
+USE_LLM_FALLBACK=true        # Enable hybrid mode
+LLM_FALLBACK_RATE=0.3        # 30% fallback rate
+FREELLM_API_URL=http://localhost:3001/v1
+FREELLM_API_KEY=your-key-here
 ```
 
 **Key Principle:** OmniLearn innovations (knowledge graph, 7-tier architecture, ontology, Hebbian learning) stay as the **brain**. LLMs are just the **mouth** for natural language synthesis. We don't replace our architecture with LLM—we enhance it.
@@ -179,11 +187,10 @@ User Query → Native Synthesizer (70% of responses)
 
 ### Ontology Self-Reflection
 
-**Status:** 60% Complete  
-**What works:** Background process runs every 10 minutes  
-**What's broken:** Can crash if DB schema incomplete  
-**Current State:** Disabled in production until schema stabilized  
-**Timeline:** Re-enable by May 30, 2026
+**Status:** ✅ **Active in Production**  
+**What works:** Runs every 10 minutes, proposes edge type registrations, node merges/splits  
+**Current State:** Enabled with error handling (won't crash if DB schema incomplete)  
+**Location:** `artifacts/api-server/src/app.ts` → `scheduleOntologyReflection()`
 
 ---
 
@@ -191,15 +198,26 @@ User Query → Native Synthesizer (70% of responses)
 
 ### 7-Tier Mesh Network
 
-**Status:** 0% Deployed  
+**Status:** 📦 **Coded but In-Memory Only**  
 **What it is:** Planetary-scale distributed AI network with geographic clustering  
-**Current Reality:** Single-agent deployment only  
-**Timeline:** Phase 1 (local cluster) by Q3 2026
+**Current Reality:** Package exists with real algorithms, but no network transport yet  
+**Timeline:** Phase 1 (local cluster with real transport) by Q3 2026
+
+**What's implemented:**
+- ✅ `ClusterManager` - Cluster formation & fusion (Haversine distance)
+- ✅ `DiscoveryService` - Node discovery & heartbeats (in-memory broadcast)
+- ✅ `RoutingManager` - Hierarchical query routing (simulated responses)
+- ✅ 7-tier threshold logic (50 nodes → Local Cluster, etc.)
+
+**What's NOT implemented:**
+- ❌ Real network transport (WebSocket, gRPC, etc.)
+- ❌ Cross-node communication
+- ❌ Persistent cluster state
+- ❌ Production deployment
 
 **Why it's not shipped:**
-- Requires multiple geographic deployments
-- Needs node discovery protocol implementation
-- Self-healing routing not yet coded
+- Currently uses `console.log` for broadcast (simulated)
+- All state is in-memory (no persistence)
 - This is the **vision**, not the current product
 
 ---
@@ -213,8 +231,9 @@ User Query → Native Synthesizer (70% of responses)
 | Total Interactions | 216+ | ✅ Growing |
 | Personality Traits | 7 tracked | ✅ Evolving |
 | Training Logs | Collecting | ✅ Active |
-| LLM Fallback Rate | 30% | ✅ Configured |
-| **Retrieval Scale** | **Up to 10K nodes** | ✅ Two-stage retrieval |
+| LLM Fallback Rate | Configurable (default 30%) | ✅ Implemented |
+| **Retrieval Scale** | **Up to 100K nodes** | ✅ Two-stage retrieval |
+| Ontology Reflection | Every 10 min | ✅ Active |
 | Uptime | ~99% | ✅ Stable |
 | Avg Response Time | <2s | ✅ Fast |
 
