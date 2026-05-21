@@ -42,6 +42,10 @@ onlyBuiltDependencies:
   - esbuild
   - msw
   - unrs-resolver
+  - sharp
+  - '@sentry-internal/node-cpu-profiler'
+  - protobufjs
+  - '@clerk/shared'
 
 overrides:
   # Security fixes

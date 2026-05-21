@@ -8,10 +8,8 @@ WORKDIR /app
 # Copy everything at once
 COPY . .
 
-# Configure pnpm to allow builds, then install
-RUN pnpm config set allow-build "esbuild sharp @sentry-internal/node-cpu-profiler protobufjs @clerk/shared" && \
-    pnpm config set ignore-workspace-root-check true && \
-    pnpm install
+# Install dependencies (builds configured in pnpm-workspace.yaml)
+RUN pnpm install
 
 # Build if needed
 RUN cd artifacts/api-server && pnpm build || true
