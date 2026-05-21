@@ -463,6 +463,19 @@ pnpm add -D k6
 
 ---
 
+## 🎯 Roadmap to OmniLearn LLM (Long-Term Moat)
+
+| Phase | Timeline | Goal | Cost |
+|-------|----------|------|------|
+| **Now** | Month 0-3 | Hybrid system, collect training logs | $0 |
+| **Traction** | Month 4-6 | Add premium GPT-4 tier, 10K+ training examples | $500-2K/mo |
+| **Scale** | Month 7-12 | Fine-tune Llama 3.3 70B on YOUR data | $50K-150K one-time |
+| **Moat** | Year 2+ | Distill templates into 8B model, own hardware | $10K-30K |
+
+**Key Principle:** LLMs are the mouth. Your innovations (knowledge graph, 7-tier, ontology, Hebbian) are the brain. Never replace the brain with the mouth.
+
+---
+
 ## Version History
 
 | Version | Date     | Highlights                                    |
@@ -472,11 +485,13 @@ pnpm add -D k6
 | 0.3.0   | Q4 2026  | Edge functions, caching, multi-agent          |
 | 1.0.0   | Q1 2027  | Hebbian v2, ontology v2, memory consolidation |
 | 2.0.0   | Q2 2027  | Monetization, team features, analytics        |
+| **2.1.0** | **May 2026** | **Hybrid LLM system, AGPL v3 license, training pipeline** |
 
 ---
 
-**Last Updated:** May 7, 2026  
+**Last Updated:** May 21, 2026  
 **Owner:** Emmanuel (@Cloud99p)  
+**License:** AGPL v3  
 **Status:** Living Document (update quarterly)
 
 ---

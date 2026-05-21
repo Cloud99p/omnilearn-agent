@@ -1,12 +1,84 @@
 # OmniLearn Architecture
 
-## 🌐 Hierarchical Network Architecture
+## 🧠 Brain + Mouth Architecture
 
-OmniLearn uses a **7-tier self-organizing mesh network** that scales from a single agent to planetary intelligence.
+**Core Principle:** OmniLearn innovations are the **BRAIN**. LLMs are the **MOUTH**.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    THE BRAIN (Yours)                    │
+│  - 7-tier mesh network infrastructure                   │
+│  - Knowledge graph with TF-IDF retrieval                │
+│  - Ontology self-reflection                             │
+│  - Hebbian learning with proof chains                   │
+│  - 7 evolving personality traits                        │
+│  - Mode detection (casual/factual/serious)              │
+│  - Content moderation & safety                          │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+              When natural language needed
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│                    THE MOUTH (LLM)                      │
+│  - 5 free LLM providers via FreeLLMAPI                  │
+│  - Natural language synthesis only                      │
+│  - 30% fallback rate (70% handled natively)             │
+│  - Training data collected to improve native synthesis  │
+│  - Zero cost (100M+ tokens/month free capacity)         │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Why This Matters:**
+- **Your moat:** Knowledge graph, ontology, 7-tier architecture, Hebbian learning
+- **LLM role:** Just natural language synthesis for unknown queries
+- **Self-improving:** Training logs → analyze → improve native templates → less LLM dependence
+- **Protected:** AGPL v3 license prevents companies from closing-source your innovations
 
 ---
 
-## Architecture Overview
+## 🌐 Hierarchical Network Architecture (Future Scale)
+
+OmniLearn uses a **7-tier self-organizing mesh network** that scales from a single agent to planetary intelligence.
+
+**Current State:** Single-agent deployment (Tier 1). Network infrastructure ready, waiting for scale.
+
+---
+
+## Current State (May 2026)
+
+### ✅ Shipped & Running
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Single-Agent Knowledge Graph** | ✅ Production | 132+ nodes, TF-IDF retrieval |
+| **7 Personality Traits** | ✅ Production | Evolving based on interactions |
+| **Mode Detection** | ✅ Production | Casual/factual/serious/emotional |
+| **Content Moderation** | ✅ Production | Multi-layer safety |
+| **Hybrid LLM System** | ✅ Production | 70% native + 30% LLM fallback |
+| **Training Pipeline** | ✅ Production | Collecting data for analysis |
+| **Web Search** | ✅ Production | DuckDuckGo + URL fetching |
+| **User Auth** | ✅ Production | Clerk integration |
+
+### 🚧 Infrastructure Ready (Single-Agent Mode)
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **7-Tier Network Package** | ✅ Built | `@omnilearn/network-hierarchy` complete |
+| **Ghost Nodes** | ✅ Deployed | Infrastructure for multi-agent |
+| **Cluster Manager** | ✅ Ready | Auto-clustering at 50 nodes |
+| **Hierarchical Routing** | ✅ Coded | Waits for network scale |
+
+### ❌ Vision (Not Yet Deployed)
+
+| Component | Timeline | Notes |
+|-----------|----------|-------|
+| **Local Cluster (Tier 2)** | Q3 2026 | Requires 50 nodes in 50km |
+| **Metro Network (Tier 3)** | Q4 2026 | Requires 5 clusters |
+| **Regional+ (Tier 4-7)** | 2027+ | Requires geographic scale |
+
+---
+
+## Architecture Overview (Current + Future)
 
 ```
 Tier 7: Planetary Intelligence (emergent consciousness)

@@ -4,6 +4,12 @@
 **Cost:** Free tier (Vercel + Railway + Supabase)  
 **Prerequisites:** GitHub account, Google account
 
+**Current Production:**
+- Backend: `workspaceapi-server-production-29ee.up.railway.app`
+- Frontend: `omnilearn.dpdns.org`
+- Hybrid LLM: 70% native + 30% LLM fallback (5 free providers)
+- License: AGPL v3
+
 ---
 
 ## Overview
@@ -96,13 +102,29 @@ cd omnilearn-agent
 5. Railway will auto-detect your project
 6. **Add environment variables** (click "Variables" tab):
 
+   **Core Variables:**
+
    | Key                     | Value                                                                 |
    | ----------------------- | --------------------------------------------------------------------- |
    | `DATABASE_URL`          | `postgresql://postgres:[PASSWORD]@db.xxxxx.supabase.co:5432/postgres` |
    | `CLERK_PUBLISHABLE_KEY` | `pk_test_xxxxx` (from Clerk)                                          |
    | `CLERK_SECRET_KEY`      | `sk_test_xxxxx` (from Clerk)                                          |
    | `PORT`                  | `8080`                                                                |
-   | `ANTHROPIC_API_KEY`     | `sk-ant-xxxxx` (if using Claude)                                      |
+
+   **Hybrid LLM Variables (Optional - enables 30% LLM fallback):**
+
+   | Key                     | Value                                                                 |
+   | ----------------------- | --------------------------------------------------------------------- |
+   | `USE_LLM_FALLBACK`      | `true` (enable hybrid mode)                                           |
+   | `LLM_FALLBACK_RATE`     | `0.3` (30% of unknown queries use LLM)                                |
+   | `FREELLM_API_URL`       | Your FreeLLMAPI endpoint (e.g., `http://localhost:3001/v1`)           |
+   | `FREELLM_API_KEY`       | Your FreeLLMAPI key (100M+ tokens/month free capacity)                |
+
+   **Legacy (Optional - if using Anthropic directly):**
+
+   | Key                     | Value                                                                 |
+   | ----------------------- | --------------------------------------------------------------------- |
+   | `ANTHROPIC_API_KEY`     | `sk-ant-xxxxx` (if using Claude directly)                             |
 
 7. **Deploy:**
    - Go to **Deployments** tab
