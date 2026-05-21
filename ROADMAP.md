@@ -485,7 +485,7 @@ pnpm add -D k6
 | 0.3.0   | Q4 2026  | Edge functions, caching, multi-agent          |
 | 1.0.0   | Q1 2027  | Hebbian v2, ontology v2, memory consolidation |
 | 2.0.0   | Q2 2027  | Monetization, team features, analytics        |
-| **2.1.0** | **May 2026** | **Hybrid LLM system, AGPL v3 license, training pipeline** |
+| **3.0.0** | **May 2026** | **Hybrid LLM, 7-tier mesh network (production), AGPL v3, two-stage retrieval** |
 
 ---
 
