@@ -19,7 +19,6 @@
     "@octokit/rest": "^22.0.1",
     "@sentry/node": "^9.0.0",
     "@sentry/profiling-node": "^9.0.0",
-    "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "@omnilearn/network-hierarchy": "workspace:*",
     "@workspace/integrations-anthropic-ai": "workspace:*",
