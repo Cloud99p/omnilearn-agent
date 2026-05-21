@@ -6,7 +6,7 @@
 
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { ghostNodes, networkGhostNodes } from "@workspace/db/schema";
+import { ghostNodes } from "@workspace/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { getNetworkService, getAllClusters, getHierarchyStats } from "../../network-hierarchy.js";
 import type { GhostNode } from "@omnilearn/network-hierarchy";
