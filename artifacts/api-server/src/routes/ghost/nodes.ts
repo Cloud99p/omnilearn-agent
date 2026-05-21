@@ -16,7 +16,7 @@ const router = Router();
 // GET /api/ghost/status
 router.get("/status", async (req, res) => {
   try {
-    const nodes = await db.select().from(networkGhostNodes);
+    const nodes = await db.select().from(ghostNodes);
     const now = Date.now();
     const online = nodes.filter(
       (n) =>
