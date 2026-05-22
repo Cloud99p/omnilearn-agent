@@ -124,17 +124,18 @@ function buildContextualQuery(
   history?: Array<{ role: string; content: string }>,
 ): string {
   if (!history || history.length === 0) {
-    logger.debug({ query }, "[Phase2] No history, using raw query");
+    logger.warn({ query, historyLength: history?.length || 0 }, "[Phase2] No history, using raw query");
     return query;
   }
 
   // Get last 3 messages for context
   const contextMessages = history.slice(-3);
   
-  logger.debug({ 
+  logger.info({ 
     query, 
     historyLength: history.length,
-    contextMessages: contextMessages.length 
+    contextMessages: contextMessages.length,
+    messageRoles: contextMessages.map(m => m.role)
   }, "[Phase2] Building contextual query");
   
   // Extract context from assistant responses (they contain knowledge)
@@ -155,17 +156,26 @@ function buildContextualQuery(
   // ALWAYS add assistant context (contains the knowledge to expand on)
   if (assistantContext) {
     parts.push(assistantContext);
-    logger.debug({ assistantContext: assistantContext.slice(0, 100) }, "[Phase2] Added assistant context");
+    logger.info({ 
+      assistantContext: assistantContext.slice(0, 150),
+      assistantContextLength: assistantContext.length 
+    }, "[Phase2] Added assistant context");
   }
   
   // Add user context (follow-ups)
   if (userContext) {
     parts.push(userContext);
-    logger.debug({ userContext: userContext.slice(0, 100) }, "[Phase2] Added user context");
+    logger.info({ 
+      userContext: userContext.slice(0, 150),
+      userContextLength: userContext.length 
+    }, "[Phase2] Added user context");
   }
 
   const enrichedQuery = parts.join(' ');
-  logger.debug({ enrichedQuery: enrichedQuery.slice(0, 200) }, "[Phase2] Final enriched query");
+  logger.info({ 
+    enrichedQuery: enrichedQuery.slice(0, 300),
+    enrichedQueryLength: enrichedQuery.length 
+  }, "[Phase2] Final enriched query");
   
   return enrichedQuery;
 }
