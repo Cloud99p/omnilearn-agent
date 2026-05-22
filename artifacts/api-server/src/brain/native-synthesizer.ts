@@ -1276,8 +1276,7 @@ export async function synthesizeNative(
   // CRITICAL: If we have relevant knowledge nodes, ALWAYS use factual mode
   // This prevents "Explain more on this" from triggering casual follow-up responses
   // when we actually have knowledge to share
-  const MIN_SIMILARITY = 0.15;
-  const hasRelevantNodes = nodes && nodes.some(n => n.similarity >= MIN_SIMILARITY);
+  const hasRelevantNodes = nodes && nodes.some(n => n.similarity >= 0.15);
   
   if (hasRelevantNodes) {
     mode = "factual"; // Override to factual when we have knowledge
