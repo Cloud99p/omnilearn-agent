@@ -2330,13 +2330,21 @@ function synthesizeMainContent(
 
   // Take top nodes - use MORE for follow-ups to provide deeper explanation
   const maxNodes = isFollowUp ? 8 : 3; // Follow-ups get 8 nodes for depth, regular gets 3 for brevity
-  const seenContent = new Set<string>();
+  
+  // AGGRESSIVE DEDUPLICATION: Normalize and remove near-duplicates
+  const seenNormalized = new Set<string>();
   const uniqueNodes = filteredNodes
     .filter((node) => {
-      // Normalize content for comparison (lowercase, trim, remove extra whitespace)
-      const key = node.content.toLowerCase().trim().replace(/\s+/g, ' ');
-      if (seenContent.has(key)) return false;
-      seenContent.add(key);
+      // Normalize: lowercase, remove extra whitespace, remove punctuation
+      const normalized = node.content
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      // Check against seen (allow small variations)
+      if (seenNormalized.has(normalized)) return false;
+      seenNormalized.add(normalized);
       return true;
     })
     .slice(0, maxNodes); // More nodes for follow-ups = deeper explanation
@@ -2529,17 +2537,26 @@ function synthesizeWithExplanation(
   if (facts.length === 0) return "";
   if (facts.length === 1) return cleanFactForSpeech(facts[0]);
 
+  // DEDUPLICATE: Remove near-identical facts first
+  const seenNormalized = new Set<string>();
+  const uniqueFacts = facts.filter(fact => {
+    const normalized = fact.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+    if (seenNormalized.has(normalized)) return false;
+    seenNormalized.add(normalized);
+    return true;
+  });
+
   // STRUCTURE: Overview → Key Points → Examples/Details → Why It Matters
   const sections: string[] = [];
 
   // 1. OVERVIEW (skip for follow-ups)
-  if (!isFollowUp && facts.length > 0) {
-    const overview = facts[0];
+  if (!isFollowUp && uniqueFacts.length > 0) {
+    const overview = uniqueFacts[0];
     sections.push(cleanFactForSpeech(overview));
   }
 
-  // 2. KEY POINTS (the meat - use 2-4 facts)
-  const keyPoints = facts.slice(1, Math.min(5, facts.length));
+  // 2. KEY POINTS (the meat - use 2-4 UNIQUE facts)
+  const keyPoints = uniqueFacts.slice(1, Math.min(5, uniqueFacts.length));
   if (keyPoints.length > 0) {
     const pointsText = keyPoints
       .map((fact, i) => {
@@ -2560,8 +2577,8 @@ function synthesizeWithExplanation(
   }
 
   // 3. EXAMPLES / DEEPER DETAILS (for follow-ups, add more)
-  if (isFollowUp && facts.length > 3) {
-    const extraDetails = facts.slice(4, Math.min(8, facts.length));
+  if (isFollowUp && uniqueFacts.length > 3) {
+    const extraDetails = uniqueFacts.slice(4, Math.min(8, uniqueFacts.length));
     if (extraDetails.length > 0) {
       const detailsText = extraDetails
         .map((fact) => {
@@ -2574,7 +2591,7 @@ function synthesizeWithExplanation(
   }
 
   // 4. WHY IT MATTERS (add context/implications)
-  if (!isFollowUp && facts.length > 2) {
+  if (!isFollowUp && uniqueFacts.length > 2) {
     const implications = [
       "This matters because it affects how systems work.",
       "Understanding this helps you grasp the bigger picture.",
