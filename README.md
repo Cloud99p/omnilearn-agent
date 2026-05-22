@@ -259,9 +259,9 @@ For commercial licensing options, contact: emmanuelhosea09@gmail.com
 
 ## 🙏 Acknowledgments
 
-- Built with [Replit](https://replit.com) AI Integrations
-- Powered by [Anthropic Claude](https://anthropic.com)
 - UI components from [shadcn/ui](https://ui.shadcn.com)
 - ORM by [Drizzle](https://orm.drizzle.team)
+- Embeddings by [Xenova/all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2)
+- Hybrid LLM routing via [FreeLLM API](https://freellmapi.com)
 
 # Redeploy trigger

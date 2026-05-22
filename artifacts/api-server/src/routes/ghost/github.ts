@@ -53,7 +53,7 @@ npm start
 ### Option 3 — One-liner
 
 \`\`\`bash
-GHOST_NODE_SECRET=your-secret ANTHROPIC_API_KEY=your-key PORT=8080 node ghost-server.js
+GHOST_NODE_SECRET=your-secret FREELLM_API_KEY=your-key PORT=8080 node ghost-server.js
 \`\`\`
 
 ## Configuration
@@ -63,7 +63,7 @@ Copy \`.env.example\` to \`.env\` and fill in:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | \`GHOST_NODE_SECRET\` | Yes | Shared secret — must match what you enter in OmniLearn when registering this node |
-| \`ANTHROPIC_API_KEY\` | Yes | Your Anthropic API key for Claude access |
+| \`FREELLM_API_KEY\` | Yes | Your FreeLLM API key for LLM access (Groq, Gemini, Mistral, Cerebras) |
 | \`PORT\` | No | Port to listen on (default: 8080) |
 | \`GHOST_NODE_NAME\` | No | Human-readable name shown in OmniLearn dashboard |
 | \`GHOST_NODE_REGION\` | No | Region label (e.g. eu-west, us-east) |
@@ -112,20 +112,20 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 8080;
 const SECRET = process.env.GHOST_NODE_SECRET;
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const FREELLM_KEY = process.env.FREELLM_API_KEY;
 const NODE_NAME = process.env.GHOST_NODE_NAME || 'Ghost Node';
 const REGION = process.env.GHOST_NODE_REGION || 'unknown';
 
 if (!SECRET) { console.error('[ghost-node] ERROR: GHOST_NODE_SECRET is required'); process.exit(1); }
-if (!ANTHROPIC_KEY) { console.error('[ghost-node] ERROR: ANTHROPIC_API_KEY is required'); process.exit(1); }
+if (!FREELLM_KEY) { console.error('[ghost-node] ERROR: FREELLM_API_KEY is required'); process.exit(1); }
 
-let Anthropic;
-try { Anthropic = require('@anthropic-ai/sdk'); } catch {
+let FreeLLM;
+try { FreeLLM = require('freellm-sdk'); } catch {
   console.error('[ghost-node] ERROR: Run "npm install" first');
   process.exit(1);
 }
 
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY });
+const freellm = new FreeLLM({ apiKey: FREELLM_KEY });
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
