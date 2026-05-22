@@ -106,6 +106,20 @@ router.post("/chat", async (req, res) => {
     let llmResponse = null;
 
     // Optional: Call FreeLLMAPI as fallback or teacher
+    // CRITICAL: Skip LLM fallback if native retrieval found relevant nodes
+    // or if this is a contextual follow-up question (LLM won't have context)
+    const isFollowUp = history.length > 0 && 
+      (query.toLowerCase().includes("explain more") || 
+       query.toLowerCase().includes("tell me more") ||
+       query.toLowerCase().includes("what about") ||
+       query.toLowerCase().includes("how about"));
+    
+    const shouldUseLLM = useLLM || 
+      (USE_LLM_FALLBACK && 
+       Math.random() < LLM_FALLBACK_RATE && 
+       nativeResult.nodesUsed === 0 &&  // Skip if native found knowledge
+       !isFollowUp);  // Skip for contextual follow-ups
+    
     if (shouldUseLLM) {
       try {
         const llmResult = await callFreeLLM(query, {
