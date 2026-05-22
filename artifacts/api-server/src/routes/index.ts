@@ -19,7 +19,6 @@ import modesRouter from "./modes.js";
 import intelligenceRouter from "./intelligence.js";
 import complianceRouter from "./compliance.js";
 import configRouter from "./config.js";
-import benchmarkRouter from "./benchmark.js";
 import storageRouter from "./storage.js";
 import repositoriesRouter from "./repositories.js";
 import documentsRouter from "./documents.js";
@@ -56,7 +55,6 @@ router.use("/modes", defaultLimiter, modesRouter); // Operating modes
 router.use("/intelligence", defaultLimiter, intelligenceRouter); // Intelligence stats
 router.use("/compliance", defaultLimiter, complianceRouter); // Compliance rules
 router.use("/config", defaultLimiter, configRouter); // Configuration
-router.use("/benchmark", defaultLimiter, benchmarkRouter); // Benchmarks
 router.use("/storage", defaultLimiter, storageRouter); // Storage stats
 router.use("/repositories", defaultLimiter, repositoriesRouter); // Repositories
 router.use("/documents", defaultLimiter, documentsRouter); // Document ingestion

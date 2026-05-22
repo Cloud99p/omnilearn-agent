@@ -26,7 +26,6 @@ import {
   LogIn,
   User,
   Zap,
-  FlaskConical,
   TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,7 +55,6 @@ const GROUPS = [
     id: "advanced",
     label: "Advanced",
     items: [
-      { href: "/benchmark", label: "Benchmark", icon: FlaskConical },
       { href: "/ingestion", label: "Ingestion", icon: Database },
       { href: "/storage", label: "Storage", icon: HardDrive },
       { href: "/memory", label: "Memory", icon: Brain },
