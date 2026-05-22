@@ -58,6 +58,9 @@ export async function callFreeLLM(
     model: "auto", // Let the router pick the best available model
     messages,
     stream: false,
+    max_tokens: 1000, // Limit response length
+  }, {
+    timeout: 15000, // 15 second timeout
   });
 
   const content = apiResponse.choices[0]?.message?.content || "";

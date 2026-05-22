@@ -66,6 +66,9 @@ router.post("/chat", async (req, res) => {
   // FIX 3: Detect /hybrid command to force FreeLLM for comprehensive responses
   const isHybridCommand = content.startsWith('/hybrid ');
   const query = isHybridCommand ? content.slice('/hybrid '.length) : content;
+  
+  // Don't learn from commands themselves
+  const shouldSkipLearning = isHybridCommand || content.startsWith('/');
 
   // Set up SSE
   res.setHeader("Content-Type", "text/event-stream");
@@ -301,9 +304,12 @@ router.post("/chat", async (req, res) => {
       req.log.warn({ err }, "Failed to log chat pattern");
     }
 
-    trainOnText(finalResponse, "chat-response", clerkId).catch((err) => {
-      req.log.warn({ err }, "Failed to learn from chat response");
-    });
+    // Learn from chat response (skip commands and hybrid failures)
+    if (!shouldSkipLearning) {
+      trainOnText(finalResponse, "chat-response", clerkId).catch((err) => {
+        req.log.warn({ err }, "Failed to learn from chat response");
+      });
+    }
 
     // Log training data
     try {
