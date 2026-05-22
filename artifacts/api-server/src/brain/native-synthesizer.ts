@@ -1202,7 +1202,28 @@ export async function synthesizeNative(
   const turnNumber = history.length;
 
   // Determine conversation mode based on context
-  const mode = determineConversationMode(query, history, turnNumber);
+  let mode = determineConversationMode(query, history, turnNumber);
+  
+  // PHASE 2 FIX: FORCE factual mode when we have retrieved knowledge nodes
+  // This prevents "Explain more on this" from being treated as casual chat
+  // when we actually have relevant knowledge to share
+  if (nodes && nodes.length > 0) {
+    // Check if any node has meaningful similarity (not just random matches)
+    const hasRelevantNodes = nodes.some(n => n.similarity >= 0.15);
+    if (hasRelevantNodes) {
+      mode = "factual"; // Override casual mode when we have relevant knowledge
+      logger.info(
+        { 
+          nodesCount: nodes.length, 
+          topSimilarity: nodes[0]?.similarity,
+          originalMode: "casual",
+          overrideMode: "factual"
+        },
+        "[Phase2] Forced factual mode - relevant knowledge available"
+      );
+    }
+  }
+  
   CONVERSATION_STATE.mode = mode;
 
   // LOGGING: Track mode decision for continuous improvement
