@@ -11,6 +11,45 @@ const router = Router();
 const USE_LLM_FALLBACK = process.env.USE_LLM_FALLBACK === "true" || false;
 const LLM_FALLBACK_RATE = parseFloat(process.env.LLM_FALLBACK_RATE || "0.3"); // 30% of requests
 
+// TEACHER MODE: Extract facts from LLM responses
+function extractFactsFromLLMResponse(response: string, query: string): string[] {
+  // Split into sentences and filter for factual statements
+  const sentences = response
+    .split(/[.!?]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 20 && s.length < 300); // Reasonable sentence length
+  
+  // Filter out conversational fluff
+  const fluffPatterns = [
+    /^(Sure|Certainly|Of course|I'd be happy|Happy to help)/i,
+    /^(That's a great|This is an interesting)/i,
+    /^(In summary|To summarize|Basically|In conclusion)/i,
+    /^(Hope this helps|Let me know|Feel free)/i,
+    /^(As an AI|I am|I'm an)/i, // Skip AI self-references
+  ];
+  
+  const facts = sentences.filter(sentence => 
+    !fluffPatterns.some(p => p.test(sentence)) &&
+    !sentence.includes("I hope") &&
+    !sentence.includes("you might") &&
+    !sentence.includes("you can") // Skip advice, keep facts
+  );
+  
+  // Take top 3-5 facts (most relevant)
+  return facts.slice(0, 5);
+}
+
+async function storeExtractedFacts(facts: string[], clerkId: string): Promise<void> {
+  // Use existing trainOnText to store each fact
+  for (const fact of facts) {
+    try {
+      await trainOnText(fact, clerkId, "llm-teacher");
+    } catch (err) {
+      console.warn("Failed to store fact:", fact.slice(0, 100), err);
+    }
+  }
+}
+
 // POST /api/omni/chat  — SSE streaming native intelligence chat with optional LLM fallback
 router.post("/chat", async (req, res) => {
   const { content, conversationId, useLLM } = req.body as {
@@ -136,6 +175,26 @@ router.post("/chat", async (req, res) => {
         
         // For hybrid mode, use LLM response; otherwise just log for training
         finalResponse = llmResult.response;
+        
+        // TEACHER MODE: Extract knowledge from LLM response for future native use
+        // Only extract when native had no knowledge (true learning opportunity)
+        if (nativeResult.nodesUsed === 0 && !isFollowUp) {
+          // Extract facts from LLM response (simple sentence splitting for now)
+          const extractedFacts = extractFactsFromLLMResponse(llmResult.response, query);
+          if (extractedFacts.length > 0) {
+            // Store in knowledge graph asynchronously (don't block response)
+            storeExtractedFacts(extractedFacts, clerkId).catch(err => 
+              req.log.warn({ err }, "Failed to store extracted facts")
+            );
+            sendEvent({ 
+              learning: { 
+                extracted: extractedFacts.length,
+                message: `Learned ${extractedFacts.length} new facts for future!`
+              } 
+            });
+          }
+        }
+        
         sendEvent({ 
           meta: { 
             useLLM: true, 
