@@ -245,8 +245,8 @@ DATABASE_URL=postgresql://xxx
           <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
           <p className="text-sm text-muted-foreground">
             <strong className="text-foreground">No AI costs!</strong> OmniLearn
-            uses a local synthesizer. No API bills, no rate limits, no data sent
-            to OpenAI/Anthropic.
+            uses a local synthesizer with optional FreeLLM routing. No API bills,
+            no vendor lock-in, no data sent to external providers unless you enable it.
           </p>
         </div>
       </div>

@@ -120,13 +120,7 @@ cd omnilearn-agent
    | `FREELLM_API_URL`       | Your FreeLLMAPI endpoint (e.g., `http://localhost:3001/v1`)           |
    | `FREELLM_API_KEY`       | Your FreeLLMAPI key (100M+ tokens/month free capacity)                |
 
-   **Legacy (Optional - if using Anthropic directly):**
-
-   | Key                     | Value                                                                 |
-   | ----------------------- | --------------------------------------------------------------------- |
-   | `ANTHROPIC_API_KEY`     | `sk-ant-xxxxx` (if using Claude directly)                             |
-
-7. **Deploy:**
+   7. **Deploy:**
    - Go to **Deployments** tab
    - Click **Deploy**
    - Wait 3-5 minutes for build
@@ -232,7 +226,7 @@ curl https://YOUR-RAILWAY-URL.up.railway.app/api/healthz
 
 1. Go to `/chat`
 2. Type a message
-3. You should get a response from Claude
+3. You should get a response from Omni
 
 ### Check Logs (if something breaks)
 
@@ -376,7 +370,7 @@ Railway and Vercel will auto-deploy on push.
 | Railway   | Starter       | $5 credit (then pay-as-you-go) |
 | Supabase  | Free          | Free (500MB DB, 50K MAU)       |
 | Clerk     | Free          | Free (10K MAU)                 |
-| Anthropic | Pay-as-you-go | ~$0.01-0.10 per conversation   |
+| FreeLLM   | Free tier     | 100M+ tokens/month free        |
 
 **Total:** ~$0-5/month for personal use
 
