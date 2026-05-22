@@ -567,7 +567,7 @@ export async function processMessage(
 
   const retrieved = await retrieveRelevantNodes(searchQuery, clerkId, 6, history);
 
-  // PHASE 2: Build enriched query for synthesizer (so it understands context)
+  // PHASE 2: Build enriched query for retrieval (NOT for synthesis)
   const enrichedQuery = buildContextualQuery(userMessage, history);
 
   // 3. Determine if this is primarily a "teach me" statement vs a question
@@ -583,10 +583,11 @@ export async function processMessage(
       keyTerms[0] ?? extractKeyTerms(userMessage)[0] ?? "this topic";
     text = synthesizeLearningAck(newNodesAdded, mainTopic, character);
   } else {
-    // PHASE 2: Use enriched query for synthesis (so it understands "this" refers to knowledge graph)
+    // PHASE 2: Use ORIGINAL query for synthesis (enriched query confused the synthesizer)
+    // The retrieved nodes already have the context - synthesizer just needs to use them
     // Use native synthesis — no external LLM, learns from knowledge graph
     const result = await synthesizeNative({
-      query: enrichedQuery, // Use enriched query, not raw userMessage
+      query: userMessage, // Use original query, not enriched
       queryType,
       nodes: retrieved,
       character,
