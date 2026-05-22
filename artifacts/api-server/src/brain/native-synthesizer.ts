@@ -2273,6 +2273,9 @@ function synthesizeMainContent(
 ): string {
   if (nodes.length === 0) return "";
 
+  // DETECT FOLLOW-UP: Check if user wants DEEPER explanation
+  const isFollowUp = /\b(explain more|tell me more|go deeper|elaborate|expand on|more detail|more about this|what about|how about)\b/i.test(query);
+  
   // CONTEXT AWARENESS: Extract context for filtering
   const context = extractContext(query, history);
 
@@ -2325,7 +2328,8 @@ function synthesizeMainContent(
     return true;
   });
 
-  // Take top 3 UNIQUE nodes (no duplicates, limit to avoid fragmentation)
+  // Take top nodes - use MORE for follow-ups to provide deeper explanation
+  const maxNodes = isFollowUp ? 8 : 3; // Follow-ups get 8 nodes for depth, regular gets 3 for brevity
   const seenContent = new Set<string>();
   const uniqueNodes = filteredNodes
     .filter((node) => {
@@ -2335,7 +2339,7 @@ function synthesizeMainContent(
       seenContent.add(key);
       return true;
     })
-    .slice(0, 3); // Limit to 3 nodes to prevent fragmented responses
+    .slice(0, maxNodes); // More nodes for follow-ups = deeper explanation
 
   const topNodes = uniqueNodes;
 
@@ -2433,11 +2437,24 @@ function synthesizeMainContent(
   if (filteredContents.length === 0) return "";
   if (filteredContents.length === 1) return filteredContents[0];
 
+  // FOLLOW-UP: Add deeper explanation intro
+  let followUpIntro = "";
+  if (isFollowUp) {
+    const intros = [
+      "Here's more detail: ",
+      "Going deeper: ",
+      "To expand on this: ",
+      "More specifically: ",
+      "", // Sometimes no intro is better
+    ];
+    followUpIntro = intros[Math.floor(Math.random() * intros.length)];
+  }
+
   // SYNTHESIZE: Combine multiple facts into coherent response
   // Group related facts and build flowing paragraphs
   const synthesized = synthesizeFactsIntoProse(filteredContents, query, history);
 
-  return synthesized;
+  return followUpIntro + synthesized;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -2454,6 +2471,9 @@ function synthesizeFactsIntoProse(
     // Strip citation markers and clean up single facts
     return cleanFactForSpeech(facts[0]);
   }
+
+  // DETECT FOLLOW-UP: For follow-ups, skip overview and go straight to details
+  const isFollowUp = query && /\b(explain more|tell me more|go deeper|elaborate|expand on|more detail|more about this)\b/i.test(query);
 
   // STRATEGY: Don't just concatenate — weave facts into coherent narrative
 
@@ -2478,16 +2498,19 @@ function synthesizeFactsIntoProse(
     }
   }
 
-  // Step 4: Build flowing response with NATURAL conversational opening
+  // Step 4: Build flowing response
   const paragraphs: string[] = [];
 
-  // Opening: Make it conversational, not textbook
-  const opening = craftNaturalOpening(mainTopic, firstFact, query);
-  if (opening) paragraphs.push(opening);
+  // FOLLOW-UP: Skip overview, go straight to details
+  if (!isFollowUp) {
+    // Opening: Make it conversational, not textbook
+    const opening = craftNaturalOpening(mainTopic, firstFact, query);
+    if (opening) paragraphs.push(opening);
+  }
 
-  // Middle: Weave supporting facts naturally
+  // Middle: Weave supporting facts naturally (use ALL for follow-ups)
   if (supportingFacts.length > 0) {
-    const middle = weaveSupportingFacts(supportingFacts);
+    const middle = weaveSupportingFacts(supportingFacts, isFollowUp);
     if (middle) paragraphs.push(middle);
   }
 
@@ -2699,12 +2722,19 @@ function craftOpening(
   return fact;
 }
 
-function weaveSupportingFacts(facts: string[]): string {
+function weaveSupportingFacts(facts: string[], isFollowUp?: boolean): string {
   if (facts.length === 0) return "";
   if (facts.length === 1) return facts[0];
 
-  // Use connectors to weave facts together
-  const connectors = [
+  // Use DIFFERENT connectors for follow-ups (more detailed, less repetitive)
+  const connectors = isFollowUp ? [
+    " More specifically, ",
+    " In detail: ",
+    " To elaborate: ",
+    " This includes: ",
+    " Breaking it down: ",
+    " On a technical level: ",
+  ] : [
     " Additionally, ",
     " This means that ",
     " In practice, ",
@@ -2713,8 +2743,10 @@ function weaveSupportingFacts(facts: string[]): string {
     " This includes ",
   ];
 
+  // For follow-ups, include MORE facts (up to 6 instead of 4)
+  const maxFacts = isFollowUp ? 6 : 4;
   let woven = facts[0];
-  for (let i = 1; i < Math.min(facts.length, 4); i++) {
+  for (let i = 1; i < Math.min(facts.length, maxFacts); i++) {
     const connector = connectors[(i - 1) % connectors.length];
     woven +=
       connector + facts[i].toLowerCase().replace(/^./, (c) => c.toUpperCase());
