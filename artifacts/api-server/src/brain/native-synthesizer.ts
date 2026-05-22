@@ -2498,7 +2498,7 @@ function synthesizeFactsIntoProse(
     }
   }
 
-  // Step 4: Build flowing response
+  // Step 4: Build flowing response with SMARTER synthesis
   const paragraphs: string[] = [];
 
   // FOLLOW-UP: Skip overview, go straight to details
@@ -2508,24 +2508,82 @@ function synthesizeFactsIntoProse(
     if (opening) paragraphs.push(opening);
   }
 
-  // Middle: Weave supporting facts naturally (use ALL for follow-ups)
-  if (supportingFacts.length > 0) {
-    const middle = weaveSupportingFacts(supportingFacts, isFollowUp);
-    if (middle) paragraphs.push(middle);
-  }
-
-  // Additional primary facts as separate points
-  for (let i = 1; i < primaryFacts.length && i < 3; i++) {
-    const connected = findConnectedFacts(primaryFacts[i], supportingFacts);
-    if (connected.length > 0) {
-      const combined = combineRelatedFacts(primaryFacts[i], connected);
-      if (combined) paragraphs.push(combined);
-    } else {
-      paragraphs.push(primaryFacts[i]);
-    }
+  // SMART SYNTHESIS: Don't just concatenate - actually explain
+  const smartSynthesis = synthesizeWithExplanation(cleanedFacts, query, isFollowUp);
+  if (smartSynthesis) {
+    paragraphs.push(smartSynthesis);
   }
 
   return paragraphs.join("\n\n");
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// SMART SYNTHESIS: Actually explain concepts, not just concatenate facts
+// ──────────────────────────────────────────────────────────────────────────────
+
+function synthesizeWithExplanation(
+  facts: string[],
+  query?: string,
+  isFollowUp?: boolean,
+): string {
+  if (facts.length === 0) return "";
+  if (facts.length === 1) return cleanFactForSpeech(facts[0]);
+
+  // STRUCTURE: Overview → Key Points → Examples/Details → Why It Matters
+  const sections: string[] = [];
+
+  // 1. OVERVIEW (skip for follow-ups)
+  if (!isFollowUp && facts.length > 0) {
+    const overview = facts[0];
+    sections.push(cleanFactForSpeech(overview));
+  }
+
+  // 2. KEY POINTS (the meat - use 2-4 facts)
+  const keyPoints = facts.slice(1, Math.min(5, facts.length));
+  if (keyPoints.length > 0) {
+    const pointsText = keyPoints
+      .map((fact, i) => {
+        const cleaned = cleanFactForSpeech(fact);
+        // Add explanatory connectors
+        const connectors = [
+          "Here's the key thing: ",
+          "What's important: ",
+          "The main point: ",
+          "Key detail: ",
+          "",
+        ];
+        const connector = connectors[i % connectors.length];
+        return connector + cleaned;
+      })
+      .join(" ");
+    sections.push(pointsText);
+  }
+
+  // 3. EXAMPLES / DEEPER DETAILS (for follow-ups, add more)
+  if (isFollowUp && facts.length > 3) {
+    const extraDetails = facts.slice(4, Math.min(8, facts.length));
+    if (extraDetails.length > 0) {
+      const detailsText = extraDetails
+        .map((fact) => {
+          const cleaned = cleanFactForSpeech(fact);
+          return `More specifically: ${cleaned}`;
+        })
+        .join(" ");
+      sections.push(detailsText);
+    }
+  }
+
+  // 4. WHY IT MATTERS (add context/implications)
+  if (!isFollowUp && facts.length > 2) {
+    const implications = [
+      "This matters because it affects how systems work.",
+      "Understanding this helps you grasp the bigger picture.",
+      "This is fundamental to how the technology works.",
+    ];
+    sections.push(implications[Math.floor(Math.random() * implications.length)]);
+  }
+
+  return sections.join("\n\n");
 }
 
 function extractMainTopic(fact: string): string {
