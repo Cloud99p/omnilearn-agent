@@ -115,12 +115,58 @@ async function getAllNodes(clerkId: string | null): Promise<KnowledgeNode[]> {
   return db.select().from(knowledgeNodes);
 }
 
+/**
+ * PHASE 2: Build contextual query from conversation history
+ * Combines current query with relevant context for better retrieval
+ */
+function buildContextualQuery(
+  query: string,
+  history?: Array<{ role: string; content: string }>,
+): string {
+  if (!history || history.length === 0) return query;
+
+  // Get last 3 messages for context
+  const contextMessages = history.slice(-3);
+  
+  // Extract context from assistant responses (they contain knowledge)
+  const assistantContext = contextMessages
+    .filter(m => m.role === 'assistant')
+    .map(m => m.content)
+    .join(' ');
+
+  // Extract user follow-ups
+  const userContext = contextMessages
+    .filter(m => m.role === 'user')
+    .map(m => m.content)
+    .join(' ');
+
+  // Build enriched query
+  const parts = [query];
+  
+  // Add assistant context if it's relevant (short responses likely context)
+  if (assistantContext && assistantContext.length < 500) {
+    parts.push(assistantContext);
+  }
+  
+  // Add user context (follow-ups)
+  if (userContext) {
+    parts.push(userContext);
+  }
+
+  return parts.join(' ');
+}
+
 export async function retrieveRelevantNodes(
   query: string,
   clerkId: string | null,
   topK = 6,
+  history?: Array<{ role: string; content: string }>,
 ): Promise<RetrievedNode[]> {
-  const queryTokens = tokenize(query);
+  // PHASE 2: Context-Aware Retrieval
+  // Build enriched query from conversation context
+  const enrichedQuery = buildContextualQuery(query, history);
+  
+  const queryTokens = tokenize(enrichedQuery);
   if (queryTokens.length === 0) return [];
 
   const allNodes = await getAllNodes(clerkId);
@@ -162,9 +208,10 @@ export async function retrieveRelevantNodes(
     .map((r) => r.node);
 
   // Stage 2: Embedding re-ranking on candidates only
+  // PHASE 2: Use enriched query (with context) for embeddings
   let queryEmbedding: number[] | null = null;
   try {
-    queryEmbedding = await embedText(query);
+    queryEmbedding = await embedText(enrichedQuery);
   } catch (err) {
     logger.warn({ err }, "Embedding generation failed, using TF-IDF only");
   }
@@ -196,10 +243,10 @@ export async function retrieveRelevantNodes(
         embeddingScore = cosineSimilarity(queryEmbedding, node.embedding);
       }
 
-      // Hybrid score: 70% embeddings + 30% TF-IDF (when embeddings available)
+      // PHASE 2: Context-Aware Retrieval - 80% embeddings, 20% TF-IDF
       const similarity =
         queryEmbedding && embeddingScore > 0
-          ? 0.7 * embeddingScore + 0.3 * tfidfScore
+          ? 0.8 * embeddingScore + 0.2 * tfidfScore
           : tfidfScore;
 
       return { ...node, similarity };
@@ -489,11 +536,12 @@ export async function processMessage(
   }
 
   // 2. Retrieve relevant knowledge for the query
+  // PHASE 2: Pass history for context-aware retrieval
   const queryType = detectQueryType(userMessage);
   const keyTerms = extractKeyTerms(userMessage);
   const searchQuery = [userMessage, ...keyTerms].join(" ");
 
-  const retrieved = await retrieveRelevantNodes(searchQuery, clerkId, 6);
+  const retrieved = await retrieveRelevantNodes(searchQuery, clerkId, 6, history);
 
   // 3. Determine if this is primarily a "teach me" statement vs a question
   // Always show learning confirmation when new nodes are added
