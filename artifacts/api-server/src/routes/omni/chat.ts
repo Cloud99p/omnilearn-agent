@@ -91,9 +91,6 @@ router.post("/chat", async (req, res) => {
         sendEvent({ fetchDone: true, pageTitle: event.title });
     };
 
-    // Determine if we should use LLM fallback
-    const shouldUseLLM = useLLM || (USE_LLM_FALLBACK && Math.random() < LLM_FALLBACK_RATE);
-
     // Process through brain (native synthesizer)
     const nativeResult = await processMessage(
       query,
