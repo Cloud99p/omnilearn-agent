@@ -24,6 +24,10 @@ router.post("/chat", async (req, res) => {
     return;
   }
 
+  // FIX 3: Detect /hybrid command to force FreeLLM for comprehensive responses
+  const isHybridCommand = content.startsWith('/hybrid ');
+  const query = isHybridCommand ? content.slice('/hybrid '.length) : content;
+
   // Set up SSE
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -111,7 +115,7 @@ router.post("/chat", async (req, res) => {
        query.toLowerCase().includes("what about") ||
        query.toLowerCase().includes("how about"));
     
-    const shouldUseLLM = useLLM || 
+    const shouldUseLLM = useLLM || isHybridCommand || // Force LLM for /hybrid command
       (USE_LLM_FALLBACK && 
        Math.random() < LLM_FALLBACK_RATE && 
        nativeResult.nodesUsed === 0 &&  // Skip if native found knowledge
@@ -119,15 +123,27 @@ router.post("/chat", async (req, res) => {
     
     if (shouldUseLLM) {
       try {
+        // FIX 1: Pass retrieved nodes to FreeLLM as context for better responses
+        const contextFromNodes = nativeResult.nodesUsed > 0
+          ? `\n\nRelevant knowledge from your graph:\n${nodes.map((n, i) => `${i + 1}. ${n.content.slice(0, 200)}`).join('\n')}`
+          : '';
+        
         const llmResult = await callFreeLLM(query, {
-          retrievedNodes: [], // Could pass retrieved nodes here
-          systemPrompt: `You are OmniLearn, an AI assistant. Answer conversationally, not like a textbook. Match the user's tone. If they're casual, be casual. If they're serious, be serious.`,
+          retrievedNodes: nodes, // Pass nodes for context
+          systemPrompt: `You are OmniLearn, an AI assistant. Answer conversationally, not like a textbook. Match the user's tone. If they're casual, be casual. If they're serious, be serious.${contextFromNodes}`,
         });
         llmResponse = llmResult.response;
         
         // For hybrid mode, use LLM response; otherwise just log for training
         finalResponse = llmResult.response;
-        sendEvent({ meta: { useLLM: true, model: llmResult.model, routedVia: llmResult.routedVia } });
+        sendEvent({ 
+          meta: { 
+            useLLM: true, 
+            model: llmResult.model, 
+            routedVia: llmResult.routedVia,
+            hybridMode: isHybridCommand // Indicate /hybrid command was used
+          } 
+        });
       } catch (err) {
         req.log.warn({ err }, "FreeLLMAPI call failed, using native response");
         // Fall back to native response
