@@ -114,7 +114,7 @@ omnilearn-agent/
 | `CLERK_SECRET_KEY`           | ✅       | Clerk API secret key                   |
 | `CLERK_PUBLISHABLE_KEY`      | ✅       | Clerk publishable key                  |
 | `VITE_CLERK_PUBLISHABLE_KEY` | ✅       | Client-side Clerk key                  |
-| `ANTHROPIC_API_KEY`          | ✅       | Anthropic API key (primary LLM)        |
+| `FREELLM_API_KEY`            | ✅       | FreeLLM unified API key (Groq, Gemini, Mistral, Cerebras) |
 | `USE_LLM_FALLBACK`           | ❌       | Enable hybrid mode (`true`/`false`)    |
 | `LLM_FALLBACK_RATE`          | ❌       | LLM fallback rate (default: `0.3`)     |
 | `FREELLM_API_URL`            | ❌       | FreeLLMAPI endpoint URL                |
@@ -152,7 +152,7 @@ pnpm --filter @workspace/omnilearn run dev
 1. **User Input** → Extract facts via `extractor.ts`
 2. **Semantic Search** → TF-IDF retrieval from `knowledge_nodes`
 3. **Web Lookup** → Optional real-time search via `web-tools.ts`
-4. **Response Synthesis** → Claude with tool use via `synthesizer.ts`
+4. **Response Synthesis** → Native synthesizer + optional FreeLLM fallback
 5. **Learning** → Insert new nodes, propose Hebbian edges
 6. **Character Update** → Evolve personality traits
 
