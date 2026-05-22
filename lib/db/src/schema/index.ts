@@ -16,3 +16,4 @@ export * from "./training-logs";
 export * from "./network-clusters";
 export * from "./knowledge-sync";
 export * from "./knowledge-proposals";
+export * from "./chat-patterns";

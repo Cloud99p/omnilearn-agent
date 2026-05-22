@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { conversations, messages, trainingLogs } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { conversations, messages, trainingLogs, chatPatterns } from "@workspace/db/schema";
+import { eq, desc, sql } from "drizzle-orm";
 import { processMessage, seedIfEmpty, trainOnText } from "../../brain/index.js";
 import { callFreeLLM, scoreResponse } from "../../lib/free-llm.js";
 
@@ -161,6 +161,60 @@ router.post("/chat", async (req, res) => {
       content: finalResponse,
     });
 
+    // Log conversation pattern for weekly analysis
+    try {
+      // Count turns in this conversation
+      const turnCount = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(messages)
+        .where(eq(messages.conversationId, convId));
+      const currentTurn = turnCount[0]?.count || 1;
+
+      // Get preceding context (last 3 messages before this one)
+      const precedingMessages = await db
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, convId))
+        .orderBy(desc(messages.createdAt))
+        .limit(3);
+      const precedingContext = precedingMessages
+        .slice(1) // Skip current user message
+        .reverse()
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      // Classify query type
+      let queryType: "question" | "statement" | "command" | "greeting" | "casual" = "question";
+      const lowerQuery = query.toLowerCase().trim();
+      if (/^(hello|hi|hey|greetings|howdy|good morning|good afternoon|good evening)/.test(lowerQuery)) {
+        queryType = "greeting";
+      } else if (lowerQuery.includes("?") && !lowerQuery.startsWith("what") && !lowerQuery.startsWith("how") && !lowerQuery.startsWith("why") && !lowerQuery.startsWith("when") && !lowerQuery.startsWith("where") && !lowerQuery.startsWith("who")) {
+        queryType = "statement";
+      } else if (lowerQuery.match(/^(show|tell|find|search|list|get|create|update|delete|remove|add|open|close|start|stop|run|execute)/)) {
+        queryType = "command";
+      } else if (lowerQuery.length < 15 && !lowerQuery.includes("?") && !lowerQuery.includes("!")) {
+        queryType = "casual";
+      }
+
+      await db.insert(chatPatterns).values({
+        conversationId: convId,
+        turnNumber: currentTurn,
+        query,
+        queryType,
+        precedingContext,
+        nodesRetrieved: nativeResult.nodes?.length || 0,
+        avgSimilarity: nativeResult.nodes?.length > 0
+          ? nativeResult.nodes.reduce((sum, n) => sum + n.similarity, 0) / nativeResult.nodes.length
+          : null,
+        topNodeContent: nativeResult.nodes?.[0]?.content || null,
+        responseLength: finalResponse.length,
+        nodesUsed: nativeResult.nodesUsed,
+        newNodesAdded: nativeResult.newNodesAdded,
+        useLLM: shouldUseLLM && llmResponse !== null,
+      });
+    } catch (err) {
+      req.log.warn({ err }, "Failed to log chat pattern");
+    }
+
     trainOnText(finalResponse, "chat-response", clerkId).catch((err) => {
       req.log.warn({ err }, "Failed to learn from chat response");
     });
@@ -213,6 +267,9 @@ router.post("/chat", async (req, res) => {
   }
 });
 
+// Helper for AND conditions
+import { and } from "drizzle-orm";
+
 // GET /api/omni/chat/engagement/:conversationId — Update engagement tracking
 router.get("/engagement/:conversationId", async (req, res) => {
   const { conversationId } = req.params as { conversationId: string };
@@ -251,6 +308,27 @@ router.get("/engagement/:conversationId", async (req, res) => {
         conversationTurns,
       })
       .where(eq(trainingLogs.conversationId, convId));
+
+    // Update chat pattern with engagement data
+    if (userReplied && userMessages.length >= 2) {
+      const previousAssistantMessage = userMessages.find(m => m.role === 'assistant');
+      if (previousAssistantMessage) {
+        const timeToNextQuery = userMessages[1].createdAt.getTime() - previousAssistantMessage.createdAt.getTime();
+        
+        await db
+          .update(chatPatterns)
+          .set({
+            userReplied: true,
+            timeToNextQueryMs: timeToNextQuery,
+          })
+          .where(
+            and(
+              eq(chatPatterns.conversationId, convId),
+              eq(chatPatterns.turnNumber, conversationTurns - 1)
+            )
+          );
+      }
+    }
 
     res.json({
       userReplied,
