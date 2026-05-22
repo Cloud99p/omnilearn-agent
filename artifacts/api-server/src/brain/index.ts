@@ -123,10 +123,19 @@ function buildContextualQuery(
   query: string,
   history?: Array<{ role: string; content: string }>,
 ): string {
-  if (!history || history.length === 0) return query;
+  if (!history || history.length === 0) {
+    logger.debug({ query }, "[Phase2] No history, using raw query");
+    return query;
+  }
 
   // Get last 3 messages for context
   const contextMessages = history.slice(-3);
+  
+  logger.debug({ 
+    query, 
+    historyLength: history.length,
+    contextMessages: contextMessages.length 
+  }, "[Phase2] Building contextual query");
   
   // Extract context from assistant responses (they contain knowledge)
   const assistantContext = contextMessages
@@ -143,17 +152,22 @@ function buildContextualQuery(
   // Build enriched query
   const parts = [query];
   
-  // Add assistant context if it's relevant (short responses likely context)
-  if (assistantContext && assistantContext.length < 500) {
+  // ALWAYS add assistant context (contains the knowledge to expand on)
+  if (assistantContext) {
     parts.push(assistantContext);
+    logger.debug({ assistantContext: assistantContext.slice(0, 100) }, "[Phase2] Added assistant context");
   }
   
   // Add user context (follow-ups)
   if (userContext) {
     parts.push(userContext);
+    logger.debug({ userContext: userContext.slice(0, 100) }, "[Phase2] Added user context");
   }
 
-  return parts.join(' ');
+  const enrichedQuery = parts.join(' ');
+  logger.debug({ enrichedQuery: enrichedQuery.slice(0, 200) }, "[Phase2] Final enriched query");
+  
+  return enrichedQuery;
 }
 
 export async function retrieveRelevantNodes(
