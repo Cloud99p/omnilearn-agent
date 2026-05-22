@@ -1273,6 +1273,20 @@ export async function synthesizeNative(
     };
   }
 
+  // CRITICAL: If we have relevant knowledge nodes, ALWAYS use factual mode
+  // This prevents "Explain more on this" from triggering casual follow-up responses
+  // when we actually have knowledge to share
+  const MIN_SIMILARITY = 0.15;
+  const hasRelevantNodes = nodes && nodes.some(n => n.similarity >= MIN_SIMILARITY);
+  
+  if (hasRelevantNodes) {
+    mode = "factual"; // Override to factual when we have knowledge
+    logger.info(
+      { nodesCount: nodes.length, topSimilarity: nodes[0]?.similarity },
+      "[PHASE2] Forcing factual mode - relevant nodes available"
+    );
+  }
+
   // CASUAL MODE: Keep conversation flowing naturally
   if (mode === "casual") {
     // Check for greetings - works anytime user says hello
