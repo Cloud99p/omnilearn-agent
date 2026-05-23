@@ -13,11 +13,21 @@ import type { GhostNode } from "@omnilearn/network-hierarchy";
 
 const router = Router();
 
-// GET /api/ghost/status
+// GET /api/ghost/status - Cached to prevent 429 rate limiting
+let cachedStatus: any = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 30000; // 30 second cache
+
 router.get("/status", async (req, res) => {
   try {
-    const nodes = await db.select().from(ghostNodes);
     const now = Date.now();
+    
+    // Return cached response if still valid (prevents 429 from rapid polling)
+    if (cachedStatus && (now - cacheTimestamp) < CACHE_TTL_MS) {
+      return res.json(cachedStatus);
+    }
+    
+    const nodes = await db.select().from(ghostNodes);
     const online = nodes.filter(
       (n) =>
         n.status === "online" &&
@@ -33,20 +43,22 @@ router.get("/status", async (req, res) => {
           nodes.filter((n) => n.avgResponseMs).length
         : null;
 
-    const stats = getHierarchyStats();
+    const stats = await getHierarchyStats();
     
-    res.json({
+    cachedStatus = {
       total: nodes.length,
       online: online.length,
       offline: nodes.length - online.length,
       totalTasksProcessed: totalTasks,
       avgResponseMs: avgMs,
       selfEndpoint: `${req.protocol}://${req.get("host")}`,
-      // 7-tier mesh network stats
       clusters: stats.totalClusters,
       nodesPerTier: stats.nodesPerTier,
       largestClusterSize: stats.largestClusterSize,
-    });
+    };
+    cacheTimestamp = now;
+    
+    res.json(cachedStatus);
   } catch (err) {
     req.log.error({ err }, "Failed to get ghost status");
     res.status(500).json({ error: "Failed to get network status" });
