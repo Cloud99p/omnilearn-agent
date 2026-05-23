@@ -40,7 +40,7 @@ export const defaultLimiter = rateLimit({
       retryAfter: "3600 seconds",
     });
   },
-  skip: (req) => req.path === "/healthz" || req.path === "/ghost/status",
+  skip: (req) => req.path === "/healthz" || req.path.startsWith("/ghost/status") || req.path === "/ghost/status",
 });
 
 // Chat endpoints: DISABLED for efficient training
