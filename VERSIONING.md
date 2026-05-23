@@ -1,10 +1,45 @@
 # OmniLearn Versioning
 
-## Current Version: **v3.0.0** (Stable Release)
+## Current Version: **v3.0.1** (Development)
 
-**Release Date:** May 21, 2026  
-**Code Name:** "Planetary Intelligence Foundation"  
+**Release Date:** May 23, 2026  
+**Code Name:** "Context Awareness Optimization"  
 **Live Deployment:** [workspaceapi-server-production-29ee.up.railway.app](https://workspaceapi-server-production-29ee.up.railway.app)
+
+---
+
+### v3.0.1 (May 23, 2026) - **Context Awareness Optimization** 🔍
+
+**Bug Fixes & Improvements:**
+
+- ✅ **Improved Knowledge Retrieval Threshold**
+  - Similarity threshold adjusted to 0.2 (balanced filtering)
+  - Better focus without losing conversational flow
+  - Filters out very weak matches while maintaining context richness
+
+- ✅ **Enhanced FreeLLM Context Integration**
+  - Explicit instructions for LLM to prioritize knowledge base facts
+  - Added similarity percentages to help LLM weigh retrieved facts
+  - Clearer prompt structure: "IMPORTANT: Use the facts below to answer"
+
+- ✅ **Better Logging & Debugging**
+  - Added detailed context logging in chat endpoint
+  - Logs query, nodes retrieved, top similarity score, node content
+  - Easier to track what knowledge is being used in responses
+
+- ✅ **Fixed Rate Limiting (429 errors)**
+  - Set `trustProxy: true` in rate limiters
+  - Added 30s cache to `/api/ghost/status` endpoint
+  - Railway proxy now properly handled
+
+**Files Changed:**
+- `artifacts/api-server/src/brain/index.ts` - MIN_SIMILARITY threshold
+- `artifacts/api-server/src/lib/free-llm.ts` - Contextual prompt improvement
+- `artifacts/api-server/src/routes/omni/chat.ts` - Logging & extraction improvements
+- `artifacts/api-server/src/middlewares/rateLimit.ts` - trustProxy fix
+- `artifacts/api-server/src/routes/ghost/nodes.ts` - Cache added
+
+**Impact:** Better context awareness, fewer irrelevant responses, improved rate limiting, easier debugging.
 
 ---
 
