@@ -16,7 +16,7 @@ import { logger } from "../lib/logger";
 export const defaultLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10000, // Effectively unlimited for development/testing
-  trustProxy: false, // Disabled: Railway proxy makes all requests appear from same IP
+  trustProxy: true, // Enable: Railway uses proxy, need real client IPs
   message: {
     error: "Too many requests",
     message: "You have exceeded the rate limit. Please try again later.",
@@ -40,14 +40,14 @@ export const defaultLimiter = rateLimit({
       retryAfter: "3600 seconds",
     });
   },
-  skip: (req) => req.path === "/healthz",
+  skip: (req) => req.path === "/healthz" || req.path === "/ghost/status",
 });
 
 // Chat endpoints: DISABLED for efficient training
 export const chatLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10000, // Effectively unlimited for development/testing
-  trustProxy: false, // Disabled: Railway proxy makes all requests appear from same IP
+  trustProxy: true, // Enable: Railway uses proxy, need real client IPs
   message: {
     error: "Too many chat requests",
     message: "You have exceeded the hourly chat limit. Please try again later.",
