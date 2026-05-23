@@ -347,9 +347,9 @@ export default function Chat() {
       } finally {
         setContributing(false);
       }
-      timer = setTimeout(contribute, 30_000);
+      timer = setTimeout(contribute, 5 * 60 * 1000); // 5 minutes
     };
-    timer = setTimeout(contribute, 30_000);
+    timer = setTimeout(contribute, 5 * 60 * 1000); // 5 minutes
     return () => clearTimeout(timer);
   }, [onboarded, streamingSession]);
 
