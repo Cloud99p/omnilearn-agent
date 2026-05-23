@@ -8,8 +8,8 @@ import { callFreeLLM, scoreResponse } from "../../lib/free-llm.js";
 const router = Router();
 
 // Configuration
-const USE_LLM_FALLBACK = process.env.USE_LLM_FALLBACK === "true" || false;
-const LLM_FALLBACK_RATE = parseFloat(process.env.LLM_FALLBACK_RATE || "0.3"); // 30% of requests
+// TRAINING MODE: Always use FreeLLM for responses while training the native AI
+const ALWAYS_USE_LLM = process.env.ALWAYS_USE_LLM === "true" || true; // Default: true for training
 
 // TEACHER MODE: Extract facts from LLM responses
 function extractFactsFromLLMResponse(response: string, query: string): string[] {
@@ -148,44 +148,32 @@ router.post("/chat", async (req, res) => {
     let finalResponse = nativeResult.text;
     let llmResponse = null;
 
-    // Optional: Call FreeLLMAPI as fallback or teacher
-    // CRITICAL: Skip LLM fallback if native retrieval found relevant nodes
-    // or if this is a contextual follow-up question (LLM won't have context)
+    // TRAINING MODE: Always use FreeLLM for responses, but pass knowledge graph context
+    // This gives good responses now while the native AI learns from the interactions
     const isFollowUp = history.length > 0 && 
       (query.toLowerCase().includes("explain more") || 
        query.toLowerCase().includes("tell me more") ||
        query.toLowerCase().includes("what about") ||
        query.toLowerCase().includes("how about"));
     
-    const shouldUseLLM = useLLM || isHybridCommand || // Force LLM for /hybrid command
-      (USE_LLM_FALLBACK && 
-       Math.random() < LLM_FALLBACK_RATE && 
-       nativeResult.nodesUsed === 0 &&  // Skip if native found knowledge
-       !isFollowUp);  // Skip for contextual follow-ups
+    // Always use LLM in training mode, but still pass context for awareness
+    const shouldUseLLM = ALWAYS_USE_LLM || useLLM || isHybridCommand;
     
     if (shouldUseLLM) {
       try {
-        // FIX 1: Pass retrieved nodes to FreeLLM as context for better responses
-        const contextFromNodes = nativeResult.nodesUsed > 0
-          ? `\n\nRelevant knowledge from your graph:\n${nodes.map((n, i) => `${i + 1}. ${n.content.slice(0, 200)}`).join('\n')}`
-          : '';
-        
+        // Pass retrieved nodes to FreeLLM as context - gives it knowledge graph awareness
         const llmResult = await callFreeLLM(query, {
-          retrievedNodes: nodes, // Pass nodes for context
-          systemPrompt: `You are OmniLearn, an AI assistant. Answer conversationally, not like a textbook. Match the user's tone. If they're casual, be casual. If they're serious, be serious.${contextFromNodes}`,
+          retrievedNodes: nativeResult.nodes, // Pass nodes for context awareness
+          systemPrompt: `You are OmniLearn, an AI assistant. Answer conversationally, not like a textbook. Match the user's tone. If they're casual, be casual. If they're serious, be serious.`,
         });
         llmResponse = llmResult.response;
-        
-        // For hybrid mode, use LLM response; otherwise just log for training
         finalResponse = llmResult.response;
         
-        // TEACHER MODE: Extract knowledge from LLM response for future native use
-        // Only extract when native had no knowledge (true learning opportunity)
-        if (nativeResult.nodesUsed === 0 && !isFollowUp) {
-          // Extract facts from LLM response (simple sentence splitting for now)
+        // TEACHER MODE: Always extract knowledge from LLM responses during training
+        // This builds up the native knowledge graph over time
+        if (!isFollowUp) {
           const extractedFacts = extractFactsFromLLMResponse(llmResult.response, query);
           if (extractedFacts.length > 0) {
-            // Store in knowledge graph asynchronously (don't block response)
             storeExtractedFacts(extractedFacts, clerkId).catch(err => 
               req.log.warn({ err }, "Failed to store extracted facts")
             );
