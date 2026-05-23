@@ -62,6 +62,7 @@ async function storeExtractedFacts(facts: string[], clerkId: string | null): Pro
       const result = await trainOnText(fact, "llm-teacher", clerkId);
       totalAdded += result.added;
       totalSkipped += result.skipped;
+      req.log.info({ fact: fact.slice(0, 150), added: result.added, skipped: result.skipped }, "Fact storage result");
     } catch (err) {
       console.warn("Failed to store fact:", fact.slice(0, 100), err);
       totalSkipped++;
@@ -189,6 +190,15 @@ router.post("/chat", async (req, res) => {
         });
         llmResponse = llmResult.response;
         finalResponse = llmResult.response;
+        
+        // LOG: What context was passed to LLM
+        req.log.info({
+          query,
+          nodesRetrieved: nativeResult.nodes?.length || 0,
+          nodesUsed: nativeResult.nodesUsed,
+          topNodeContent: nativeResult.nodes?.[0]?.content?.slice(0, 200),
+          topNodeSimilarity: nativeResult.nodes?.[0]?.similarity,
+        }, "FreeLLM context details");
         
         // TEACHER MODE: Always extract knowledge from LLM responses during training
         // This builds up the native knowledge graph over time

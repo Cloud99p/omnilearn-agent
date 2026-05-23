@@ -279,7 +279,7 @@ export async function retrieveRelevantNodes(
 
   // Filter by similarity threshold AND exclude low-quality matches
   // CRITICAL: Threshold must be high enough to exclude irrelevant results
-  const MIN_SIMILARITY = 0.15; // Minimum similarity for relevant results
+  const MIN_SIMILARITY = 0.3; // Minimum similarity for relevant results (increased from 0.15)
   const semanticResults = scored
     .filter((n) => n.similarity >= MIN_SIMILARITY)
     .slice(0, topK);

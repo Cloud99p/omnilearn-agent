@@ -86,19 +86,24 @@ function buildContextualPrompt(
 
   const facts = nodes
     .slice(0, 5)
-    .map((n) => `- ${n.content}`)
+    .map((n) => `- [${Math.round(n.similarity * 100)}% match] ${n.content}`)
     .join("\n");
 
-  return `Answer this question using the retrieved facts when relevant:
+  return `You are OmniLearn, an AI assistant with a knowledge base.
 
-Facts:
+**IMPORTANT: Use the facts below to answer the user's question.**
+
+Knowledge Base:
 ${facts}
 
-Question: ${query}
+**Instructions:**
+1. Check if the knowledge base has relevant information for the question
+2. If it does, use that information to craft your answer
+3. Be conversational - don't just dump facts
+4. Match the user's tone (casual if they're casual, serious if they're serious)
+5. If the knowledge is NOT relevant, use your general knowledge
 
-If the facts are relevant, use them to answer. If not, use your general knowledge.
-Be conversational, not textbook. Match the user's tone.
-`;
+Question: ${query}`;
 }
 
 /**
