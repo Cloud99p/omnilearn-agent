@@ -8,9 +8,8 @@ import { callFreeLLM, scoreResponse } from "../../lib/free-llm.js";
 const router = Router();
 
 // Configuration
-// TRAINING MODE: Gradual transition from FreeLLM to native AI
-// Week 1: 70% LLM, 30% native testing
-const LLM_USAGE_RATE = parseFloat(process.env.LLM_USAGE_RATE || "0.7"); // Default: 70%
+// TRAINING MODE: Always use FreeLLM for responses while training the native AI
+const ALWAYS_USE_LLM = process.env.ALWAYS_USE_LLM === "true" || true; // Default: true for week 1
 
 // TEACHER MODE: Extract facts from LLM responses
 function extractFactsFromLLMResponse(response: string, query: string): string[] {
@@ -149,17 +148,16 @@ router.post("/chat", async (req, res) => {
     let finalResponse = nativeResult.text;
     let llmResponse = null;
 
-    // TRAINING MODE: Gradual transition - 70% LLM, 30% native testing
-    // Still passes knowledge graph context to both for awareness
+    // TRAINING MODE: Always use FreeLLM for responses, but pass knowledge graph context
+    // This gives good responses now while the native AI learns from the interactions
     const isFollowUp = history.length > 0 && 
       (query.toLowerCase().includes("explain more") || 
        query.toLowerCase().includes("tell me more") ||
        query.toLowerCase().includes("what about") ||
        query.toLowerCase().includes("how about"));
     
-    // Use LLM based on rate, or always for /hybrid command and follow-ups
-    const shouldUseLLM = useLLM || isHybridCommand || 
-      (Math.random() < LLM_USAGE_RATE && !isFollowUp);
+    // Always use LLM in training mode (week 1), cron will remind to reduce after
+    const shouldUseLLM = ALWAYS_USE_LLM || useLLM || isHybridCommand;
     
     if (shouldUseLLM) {
       try {
