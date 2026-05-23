@@ -9,7 +9,7 @@ import githubRouter from "./github/index.js";
 import omniRouter from "./omni/index.js";
 import ghostRouter from "./ghost/index.js";
 import networkRouter from "./network.js";
-import networkAgeRouter from "./network-age.js";
+import networkStatsRouter from "./network-stats.js";
 import brainProposalsRouter from "./brain/proposals.js";
 import brainOntologyRouter from "./brain/ontology.js";
 import { characterRouter } from "./character.js";
@@ -44,7 +44,7 @@ router.use(githubLimiter, githubRouter); // GitHub API (10 req/hour)
 router.use(omniRouter); // No rate limit temporarily
 router.use(defaultLimiter, ghostRouter); // Default limit
 router.use(defaultLimiter, networkRouter); // Default limit
-router.use(defaultLimiter, networkAgeRouter); // Network age stats
+router.use(defaultLimiter, networkStatsRouter); // Network stats endpoints
 router.use("/brain", defaultLimiter, brainProposalsRouter); // Default limit
 router.use("/brain", defaultLimiter, brainOntologyRouter); // Default limit
 router.use("/moderation", defaultLimiter, moderationRouter); // Default limit
