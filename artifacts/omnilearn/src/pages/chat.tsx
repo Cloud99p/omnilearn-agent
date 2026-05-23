@@ -377,7 +377,7 @@ export default function Chat() {
   const fetchConversations = async () => {
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`${BASE}/api/omni/conversations`, {
+      const res = await fetch(`${BASE}/api/anthropic/conversations`, {
         headers,
       });
       if (res.ok) {
@@ -416,7 +416,7 @@ export default function Chat() {
     setLoadingConv(true);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`${BASE}/api/omni/conversations/${id}`, {
+      const res = await fetch(`${BASE}/api/anthropic/conversations/${id}`, {
         headers,
       });
       if (res.ok) {
@@ -438,7 +438,7 @@ export default function Chat() {
     setLoadingConv(true);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`${BASE}/api/omni/conversations/${id}`, {
+      const res = await fetch(`${BASE}/api/anthropic/conversations/${id}`, {
         headers,
       });
       if (res.ok) {
@@ -458,7 +458,7 @@ export default function Chat() {
   const createConversation = async (firstMessage = "") => {
     const title = firstMessage.slice(0, 60) || "New conversation";
     const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE}/api/omni/conversations`, {
+    const res = await fetch(`${BASE}/api/anthropic/conversations`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ title, mode }),
@@ -487,7 +487,7 @@ export default function Chat() {
   const deleteConversation = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     const headers = await getAuthHeaders();
-    await fetch(`${BASE}/api/omni/conversations/${id}`, {
+    await fetch(`${BASE}/api/anthropic/conversations/${id}`, {
       method: "DELETE",
       headers,
     });
