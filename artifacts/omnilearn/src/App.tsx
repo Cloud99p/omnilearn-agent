@@ -4,6 +4,7 @@
  * Licensed under the AGPL v3 License
  */
 
+import { lazy, Suspense } from "react";
 import { useEffect, useRef } from "react";
 import {
   ClerkProvider,
@@ -52,6 +53,26 @@ import WorkerPage from "@/pages/worker";
 import SmarterPage from "@/pages/smarter";
 
 const queryClient = new QueryClient();
+
+// Loading fallback
+const PageLoader = () => (
+  <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <span className="font-mono text-xs text-muted-foreground tracking-widest">
+        LOADING
+      </span>
+    </div>
+  </div>
+);
+
+// Lazy load heavy pages
+const Chat = lazy(() => import("@/pages/chat"));
+const IntelligencePage = lazy(() => import("@/pages/intelligence"));
+const GhostNetworkPage = lazy(() => import("@/pages/ghost-network"));
+const ComponentsPage = lazy(() => import("@/pages/components-page"));
+const MemoryPage = lazy(() => import("@/pages/memory"));
+const RepositoriesPage = lazy(() => import("@/pages/repositories"));
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -215,29 +236,31 @@ function WrappedSignUp() {
 function Router() {
   return (
     <Layout>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/architecture" component={Architecture} />
-        <Route path="/components" component={ComponentsPage} />
-        <Route path="/configuration" component={Configuration} />
-        <Route path="/onboarding" component={Onboarding} />
-        <Route path="/personality" component={Personality} />
-        <Route path="/compliance" component={Compliance} />
-        <Route path="/network" component={Network} />
-        <Route path="/compare" component={Compare} />
-        <Route path="/dna" component={DnaPage} />
-        <Route path="/governance" component={Governance} />
-        <Route path="/ingestion" component={Ingestion} />
-        <Route path="/storage" component={StoragePage} />
-        <Route path="/memory" component={MemoryPage} />
-        <Route path="/chat" component={Chat} />
-        <Route path="/account" component={AccountPage} />
-        <Route path="/repositories" component={RepositoriesPage} />
-        <Route path="/intelligence" component={IntelligencePage} />
-        <Route path="/ghost-network" component={GhostNetworkPage} />
-        <Route path="/smarter" component={SmarterPage} />
-        <Route component={NotFound} />
-      </Switch>
+      <Suspense fallback={<PageLoader />}>
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/architecture" component={Architecture} />
+          <Route path="/components" component={ComponentsPage} />
+          <Route path="/configuration" component={Configuration} />
+          <Route path="/onboarding" component={Onboarding} />
+          <Route path="/personality" component={Personality} />
+          <Route path="/compliance" component={Compliance} />
+          <Route path="/network" component={Network} />
+          <Route path="/compare" component={Compare} />
+          <Route path="/dna" component={DnaPage} />
+          <Route path="/governance" component={Governance} />
+          <Route path="/ingestion" component={Ingestion} />
+          <Route path="/storage" component={StoragePage} />
+          <Route path="/memory" component={MemoryPage} />
+          <Route path="/chat" component={Chat} />
+          <Route path="/account" component={AccountPage} />
+          <Route path="/repositories" component={RepositoriesPage} />
+          <Route path="/intelligence" component={IntelligencePage} />
+          <Route path="/ghost-network" component={GhostNetworkPage} />
+          <Route path="/smarter" component={SmarterPage} />
+          <Route component={NotFound} />
+        </Switch>
+      </Suspense>
     </Layout>
   );
 }

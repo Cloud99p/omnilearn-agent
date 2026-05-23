@@ -71,10 +71,18 @@ export default defineConfig({
             "@radix-ui/react-tooltip",
           ],
           forms: ["react-hook-form", "@hookform/resolvers", "zod"],
-          charts: ["recharts"],
           queries: ["@tanstack/react-query"],
+          // Split heavy libraries into separate chunks
+          charts: ["recharts"],
           motion: ["framer-motion"],
+          // Split Clerk into its own chunk
+          clerk: ["@clerk/react", "@clerk/themes"],
+          // Split Vercel analytics
+          vercel: ["@vercel/analytics", "@vercel/speed-insights"],
         },
+        // Enable smaller chunk names for better caching
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
       },
     },
     chunkSizeWarningLimit: 800,
