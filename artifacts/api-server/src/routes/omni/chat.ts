@@ -13,41 +13,62 @@ const ALWAYS_USE_LLM = process.env.ALWAYS_USE_LLM === "true" || true; // Default
 
 // TEACHER MODE: Extract facts from LLM responses
 function extractFactsFromLLMResponse(response: string, query: string): string[] {
-  // Split into sentences and filter for factual statements
+  // Split into sentences
   const sentences = response
     .split(/[.!?]+/)
     .map(s => s.trim())
-    .filter(s => s.length > 20 && s.length < 300); // Reasonable sentence length
+    .filter(s => s.length > 15 && s.length < 400);
   
-  // Filter out conversational fluff
+  // Filter out pure conversational fluff (but keep factual sentences)
   const fluffPatterns = [
     /^(Sure|Certainly|Of course|I'd be happy|Happy to help)/i,
     /^(That's a great|This is an interesting)/i,
     /^(In summary|To summarize|Basically|In conclusion)/i,
     /^(Hope this helps|Let me know|Feel free)/i,
-    /^(As an AI|I am|I'm an)/i, // Skip AI self-references
+    /^(As an AI|I am|I'm an)/i,
+    /^What's got you/i,
+    /^Spill the beans/i,
+    /^Haha/i,
   ];
   
-  const facts = sentences.filter(sentence => 
-    !fluffPatterns.some(p => p.test(sentence)) &&
-    !sentence.includes("I hope") &&
-    !sentence.includes("you might") &&
-    !sentence.includes("you can") // Skip advice, keep facts
-  );
+  // Keep sentences that contain factual content
+  const facts = sentences.filter(sentence => {
+    // Skip obvious fluff
+    if (fluffPatterns.some(p => p.test(sentence))) return false;
+    
+    // Skip pure questions
+    if (sentence.endsWith('?')) return false;
+    
+    // Skip very short exclamations
+    if (sentence.length < 20 && !sentence.includes(' ')) return false;
+    
+    // Keep sentences with factual indicators
+    const hasFactIndicator = /(have|has|are|is|was|were|when|because|their|its|the|octopus|blood|hearts?|swim|pump)/i.test(sentence);
+    
+    return hasFactIndicator || sentence.length > 30;
+  });
   
-  // Take top 3-5 facts (most relevant)
+  // Take top 3-5 facts
   return facts.slice(0, 5);
 }
 
-async function storeExtractedFacts(facts: string[], clerkId: string): Promise<void> {
+async function storeExtractedFacts(facts: string[], clerkId: string | null): Promise<{ added: number; skipped: number }> {
+  let totalAdded = 0;
+  let totalSkipped = 0;
+  
   // Use existing trainOnText to store each fact
   for (const fact of facts) {
     try {
-      await trainOnText(fact, clerkId, "llm-teacher");
+      const result = await trainOnText(fact, "llm-teacher", clerkId);
+      totalAdded += result.added;
+      totalSkipped += result.skipped;
     } catch (err) {
       console.warn("Failed to store fact:", fact.slice(0, 100), err);
+      totalSkipped++;
     }
   }
+  
+  return { added: totalAdded, skipped: totalSkipped };
 }
 
 // POST /api/omni/chat  — SSE streaming native intelligence chat with optional LLM fallback
@@ -173,10 +194,15 @@ router.post("/chat", async (req, res) => {
         // This builds up the native knowledge graph over time
         if (!isFollowUp) {
           const extractedFacts = extractFactsFromLLMResponse(llmResult.response, query);
+          req.log.info({ extractedCount: extractedFacts.length, firstFact: extractedFacts[0]?.slice(0, 150) }, "Extracted facts from LLM response");
           if (extractedFacts.length > 0) {
-            storeExtractedFacts(extractedFacts, clerkId).catch(err => 
-              req.log.warn({ err }, "Failed to store extracted facts")
-            );
+            storeExtractedFacts(extractedFacts, clerkId)
+              .then(({ added, skipped }) => {
+                req.log.info({ added, skipped }, "Stored facts in knowledge graph");
+              })
+              .catch(err => 
+                req.log.warn({ err }, "Failed to store extracted facts")
+              );
             sendEvent({ 
               learning: { 
                 extracted: extractedFacts.length,
