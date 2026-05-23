@@ -128,8 +128,8 @@ function buildContextualQuery(
     return query;
   }
 
-  // Get last 3 messages for context
-  const contextMessages = history.slice(-3);
+  // Get last 10 messages for context (increased from 3 to capture more conversation flow)
+  const contextMessages = history.slice(-10);
   
   logger.info({ 
     query, 
@@ -565,7 +565,7 @@ export async function processMessage(
   const keyTerms = extractKeyTerms(userMessage);
   const searchQuery = [userMessage, ...keyTerms].join(" ");
 
-  const retrieved = await retrieveRelevantNodes(searchQuery, clerkId, 6, history);
+  const retrieved = await retrieveRelevantNodes(searchQuery, clerkId, 10, history); // Increased from 6 to 10 for better context
 
   // PHASE 2: Build enriched query for retrieval (NOT for synthesis)
   const enrichedQuery = buildContextualQuery(userMessage, history);
