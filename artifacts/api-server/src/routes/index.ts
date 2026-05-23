@@ -1,7 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import debugRouter from "./debug.js";
-import chatRouter from "./chat/index.js";
 import localChatRouter from "./local/chat.js";
 import skillsRouter from "./skills/index.js";
 import meRouter from "./me/index.js";
@@ -34,7 +33,6 @@ const router: IRouter = Router();
 // Apply rate limiters to routes
 router.use(healthRouter); // No rate limit on health checks
 router.use(debugRouter); // Debug/test endpoints (no rate limit)
-router.use("/anthropic", chatLimiter, chatRouter); // Main chat (30 req/hour)
 router.use("/local", chatLimiter, localChatRouter); // Local chat (30 req/hour)
 router.use("/skills", defaultLimiter, skillsRouter); // Default limit (100 req/15min)
 router.use(meRouter); // Default limit
