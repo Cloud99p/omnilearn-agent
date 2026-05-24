@@ -19,33 +19,18 @@ async function getEmbedder(): Promise<any> {
         logger.info({ model: MODEL_ID }, "Loading embedding model...");
         const start = Date.now();
         
-        // Throttle progress logging to avoid rate limits
-        const throttleMs = 500;
-        let lastLogTime = 0;
-        let lastLoggedProgress = -1;
-        
+        // Minimal progress logging to avoid Railway log rate limits
         embedder = await pipeline("feature-extraction", MODEL_ID, {
           quantized: true,
           progress_callback: (progress: any) => {
+            // Only log at 0%, 50%, 100% to avoid spam
             if (progress.status === "progress") {
-              const now = Date.now();
-              const currentProgress = Math.round(progress.progress);
-              
-              // Only log if enough time passed OR significant progress made
-              const timeSinceLastLog = now - lastLogTime;
-              const progressChanged = currentProgress - lastLoggedProgress >= 10;
-              
-              if (timeSinceLastLog >= throttleMs || progressChanged) {
+              const pct = Math.round(progress.progress);
+              if (pct === 0 || pct === 50 || pct === 100) {
                 logger.info(
-                  {
-                    model: MODEL_ID,
-                    progress: `${currentProgress}%`,
-                    elapsed: now - start,
-                  },
+                  { model: MODEL_ID, progress: `${pct}%`, elapsed: Date.now() - start },
                   "Embedding model loading",
                 );
-                lastLogTime = now;
-                lastLoggedProgress = currentProgress;
               }
             }
           },
@@ -91,7 +76,7 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return [];
   try {
     const model = await getEmbedder();
-    const BATCH_SIZE = 8;
+    const BATCH_SIZE = 4; // Reduced from 8 to lower memory usage
     const allEmbeddings: number[][] = [];
 
     for (let i = 0; i < texts.length; i += BATCH_SIZE) {
@@ -106,6 +91,11 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
         );
       }
       allEmbeddings.push(...batchEmbeddings);
+      
+      // Force garbage collection hint between batches (Node.js will GC when needed)
+      if (i + BATCH_SIZE < texts.length) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
     }
     return allEmbeddings;
   } catch (err) {

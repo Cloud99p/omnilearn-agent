@@ -408,13 +408,13 @@ export function extractFacts(text: string): ExtractedFact[] {
   
   // DEBUG: Log text preview
   const textPreview = text.slice(0, 100).replace(/\n/g, '\\n');
-  console.log(`[EXTRACT] Input text (${text.length} chars): ${textPreview}...`);
+  // console.log(`[EXTRACT] Input text (${text.length} chars): ${textPreview}...`);
   
   // Check for identity statements FIRST
   const identityName = detectIdentityStatement(text);
-  console.log(`[EXTRACT] Identity check: ${identityName ? 'FOUND: ' + identityName : 'none'}`);
+  // console.log(`[EXTRACT] Identity check: ${identityName ? 'FOUND: ' + identityName : 'none'}`);
   if (identityName) {
-    console.log(`[EXTRACT] Returning identity fact`);
+    // console.log(`[EXTRACT] Returning identity fact`);
     facts.push({
       content: text.trim(),
       type: "identity",
@@ -427,9 +427,9 @@ export function extractFacts(text: string): ExtractedFact[] {
   
   // Check if non-learnable
   const nonLearnable = isNonLearnable(text);
-  console.log(`[EXTRACT] isNonLearnable: ${nonLearnable}`);
+  // console.log(`[EXTRACT] isNonLearnable: ${nonLearnable}`);
   if (nonLearnable) {
-    console.log(`[EXTRACT] Returning empty - non-learnable`);
+    // console.log(`[EXTRACT] Returning empty - non-learnable`);
     return facts; // Return empty - no fact extraction
   }
 
@@ -465,7 +465,7 @@ export function extractFacts(text: string): ExtractedFact[] {
       
       // REJECT fragments starting with conjunctions/prepositions
       if (fragmentStarts.test(subj)) {
-        console.log(`[EXTRACT] Skipping fragment start: "${subj.slice(0, 40)}"`);
+        // console.log(`[EXTRACT] Skipping fragment start: "${subj.slice(0, 40)}"`);
         continue;
       }
       
@@ -486,7 +486,7 @@ export function extractFacts(text: string): ExtractedFact[] {
       const content = fullMatch.toLowerCase().replace(/\s+/g, " ");
       const tags = extractTags([subj, obj]);
 
-      console.log(`[EXTRACT] Pattern match: "${content.slice(0, 80)}..." (type: ${type}, conf: ${conf})`);
+      // console.log(`[EXTRACT] Pattern match: "${content.slice(0, 80)}..." (type: ${type}, conf: ${conf})`);
       facts.push({ content, type, tags, confidence: conf });
     }
   }
@@ -499,9 +499,9 @@ export function extractFacts(text: string): ExtractedFact[] {
       .split(/[.!?]+(?:\s*\[\d+\])*(?:\s*\[\d+\])*\s+/)
       .filter((s) => s.trim().length > 15 && s.trim().length < 600);
     
-    console.log(`[EXTRACT] Found ${sentences.length} sentences from ${text.length} chars`);
+    // console.log(`[EXTRACT] Found ${sentences.length} sentences from ${text.length} chars`);
     if (sentences.length > 0) {
-      console.log(`[EXTRACT] First: ${sentences[0].slice(0, 150)}`);
+      // console.log(`[EXTRACT] First: ${sentences[0].slice(0, 150)}`);
     }
 
     for (const sentence of sentences) {
@@ -517,13 +517,13 @@ export function extractFacts(text: string): ExtractedFact[] {
       // CRITICAL: Skip sentence fragments (not standalone facts)
       const fragmentStarts = /^(which|that|where|when|who|whom|whose|what|while|although|though|because|since|unless|until|if|though|although|despite|whereas|whereby)\b/i;
       if (fragmentStarts.test(clean)) {
-        console.log(`[EXTRACT] Skipping fragment: ${clean.slice(0, 80)}`);
+        // console.log(`[EXTRACT] Skipping fragment: ${clean.slice(0, 80)}`);
         continue;
       }
 
       // HYBRID SPLITTING: Split long sentences into atomic facts
       const atomicClauses = splitIntoAtomicFacts(clean);
-      console.log(`[EXTRACT] Sentence split: ${atomicClauses.length} clause(s) from ${clean.length} chars`);
+      // console.log(`[EXTRACT] Sentence split: ${atomicClauses.length} clause(s) from ${clean.length} chars`);
 
       for (const clause of atomicClauses) {
         // Check for duplicates within split clauses
@@ -536,10 +536,10 @@ export function extractFacts(text: string): ExtractedFact[] {
           /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?|contains?|includes?|consists?|requires?|depends?|affects?|produces?|generates?|forms?|becomes?|remains?|show|shows?|indicate|indicates?|suggest|suggests?|simplif|classif|consider|considered|hosted|assess|treat|treating|protect|reduc|control|controlling|threaten|manage|govern|regulate|define|describe|name|call|called|label|categorize|group|organize|structure|arrange|order|rank|list|record|document|report|publish|announce|declare|state|stated|claim|argue|propose|recommend|advise|support|oppose|accept|reject|approve|deny|confirm|verify|validate|test|examine|analyze|study|studied|investigate|research|explore|discover|find|found|identify|recognize|acknowledge|admit|realize|understand|know|known|believe|think|thought|feel|felt|seem|seemed|appear|appeared|look|looked|sound|sounded|taste|tasted|smell|smelled|diverge|diverged|domesticate|domesticated|relate|related|connect|connected|separate|separated|isolate|isolated|develop|developed|evolve|evolved|live|lived|exist|existed|exist|occur|occurred|occurs|remain|remained|stay|stayed|continue|continued|begin|began|start|started|end|ended|finish|finished)\b/i.test(
             clause,
           );
-        console.log(`[EXTRACT] Clause verb check: hasVerb=${hasVerb}, len=${clause.length}`);
+        // console.log(`[EXTRACT] Clause verb check: hasVerb=${hasVerb}, len=${clause.length}`);
         // Skip only if no verb AND doesn't look like a fact
         if (!hasVerb && !/\b(were|are|is|was)\b/i.test(clause)) {
-          console.log(`[EXTRACT] Skipping clause - no verb: ${clause.slice(0, 60)}...`);
+          // console.log(`[EXTRACT] Skipping clause - no verb: ${clause.slice(0, 60)}...`);
           continue;
         }
 
@@ -561,7 +561,7 @@ export function extractFacts(text: string): ExtractedFact[] {
         // Higher confidence for atomic clauses (more focused)
         const confidence = atomicClauses.length > 1 ? 0.68 : 0.65;
 
-        console.log(`[EXTRACT] Clause: "${clause.slice(0, 80)}..." (type: ${type}, conf: ${confidence})`);
+        // console.log(`[EXTRACT] Clause: "${clause.slice(0, 80)}..." (type: ${type}, conf: ${confidence})`);
         facts.push({
           content: clause,
           type,
