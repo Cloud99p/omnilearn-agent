@@ -863,16 +863,17 @@ export default function IntelligencePage() {
   const fetchNetwork = useCallback(async () => {
     setNetLoading(true);
     try {
-      // Add significant delay between requests to avoid rate limiting
+      // Stagger requests to avoid rate limiting - increased delays
       const delayedFetch = async (url: string, delayMs: number) => {
         if (delayMs > 0) {
           await new Promise(resolve => setTimeout(resolve, delayMs));
         }
         const res = await fetch(url);
+        // NO automatic retry on 429 - let user manually refresh
+        // Retry storms make rate limiting worse
         if (!res.ok && res.status === 429) {
-          console.warn('Rate limited, waiting 2s before retry...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          return fetch(url);
+          console.warn('Rate limited. Please wait before refreshing.');
+          throw new Error('Rate limited');
         }
         return res;
       };
@@ -880,10 +881,10 @@ export default function IntelligencePage() {
       const [statsRes, neuronsRes, synapsesRes, agentsRes, pulsesRes] =
         await Promise.all([
           delayedFetch(`${BASE}/api/network/stats`, 0),
-          delayedFetch(`${BASE}/api/network/neurons?limit=40`, 1500),
-          delayedFetch(`${BASE}/api/network/synapses?limit=100`, 3000),
-          delayedFetch(`${BASE}/api/network/agents`, 4500),
-          delayedFetch(`${BASE}/api/network/pulses?limit=30`, 6000),
+          delayedFetch(`${BASE}/api/network/neurons?limit=40`, 2000),
+          delayedFetch(`${BASE}/api/network/synapses?limit=100`, 4000),
+          delayedFetch(`${BASE}/api/network/agents`, 6000),
+          delayedFetch(`${BASE}/api/network/pulses?limit=30`, 8000),
         ]);
       if (statsRes.ok) setNetStats(await statsRes.json());
       if (neuronsRes.ok) setNetNeurons(await neuronsRes.json());
@@ -916,22 +917,39 @@ export default function IntelligencePage() {
     ontologyFilter,
   ]);
 
-  // Auto-refresh network every 60s when on that tab (reduced from 15s to avoid rate limits)
+  // Auto-refresh network every 60s when on that tab AND tab is visible
   useEffect(() => {
     if (tab !== "network") return;
-    const t = setInterval(() => {
-      // Only refresh stats, not all endpoints
+    
+    // Don't poll when tab is hidden
+    const handleVisibility = () => {
+      if (document.hidden) return;
+      // Fetch immediately when tab becomes visible
       fetch(`${BASE}/api/network/stats`)
-        .then((r) => {
-          if (r.status === 429) return null; // Skip on rate limit
-          return r.ok ? r.json() : null;
-        })
-        .then((d) => {
-          if (d) setNetStats(d);
-        })
-        .catch(() => {}); // Ignore errors
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => { if (d) setNetStats(d); })
+        .catch(() => {});
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibility);
+    
+    const t = setInterval(() => {
+      // Only poll if tab is visible
+      if (!document.hidden) {
+        fetch(`${BASE}/api/network/stats`)
+          .then((r) => {
+            if (r.status === 429) return null;
+            return r.ok ? r.json() : null;
+          })
+          .then((d) => { if (d) setNetStats(d); })
+          .catch(() => {});
+      }
     }, 60000);
-    return () => clearInterval(t);
+    
+    return () => {
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [tab]);
 
   useEffect(() => {

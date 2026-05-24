@@ -8,6 +8,9 @@
     "build": "echo build skipped",
     "start": "tsx src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "cleanup:identity": "tsx scripts/cleanup-identity-facts.ts",
     "cleanup:citations": "tsx scripts/cleanup-citation-garbage.ts",
     "backfill-embeddings": "tsx src/scripts/backfill-embeddings.ts"
@@ -49,6 +52,8 @@
     "esbuild-plugin-pino": "^2.3.3",
     "pino-pretty": "^13",
     "thread-stream": "3.1.0",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "vitest": "^3.2.4",
+    "@vitest/coverage-v8": "^3.2.4"
   }
 }
