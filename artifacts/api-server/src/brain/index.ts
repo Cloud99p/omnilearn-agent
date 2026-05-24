@@ -721,24 +721,13 @@ export async function trainOnText(
     logger.info({ firstFact: facts[0].content.slice(0, 200) }, "First extracted fact");
   }
   
-  // MEMORY OPTIMIZATION: Limit facts to prevent OOM during bulk training
-  // For large documents, process only the highest-quality facts
-  const MAX_FACTS = 50;
-  const factsToProcess = facts.length > MAX_FACTS 
-    ? facts.slice(0, MAX_FACTS)
-    : facts;
-  
-  if (facts.length > MAX_FACTS) {
-    logger.warn({ original: facts.length, limited: MAX_FACTS }, "Limiting facts for memory efficiency");
-  }
-  
   let added = 0;
   let skipped = 0;
   const insertedNodes: KnowledgeNode[] = [];
-  const BATCH_SIZE = 10; // Process in batches to allow GC
+  const BATCH_SIZE = 5; // Process in small batches to allow GC
 
-  for (let i = 0; i < factsToProcess.length; i++) {
-    const fact = factsToProcess[i];
+  for (let i = 0; i < facts.length; i++) {
+    const fact = facts[i];
     
     // QUALITY CHECK: Skip low-quality facts
     if (!hasKnowledgeQuality(fact.content)) {
@@ -750,15 +739,11 @@ export async function trainOnText(
       continue;
     }
 
-    // Skip duplicate check for bulk training (use quality filter only)
-    // This prevents OOM from too many embedding calls
-    const skipDuplicateCheck = factsToProcess.length > 20;
-    if (!skipDuplicateCheck) {
-      const existing = await retrieveRelevantNodes(fact.content, clerkId, 1);
-      if (existing.length > 0 && existing[0].similarity > 0.85) {
-        skipped++;
-        continue;
-      }
+    // Check for duplicates (skip if similarity > 0.85)
+    const existing = await retrieveRelevantNodes(fact.content, clerkId, 1);
+    if (existing.length > 0 && existing[0].similarity > 0.85) {
+      skipped++;
+      continue;
     }
     
     const node = await insertNode(
@@ -772,9 +757,9 @@ export async function trainOnText(
     insertedNodes.push(node);
     added++;
     
-    // Batch processing: allow GC between batches
+    // Batch processing: allow GC between batches to prevent OOM
     if ((i + 1) % BATCH_SIZE === 0) {
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 
