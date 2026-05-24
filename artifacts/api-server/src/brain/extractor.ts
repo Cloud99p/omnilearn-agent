@@ -272,6 +272,16 @@ export function hasKnowledgeQuality(text: string): boolean {
 
   if (garbagePatterns.some((p) => p.test(cleanText))) return false;
 
+  // Check for PDF extraction artifacts (truncated words)
+  const brokenWordPatterns = [
+    /^\s*[a-z]{1,3}\s+/i, // Starts with tiny fragment
+    /\s+[a-z]{1,3}\s*$/i, // Ends with tiny fragment
+    /^ivity\b/i, /^ment\b/i, /^tion\b/i, /^ing\b/i,
+    /^able\b/i, /^ible\b/i, /^ness\b/i, /^ship\b/i, /^hood\b/i,
+    /^ful\b/i, /^less\b/i, /^ize\b/i, /^ise\b/i,
+  ];
+  if (brokenWordPatterns.some(p => p.test(trimmed))) return false;
+
   // AI shouldn't claim agency (working on features, building things)
   const agencyPatterns = [
     /i['']?m working on/i,
@@ -291,10 +301,10 @@ export function hasKnowledgeQuality(text: string): boolean {
     );
   if (!hasVerb && trimmed.length > 60) return false; // Increased from 40 - allow shorter verbless facts
 
-  // Check for proper sentence structure (capital letter start, punctuation end)
-  // Allow citation markers at end like .[28] or .[28, 29]
-  const hasProperStructure = /^[A-Z]/.test(cleanText) && /[.!?]\s*(\[\d+[\d,\s]*\])?$/.test(trimmed);
-  if (!hasProperStructure && cleanText.length > 60) return false; // Long text should be properly structured
+  // Check for proper sentence structure - lenient for extracted facts
+  // Many valid facts don't start with capital (PDF extraction normalizes)
+  const hasSomeStructure = /[.!?]$/.test(trimmed) || cleanText.length < 80;
+  if (!hasSomeStructure && cleanText.length > 100) return false;
 
   // Reject if it's mostly numbers/symbols (but ignore citation markers)
   const alphaChars = cleanText.replace(/[^a-zA-Z]/g, "").length;
