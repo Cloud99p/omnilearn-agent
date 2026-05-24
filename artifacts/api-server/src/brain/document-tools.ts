@@ -4,6 +4,7 @@
 import { exec } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
+import { PDFParse } from "pdf-parse";
 import { logger } from "../lib/logger.js";
 
 const execAsync = promisify(exec);
@@ -104,28 +105,21 @@ export async function extractTextFromFile(
       }
 
       case "pdf": {
-        // Use pdftotext (poppler-utils)
+        // Use pdf-parse (pure JavaScript, cross-platform)
         try {
-          const { stdout } = await execAsync(
-            `pdftotext -layout "${filePath}" -`,
-          );
+          const buffer = await fs.readFile(filePath);
+          const parser = new PDFParse({ data: buffer });
+          const result = await parser.getText();
+          await parser.destroy();
+          
           return {
-            text: stdout,
-            method: "pdftotext",
-            metadata: { originalName, mimeType, type: "pdf" },
+            text: result.text,
+            method: "pdf-parse",
+            metadata: { originalName, mimeType, type: "pdf", pages: result.numpages },
           };
         } catch (err) {
-          logger.warn({ err }, "pdftotext failed, trying pdfinfo + pdftotext");
-          // Fallback: try with pdfinfo first
-          const { stdout: pdfinfo } = await execAsync(
-            `pdfinfo "${filePath}"`,
-          ).catch(() => ({ stdout: "" }));
-          const { stdout } = await execAsync(`pdftotext "${filePath}" -`);
-          return {
-            text: pdfinfo ? `${pdfinfo}\n\n---\n\n${stdout}` : stdout,
-            method: "pdftotext",
-            metadata: { originalName, mimeType, type: "pdf" },
-          };
+          logger.warn({ err }, "pdf-parse failed");
+          throw new Error(`PDF extraction failed: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
 

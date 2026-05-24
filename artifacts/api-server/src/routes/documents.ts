@@ -5,11 +5,9 @@ import { eq, desc } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
-import { exec } from "child_process";
-import { promisify } from "util";
+import { PDFParse } from "pdf-parse";
 import { logger } from "../lib/logger.js";
 
-const execAsync = promisify(exec);
 const router = Router();
 
 // Configure multer for file uploads
@@ -92,11 +90,14 @@ async function extractText(
       }
 
       case "pdf": {
-        // Use pdftotext (poppler-utils)
-        const { stdout } = await execAsync(`pdftotext -layout "${filePath}" -`);
+        // Use pdf-parse (pure JavaScript, cross-platform, no system deps)
+        const buffer = await fs.readFile(filePath);
+        const parser = new PDFParse({ data: buffer });
+        const result = await parser.getText();
+        await parser.destroy();
         return {
-          text: stdout,
-          metadata: { method, originalName, type: "pdf" },
+          text: result.text,
+          metadata: { method: "pdf-parse", originalName, type: "pdf", pages: result.numpages },
         };
       }
 
