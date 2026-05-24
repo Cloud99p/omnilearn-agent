@@ -134,4 +134,15 @@ export function findSimilarEmbeddings<T>(
   return scored.slice(0, k);
 }
 
+// Pre-load embedding model on startup (don't wait for first use)
+// This prevents timeout on first training request
+(async () => {
+  try {
+    await getEmbedder();
+    logger.info({ model: MODEL_ID }, "Embedding model pre-loaded and ready");
+  } catch (err) {
+    logger.warn({ err }, "Failed to pre-load embedding model, will load on first use");
+  }
+})();
+
 logger.info("Embeddings module loaded (will load model on first use)");

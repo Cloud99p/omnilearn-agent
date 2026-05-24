@@ -992,6 +992,10 @@ export default function IntelligencePage() {
       // Use FormData for file uploads, JSON for text/URL
       let res;
       try {
+        // Create abort controller with 120 second timeout for large file processing
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000);
+        
         if (selectedFile && trainSource === "document") {
           const formData = new FormData();
           formData.append("file", selectedFile);
@@ -1001,7 +1005,11 @@ export default function IntelligencePage() {
             "[TRAIN] Sending file upload to:",
             `${BASE}/api/omni/train`,
           );
-          res = await fetch(`${BASE}/api/omni/train`, { method: "POST", body: formData });
+          res = await fetch(`${BASE}/api/omni/train`, { 
+            method: "POST", 
+            body: formData,
+            signal: controller.signal,
+          });
         } else {
           const payload: any = { source: trainSource };
           if (trainSource === "manual") payload.text = trainText;
@@ -1021,8 +1029,11 @@ export default function IntelligencePage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
+            signal: controller.signal,
           });
         }
+        
+        clearTimeout(timeoutId);
 
         console.log("[TRAIN] Response status:", res.status, res.ok);
 
@@ -1060,6 +1071,12 @@ export default function IntelligencePage() {
         fetchCharacter();
       } catch (fetchErr: any) {
         console.error("[TRAIN] Error:", fetchErr);
+        // Handle timeout errors
+        if (fetchErr.name === "AbortError") {
+          throw new Error(
+            "Request timed out. Large documents can take 30-60 seconds to process. Please try again with a smaller file or wait for the server to finish loading the embedding model on first run.",
+          );
+        }
         throw fetchErr;
       }
     } catch (err: any) {
