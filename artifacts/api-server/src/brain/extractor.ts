@@ -256,10 +256,10 @@ export function hasKnowledgeQuality(text: string): boolean {
   const cleanText = trimmed.replace(/\[\d+\]/g, "").replace(/\[\d+,\s*\d+\]/g, "");
 
   // Too short (likely truncated)
-  if (cleanText.length < 20) return false;
+  if (cleanText.length < 15) return false;
 
   // Too long (likely a full document, not atomic fact)
-  if (cleanText.length > 700) return false;
+  if (cleanText.length > 1000) return false; // Increased from 700
 
   // Check for obvious garbage patterns
   const garbagePatterns = [
@@ -283,12 +283,13 @@ export function hasKnowledgeQuality(text: string): boolean {
 
   if (agencyPatterns.some((p) => p.test(trimmed))) return false;
 
-  // Check for incomplete sentences (no verb)
+  // Check for incomplete sentences (no verb) - MORE LENIENT
+  // Only require verb for longer text; short facts can be verbless
   const hasVerb =
     /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?)\b/i.test(
       trimmed,
     );
-  if (!hasVerb && trimmed.length > 40) return false; // Long text without verb is suspicious
+  if (!hasVerb && trimmed.length > 60) return false; // Increased from 40 - allow shorter verbless facts
 
   // Check for proper sentence structure (capital letter start, punctuation end)
   // Allow citation markers at end like .[28] or .[28, 29]
@@ -531,14 +532,15 @@ export function extractFacts(text: string): ExtractedFact[] {
         if (seen.has(clauseKey)) continue;
         seen.add(clauseKey);
 
-        // Must have a verb (or be a clear factual statement)
+        // MORE LENIENT: Allow clauses without verbs if they look factual
         const hasVerb =
           /\b(is|are|was|were|has|have|had|does|do|did|can|could|will|would|should|may|might|must|works?|uses?|creates?|builds?|makes?|provides?|enables?|allows?|contains?|includes?|consists?|requires?|depends?|affects?|produces?|generates?|forms?|becomes?|remains?|show|shows?|indicate|indicates?|suggest|suggests?|simplif|classif|consider|considered|hosted|assess|treat|treating|protect|reduc|control|controlling|threaten|manage|govern|regulate|define|describe|name|call|called|label|categorize|group|organize|structure|arrange|order|rank|list|record|document|report|publish|announce|declare|state|stated|claim|argue|propose|recommend|advise|support|oppose|accept|reject|approve|deny|confirm|verify|validate|test|examine|analyze|study|studied|investigate|research|explore|discover|find|found|identify|recognize|acknowledge|admit|realize|understand|know|known|believe|think|thought|feel|felt|seem|seemed|appear|appeared|look|looked|sound|sounded|taste|tasted|smell|smelled|diverge|diverged|domesticate|domesticated|relate|related|connect|connected|separate|separated|isolate|isolated|develop|developed|evolve|evolved|live|lived|exist|existed|exist|occur|occurred|occurs|remain|remained|stay|stayed|continue|continued|begin|began|start|started|end|ended|finish|finished)\b/i.test(
             clause,
           );
-        // console.log(`[EXTRACT] Clause verb check: hasVerb=${hasVerb}, len=${clause.length}`);
-        // Skip only if no verb AND doesn't look like a fact
-        if (!hasVerb && !/\b(were|are|is|was)\b/i.test(clause)) {
+        
+        // Skip only if: no verb AND (too short OR looks like fragment)
+        const isFragment = /^(of|in|on|at|to|for|with|from|by|about|into|through|during|before|after|above|below|between|among|without|within|beyond|across|around|over|under|against|along|near|since|until|upon|down|up|off|out|back|forward|away)/i.test(clause);
+        if (!hasVerb && (clause.length < 20 || isFragment)) {
           // console.log(`[EXTRACT] Skipping clause - no verb: ${clause.slice(0, 60)}...`);
           continue;
         }
