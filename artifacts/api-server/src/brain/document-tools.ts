@@ -5,6 +5,9 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import { PDFParse } from "pdf-parse";
+import mammoth from "mammoth";
+import { read, utils } from "xlsx";
+import { createWorker } from "tesseract.js";
 import { logger } from "../lib/logger.js";
 
 const execAsync = promisify(exec);
@@ -124,137 +127,85 @@ export async function extractTextFromFile(
       }
 
       case "docx": {
-        // Use pandoc for DOCX
+        // Use mammoth (pure JavaScript, no system deps)
         try {
-          const { stdout } = await execAsync(
-            `pandoc -f docx -t plain "${filePath}"`,
-          );
+          const buffer = await fs.readFile(filePath);
+          const result = await mammoth.extractRawText({ buffer });
           return {
-            text: stdout,
-            method: "pandoc",
+            text: result.value || "",
+            method: "mammoth",
             metadata: { originalName, mimeType, type: "word" },
           };
         } catch (err) {
-          logger.warn({ err }, "pandoc failed for DOCX");
-          // Try mammoth.js if available
-          try {
-            const { stdout } = await execAsync(
-              `mammoth "${filePath}" --output-format=txt`,
-            );
-            return {
-              text: stdout,
-              method: "mammoth",
-              metadata: { originalName, mimeType, type: "word" },
-            };
-          } catch {
-            // Last resort: read as binary and return placeholder
-            return {
-              text: `[DOCX file "${originalName}" - install pandoc or mammoth for full extraction]`,
-              method: "binary",
-              metadata: { originalName, mimeType, type: "word" },
-            };
-          }
-        }
-      }
-
-      case "doc": {
-        // Legacy DOC - try abiword or antiword
-        try {
-          const { stdout } = await execAsync(
-            `abiword --to=text "${filePath}" --to-name=stdout 2>/dev/null || antiword "${filePath}"`,
-          );
+          logger.warn({ err }, "mammoth failed for DOCX");
           return {
-            text: stdout,
-            method: "abiword/antiword",
-            metadata: { originalName, mimeType, type: "word" },
-          };
-        } catch {
-          return {
-            text: `[Legacy DOC file "${originalName}" - install abiword or antiword for extraction]`,
+            text: `[DOCX file "${originalName}" - extraction failed]`,
             method: "binary",
             metadata: { originalName, mimeType, type: "word" },
           };
         }
+      }
+
+      case "doc": {
+        // Legacy DOC - no pure JS solution
+        return {
+          text: `[Legacy DOC file "${originalName}" - convert to DOCX for extraction]`,
+          method: "binary",
+          metadata: { originalName, mimeType, type: "word" },
+        };
       }
 
       case "excel":
       case "xlsx":
       case "xls": {
-        // Use ssconvert (gnumeric) or python
+        // Use xlsx (pure JavaScript, no system deps)
         try {
-          const { stdout } = await execAsync(`ssconvert "${filePath}" -`);
+          const buffer = await fs.readFile(filePath);
+          const workbook = read(buffer, { type: "buffer" });
+          const texts: string[] = [];
+          for (const sheetName of workbook.SheetNames) {
+            const sheet = workbook.Sheets[sheetName];
+            const json = utils.sheet_to_json(sheet, { header: 1 });
+            texts.push(`=== ${sheetName} ===`);
+            for (const row of json) {
+              texts.push(row.map((c: any) => c ?? "").join("\t"));
+            }
+          }
           return {
-            text: stdout,
-            method: "ssconvert",
+            text: texts.join("\n"),
+            method: "xlsx",
             metadata: { originalName, mimeType, type: "excel" },
           };
-        } catch {
-          // Try python with openpyxl
-          try {
-            const pythonScript = `
-import sys
-try:
-    import openpyxl
-    wb = openpyxl.load_workbook("${filePath.replace(/"/g, '\\"')}")
-    for sheet in wb.worksheets:
-        for row in sheet.iter_rows(values_only=True):
-            print("\\t".join(str(c) if c is not None else "" for c in row))
-except Exception as e:
-    print(f"Error: {e}", file=sys.stderr)
-    sys.exit(1)
-`;
-            const { stdout } = await execAsync(
-              `python3 -c "${pythonScript.replace(/"/g, '\\"')}"`,
-            );
-            return {
-              text: stdout,
-              method: "openpyxl",
-              metadata: { originalName, mimeType, type: "excel" },
-            };
-          } catch {
-            return {
-              text: `[Excel file "${originalName}" - install gnumeric or openpyxl for extraction]`,
-              method: "binary",
-              metadata: { originalName, mimeType, type: "excel" },
-            };
-          }
+        } catch (err) {
+          logger.warn({ err }, "xlsx extraction failed");
+          return {
+            text: `[Excel file "${originalName}" - extraction failed]`,
+            method: "binary",
+            metadata: { originalName, mimeType, type: "excel" },
+          };
         }
       }
-
       case "ppt":
       case "pptx": {
-        // Use pandoc for PowerPoint
-        try {
-          const { stdout } = await execAsync(
-            `pandoc -f pptx -t plain "${filePath}"`,
-          );
-          return {
-            text: stdout,
-            method: "pandoc",
-            metadata: { originalName, mimeType, type: "powerpoint" },
-          };
-        } catch {
-          return {
-            text: `[PowerPoint file "${originalName}" - install pandoc for extraction]`,
-            method: "binary",
-            metadata: { originalName, mimeType, type: "powerpoint" },
-          };
-        }
+        // PowerPoint - no pure JS solution
+        return {
+          text: `[PowerPoint "${originalName}" - convert to PDF for extraction]`,
+          method: "binary",
+          metadata: { originalName, mimeType, type: "powerpoint" },
+        };
       }
 
       case "ocr": {
-        // Use tesseract OCR
+        // Use tesseract.js (pure JavaScript)
         try {
-          const { stdout } = await execAsync(`tesseract "${filePath}" stdout`);
-          return {
-            text: stdout,
-            method: "tesseract",
-            metadata: { originalName, mimeType, type: "image" },
-          };
+          const worker = await createWorker("eng", 1, { logger: () => {} });
+          const { data: { text } } = await worker.recognize(filePath);
+          await worker.terminate();
+          return { text, method: "tesseract.js", metadata: { originalName, mimeType, type: "image" } };
         } catch (err) {
-          logger.warn({ err }, "Tesseract OCR failed");
+          logger.warn({ err }, "Tesseract.js OCR failed");
           return {
-            text: `[Image "${originalName}" - install tesseract-ocr for text extraction]`,
+            text: `[Image "${originalName}" - OCR failed]`,
             method: "binary",
             metadata: { originalName, mimeType, type: "image" },
           };
