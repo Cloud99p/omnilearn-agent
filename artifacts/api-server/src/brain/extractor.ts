@@ -689,8 +689,10 @@ export function extractFacts(text: string): ExtractedFact[] {
         continue;
       }
 
-      // HYBRID SPLITTING: Split long sentences into atomic facts
-      const atomicClauses = splitIntoAtomicFacts(clean);
+      // DISABLED AGGRESSIVE SPLITTING: Keep complete sentences intact
+      // The splitIntoAtomicFacts() was chopping sentences mid-thought
+      // Only split on semicolons which are clear independent clauses
+      const atomicClauses = clean.includes(';') ? splitIntoAtomicFacts(clean) : [clean];
       // console.log(`[EXTRACT] Sentence split: ${atomicClauses.length} clause(s) from ${clean.length} chars`);
 
       for (const clause of atomicClauses) {
