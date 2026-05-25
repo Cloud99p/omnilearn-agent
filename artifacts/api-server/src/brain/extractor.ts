@@ -444,6 +444,41 @@ export function normalizePDFText(text: string): string {
   
   // 2. Join words split across lines (pdf-parse converts newlines to spaces)
   // Pattern: partial word + space(s) + continuation
+  // FIRST: Handle common suffix splits generically (catches ANY word split at common suffix)
+  normalized = normalized
+    // -ing splits (welding, machining, engineering, etc.)
+    .replace(/\b([a-z]{3,})\s+(ing)\b/gi, '$1$2')
+    // -tion splits (operation, production, etc.)
+    .replace(/\b([a-z]{3,})\s+(tion)\b/gi, '$1$2')
+    // -ment splits (equipment, arrangement, etc.)
+    .replace(/\b([a-z]{3,})\s+(ment)\b/gi, '$1$2')
+    // -ness splits (stiffness, hardness, etc.)
+    .replace(/\b([a-z]{3,})\s+(ness)\b/gi, '$1$2')
+    // -ity splits (quality, facility, etc.)
+    .replace(/\b([a-z]{3,})\s+(ity)\b/gi, '$1$2')
+    // -able/-ible splits (portable, suitable, etc.)
+    .replace(/\b([a-z]{3,})\s+(able)\b/gi, '$1$2')
+    .replace(/\b([a-z]{3,})\s+(ible)\b/gi, '$1$2')
+    // -ive splits (protective, effective, etc.)
+    .replace(/\b([a-z]{3,})\s+(ive)\b/gi, '$1$2')
+    // -ous splits (various, etc.)
+    .replace(/\b([a-z]{3,})\s+(ous)\b/gi, '$1$2')
+    // -al splits (manual, industrial, etc.)
+    .replace(/\b([a-z]{3,})\s+(al)\b/gi, '$1$2')
+    // -er/-or splits (worker, operator, etc.)
+    .replace(/\b([a-z]{3,})\s+(er)\b/gi, '$1$2')
+    .replace(/\b([a-z]{3,})\s+(or)\b/gi, '$1$2')
+    // -ly splits (generally, typically, etc.)
+    .replace(/\b([a-z]{3,})\s+(ly)\b/gi, '$1$2')
+    // -ed splits (used, formed, etc.)
+    .replace(/\b([a-z]{3,})\s+(ed)\b/gi, '$1$2')
+    // -s/-es splits (tools, machines, processes, etc.)
+    .replace(/\b([a-z]{4,})\s+(ses)\b/gi, '$1$2')
+    .replace(/\b([a-z]{4,})\s+(zes)\b/gi, '$1$2')
+    // -ish splits (establish, publish, finish, etc.)
+    .replace(/\b([a-z]{3,})\s+(ish)\b/gi, '$1$2');
+  
+  // SECOND: Handle specific known splits that generic patterns miss
   const commonSplits: Array<[RegExp, string]> = [
     // Handle both newline and space splits (\s+ matches both)
     [/manuf\s+acturing/gi, 'manufacturing'],
