@@ -21,7 +21,7 @@ import {
   buildTfidfVector,
   computeIdfFromVectors,
 } from "./tfidf.js";
-import { extractFacts, detectQueryType, extractKeyTerms } from "./extractor.js";
+import { extractFacts, detectQueryType, extractKeyTerms, normalizePDFText } from "./extractor.js";
 import { embedText, cosineSimilarity } from "./embeddings.js";
 import { broadcastKnowledgeToCluster, classifyShareLevel } from "../lib/knowledge-sync.js";
 import {
@@ -715,7 +715,12 @@ export async function trainOnText(
   source: string,
   clerkId: string | null,
 ): Promise<{ added: number; skipped: number; nodes: KnowledgeNode[] }> {
-  const facts = extractFacts(text);
+  // PREPROCESS: Normalize PDF text artifacts before extraction
+  const normalizedText = source.includes('pdf') || source.includes('file:') 
+    ? normalizePDFText(text) 
+    : text;
+  
+  const facts = extractFacts(normalizedText);
   logger.info({ factCount: facts.length, textLength: text.length }, "extractFacts returned");
   if (facts.length > 0) {
     logger.info({ firstFact: facts[0].content.slice(0, 200) }, "First extracted fact");
@@ -764,25 +769,25 @@ export async function trainOnText(
   }
 
   // Also insert the raw text as a knowledge node if substantial AND high-quality
-  if (text.length > 60 && text.length < 500) {
-    const existing = await retrieveRelevantNodes(text, clerkId, 1);
+  if (normalizedText.length > 60 && normalizedText.length < 500) {
+    const existing = await retrieveRelevantNodes(normalizedText, clerkId, 1);
     if (
       (existing.length === 0 || existing[0].similarity < 0.7) &&
-      hasKnowledgeQuality(text)
+      hasKnowledgeQuality(normalizedText)
     ) {
       const node = await insertNode(
-        text.trim(),
+        normalizedText.trim(),
         "fact",
-        extractKeyTerms(text),
+        extractKeyTerms(normalizedText),
         0.8,
         source,
         clerkId,
       );
       insertedNodes.push(node);
       added++;
-    } else if (!hasKnowledgeQuality(text)) {
+    } else if (!hasKnowledgeQuality(normalizedText)) {
       logger.debug(
-        { text: text.slice(0, 100) },
+        { text: normalizedText.slice(0, 100) },
         "Skipping low-quality raw text from batch training",
       );
     }

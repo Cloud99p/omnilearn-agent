@@ -279,8 +279,27 @@ export function hasKnowledgeQuality(text: string): boolean {
     /^ivity\b/i, /^ment\b/i, /^tion\b/i, /^ing\b/i,
     /^able\b/i, /^ible\b/i, /^ness\b/i, /^ship\b/i, /^hood\b/i,
     /^ful\b/i, /^less\b/i, /^ize\b/i, /^ise\b/i,
+    // Common truncated word endings from PDF line breaks
+    /^lishing\b/i, /^lish\b/i, /^ufactur\b/i, /^manuf\b/i,
+    /^arrangemen\b/i, /^arrange\b/i, /^facilit\b/i, /^structur\b/i,
+    /^proces\b/i, /^layout\b/i, /^worksho\b/i, /^engineerin\b/i,
+    /^weldin\b/i, /^castin\b/i, /^forgin\b/i, /^machinin\b/i,
+    /^drillin\b/i, /^millin\b/i, /^turnin\b/i, /^grindin\b/i,
+    /^assembl\b/i, /^fittin\b/i, /^safet\b/i, /^equipmen\b/i,
+    /^protectiv\b/i, /^extinguish\b/i, /^combust\b/i, /^flammabl\b/i,
   ];
   if (brokenWordPatterns.some(p => p.test(trimmed))) return false;
+  
+  // Check if text ends mid-word (no punctuation and last word looks incomplete)
+  if (!/[.!?]$/.test(trimmed)) {
+    const words = trimmed.split(/\s+/);
+    const lastWord = words[words.length - 1]?.toLowerCase().replace(/[^a-z]/g, '');
+    // Common incomplete word patterns
+    const incompleteEndings = /^(.{3,})(ing|tion|ment|ness|ity|able|ible|ful|less|ize|ise|ed|ly)$/i;
+    if (lastWord && incompleteEndings.test(lastWord) && lastWord.length < 12) {
+      return false;
+    }
+  }
 
   // AI shouldn't claim agency (working on features, building things)
   const agencyPatterns = [
@@ -413,21 +432,118 @@ function isNonLearnable(text: string): boolean {
   return false;
 }
 
+/**
+ * Normalize PDF-extracted text to fix common artifacts from line breaks,
+ * hyphenation, and formatting issues.
+ */
+export function normalizePDFText(text: string): string {
+  let normalized = text;
+  
+  // 1. Join hyphenated line breaks (word-\nword → wordword)
+  normalized = normalized.replace(/([a-zA-Z])\-\s*\n\s*([a-zA-Z])/g, '$1$2');
+  
+  // 2. Fix common PDF line-break splits (lowercase continuation after line break)
+  // Pattern: end of line has partial word, next line starts with lowercase continuation
+  const commonSplits: Array<[RegExp, string]> = [
+    [/manuf\s*\n\s*acturing/gi, 'manufacturing'],
+    [/engineer\s*\n\s*ing/gi, 'engineering'],
+    [/weld\s*\n\s*ing/gi, 'welding'],
+    [/machin\s*\n\s*ing/gi, 'machining'],
+    [/drill\s*\n\s*ing/gi, 'drilling'],
+    [/mill\s*\n\s*ing/gi, 'milling'],
+    [/turn\s*\n\s*ing/gi, 'turning'],
+    [/grind\s*\n\s*ing/gi, 'grinding'],
+    [/cast\s*\n\s*ing/gi, 'casting'],
+    [/forg\s*\n\s*ing/gi, 'forging'],
+    [/assembl\s*\n\s*y/gi, 'assembly'],
+    [/fitt\s*\n\s*ing/gi, 'fitting'],
+    [/safe\s*\n\s*ty/gi, 'safety'],
+    [/quali\s*\n\s*ty/gi, 'quality'],
+    [/facili\s*\n\s*ty/gi, 'facility'],
+    [/facili\s*\n\s*ties/gi, 'facilities'],
+    [/equipmen\s*\n\s*t/gi, 'equipment'],
+    [/developmen\s*\n\s*t/gi, 'development'],
+    [/managemen\s*\n\s*t/gi, 'management'],
+    [/arrangemen\s*\n\s*t/gi, 'arrangement'],
+    [/requiremen\s*\n\s*t/gi, 'requirement'],
+    [/environmen\s*\n\s*t/gi, 'environment'],
+    [/governmen\s*\n\s*t/gi, 'government'],
+    [/departmen\s*\n\s*t/gi, 'department'],
+    [/experimen\s*\n\s*t/gi, 'experiment'],
+    [/documen\s*\n\s*t/gi, 'document'],
+    [/instrumen\s*\n\s*t/gi, 'instrument'],
+    [/monumen\s*\n\s*t/gi, 'monument'],
+    [/ormen\s*\n\s*t/gi, 'orment'], // for "adornment", etc.
+    [/protecti\s*\n\s*ve/gi, 'protective'],
+    [/effecti\s*\n\s*ve/gi, 'effective'],
+    [/relati\s*\n\s*ve/gi, 'relative'],
+    [/acti\s*\n\s*ve/gi, 'active'],
+    [/constructi\s*\n\s*on/gi, 'construction'],
+    [/producti\s*\n\s*on/gi, 'production'],
+    [/operati\s*\n\s*on/gi, 'operation'],
+    [/generati\s*\n\s*on/gi, 'generation'],
+    [/informa\s*\n\s*tion/gi, 'information'],
+    [/educa\s*\n\s*tion/gi, 'education'],
+    [/communica\s*\n\s*tion/gi, 'communication'],
+    [/applica\s*\n\s*tion/gi, 'application'],
+    [/founda\s*\n\s*tion/gi, 'foundation'],
+    [/loca\s*\n\s*tion/gi, 'location'],
+    [/sta\s*\n\s*tion/gi, 'station'],
+    [/combusti\s*\n\s*on/gi, 'combustion'],
+    [/extinguish\s*\n\s*er/gi, 'extinguisher'],
+    [/flammabl\s*\n\s*e/gi, 'flammable'],
+    [/combustibl\s*\n\s*e/gi, 'combustible'],
+    [/portabl\s*\n\s*e/gi, 'portable'],
+    [/suitabl\s*\n\s*e/gi, 'suitable'],
+    [/availabl\s*\n\s*e/gi, 'available'],
+    [/reliabl\s*\n\s*e/gi, 'reliable'],
+    [/responsibl\s*\n\s*e/gi, 'responsible'],
+    [/estab\s*\n\s*lish/gi, 'establish'],
+    [/estab\s*\n\s*lishing/gi, 'establishing'],
+    [/pub\s*\n\s*lish/gi, 'publish'],
+    [/fin\s*\n\s*ish/gi, 'finish'],
+    [/pol\s*\n\s*ish/gi, 'polish'],
+    [/dimen\s*\n\s*sion/gi, 'dimension'],
+    [/ten\s*\n\s*sion/gi, 'tension'],
+    [/suspen\s*\n\s*sion/gi, 'suspension'],
+    [/exten\s*\n\s*sion/gi, 'extension'],
+    [/inten\s*\n\s*sion/gi, 'intension'],
+  ];
+  
+  for (const [pattern, replacement] of commonSplits) {
+    normalized = normalized.replace(pattern, replacement);
+  }
+  
+  // 3. Remove page numbers and headers/footers (common PDF artifacts)
+  // Pattern: standalone numbers, especially at line boundaries
+  normalized = normalized.replace(/^\s*--\s*\d+\s+of\s+\d+\s*--\s*$/gm, '');
+  normalized = normalized.replace(/^\s*\d+\s*--\s*$/gm, '');
+  normalized = normalized.replace(/^\s*\d+\s+\w+\s+of\s+\d+\s*$/gm, '');
+  
+  // 4. Normalize multiple spaces/newlines to single space
+  normalized = normalized.replace(/\s+/g, ' ').trim();
+  
+  return normalized;
+}
+
 export function extractFacts(text: string): ExtractedFact[] {
   const facts: ExtractedFact[] = [];
   const seen = new Set<string>();
   
+  // PREPROCESS: Normalize PDF text artifacts before extraction
+  const normalizedText = normalizePDFText(text);
+  
   // DEBUG: Log text preview
-  const textPreview = text.slice(0, 100).replace(/\n/g, '\\n');
-  // console.log(`[EXTRACT] Input text (${text.length} chars): ${textPreview}...`);
+  const textPreview = normalizedText.slice(0, 100).replace(/\n/g, '\\n');
+  // console.log(`[EXTRACT] Input text (${normalizedText.length} chars): ${textPreview}...`);
   
   // Check for identity statements FIRST
-  const identityName = detectIdentityStatement(text);
+  const identityName = detectIdentityStatement(normalizedText);
   // console.log(`[EXTRACT] Identity check: ${identityName ? 'FOUND: ' + identityName : 'none'}`);
   if (identityName) {
     // console.log(`[EXTRACT] Returning identity fact`);
     facts.push({
-      content: text.trim(),
+      content: normalizedText.trim(),
       type: "identity",
       tags: ["identity", "user", identityName.toLowerCase()],
       confidence: 0.95,
@@ -437,29 +553,12 @@ export function extractFacts(text: string): ExtractedFact[] {
   }
   
   // Check if non-learnable
-  const nonLearnable = isNonLearnable(text);
+  const nonLearnable = isNonLearnable(normalizedText);
   // console.log(`[EXTRACT] isNonLearnable: ${nonLearnable}`);
   if (nonLearnable) {
     // console.log(`[EXTRACT] Returning empty - non-learnable`);
     return facts; // Return empty - no fact extraction
   }
-
-  // NORMALIZE TEXT: Fix common OCR/copy-paste errors
-  let normalized = text
-    // Fix spacing around words (OCR errors like "a lso" -> "also", "a t" -> "at")
-    .replace(/\s+(a|an|is|as|at|in|on|to|for|of|and|or|but|not|was|were|be|been|being)\s+(\w)/g, (match, p1, p2) => {
-      const combined = p1 + p2.toLowerCase();
-      if (["also", "into", "onto", "about", "that", "with", "from", "then", "when", "than", "what", "who", "why", "how", "where", "which", "while", "would", "could", "should", "must", "could", "need", "used", "does", "done", "gone", "come", "made", "take", "have", "been", "am", "are", "is", "was", "were"].includes(combined)) {
-        return combined;
-      }
-      return match; // Keep original if not a known combination
-    })
-    // Fix doubled words
-    .replace(/\b(\w+)\s+\1\b/gi, "$1")
-    // Normalize multiple spaces to single space
-    .replace(/\s+/g, " ")
-    // Trim
-    .trim();
 
   // 1. Try pattern-based extraction first (high quality)
   // Words that indicate a fragment (not a complete thought)
@@ -468,7 +567,7 @@ export function extractFacts(text: string): ExtractedFact[] {
   for (const { re, type, conf } of FACT_PATTERNS) {
     const pattern = new RegExp(re.source, re.flags);
     let match;
-    while ((match = pattern.exec(text)) !== null) {
+    while ((match = pattern.exec(normalizedText)) !== null) {
       const subj = match[1]?.trim().toLowerCase().replace(/\s+/g, " ");
       const obj = match[2]?.trim().toLowerCase().replace(/\s+/g, " ");
 
@@ -503,9 +602,9 @@ export function extractFacts(text: string): ExtractedFact[] {
   }
 
   // 2. If bulk text (>200 chars), extract sentences as facts (ALWAYS for educational content)
-  if (text.length > 200) {
+  if (normalizedText.length > 200) {
     // Split into sentences - handle citation markers like .[6][7]
-    const normalized = text.replace(/\]\s*\[/g, '], [');
+    const normalized = normalizedText.replace(/\]\s*\[/g, '], [');
     const sentences = normalized
       .split(/[.!?]+(?:\s*\[\d+\])*(?:\s*\[\d+\])*\s+/)
       .filter((s) => s.trim().length > 15 && s.trim().length < 600);
@@ -586,11 +685,11 @@ export function extractFacts(text: string): ExtractedFact[] {
 
   // Also capture the whole sentence as a general knowledge node if long enough
   // BUT: skip sentences that are questions, commands, requests, or low-quality
-  const sentences = text
+  const rawSentences = normalizedText
     .split(/[.!?]+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 30 && s.length < 300);
-  for (const sentence of sentences) {
+  for (const sentence of rawSentences) {
     const normalised = sentence.toLowerCase().replace(/\s+/g, " ");
     if (
       !seen.has(`sent::${normalised}`) &&
