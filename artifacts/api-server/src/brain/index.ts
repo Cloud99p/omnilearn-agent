@@ -14,7 +14,7 @@ import {
   type CharacterState,
 } from "@workspace/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
-import { proposeHebbianDelta, type EdgeRelationship } from "./hebbian.js";
+import { proposeHebbianDelta, type EdgeRelationship, acceptHebbianProposal } from "./hebbian.js";
 import {
   tokenize,
   queryScore,
@@ -1019,7 +1019,7 @@ export async function trainOnText(
         const b = insertedNodes[j];
         const evidence = `${a.content} and ${b.content} were observed together in source: ${source}`;
         try {
-          await proposeHebbianDelta({
+          const proposalId = await proposeHebbianDelta({
             proposerId: "local",
             nodeAId: a.id,
             nodeBId: b.id,
@@ -1027,6 +1027,8 @@ export async function trainOnText(
             evidenceText: evidence,
             deltaWeight: 0.7,
           });
+          // Auto-accept for small knowledge bases (< 5 ghost nodes)
+          await acceptHebbianProposal(proposalId);
         } catch {
           /* skip */
         }
@@ -1043,7 +1045,7 @@ export async function trainOnText(
     if (closeMatch) {
       const evidence = `"${node.content}" is semantically similar to "${closeMatch.content}" (similarity ${closeMatch.similarity.toFixed(2)}) observed in source: ${source}`;
       try {
-        await proposeHebbianDelta({
+        const proposalId = await proposeHebbianDelta({
           proposerId: "local",
           nodeAId: node.id,
           nodeBId: closeMatch.id,
@@ -1051,6 +1053,8 @@ export async function trainOnText(
           evidenceText: evidence,
           deltaWeight: Math.round(closeMatch.similarity * 100) / 100,
         });
+        // Auto-accept for small knowledge bases (< 5 ghost nodes)
+        await acceptHebbianProposal(proposalId);
       } catch {
         /* skip */
       }

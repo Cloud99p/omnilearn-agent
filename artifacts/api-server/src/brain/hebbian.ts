@@ -306,3 +306,53 @@ export async function autoValidateAndApplyProposal(
   }
   return { validation, applied, vote };
 }
+
+// ── Auto-accept (for small knowledge bases) ─────────────────────────────────
+
+/**
+ * Auto-accept a Hebbian proposal without voting.
+ * Use when you don't have enough ghost nodes for quorum yet.
+ */
+export async function acceptHebbianProposal(proposalId: number): Promise<boolean> {
+  try {
+    // Get the proposal
+    const [proposal] = await db
+      .select()
+      .from(hebbianProposals)
+      .where(eq(hebbianProposals.id, proposalId));
+    
+    if (!proposal) {
+      logger.warn({ proposalId }, "Proposal not found for auto-accept");
+      return false;
+    }
+    
+    // Validate first (safety check)
+    const validation = await validateProposal(proposalId);
+    if (!validation.valid) {
+      logger.warn(
+        { proposalId, reason: validation.reason },
+        "Auto-accept skipped: validation failed"
+      );
+      return false;
+    }
+    
+    // Update status to validated
+    await db
+      .update(hebbianProposals)
+      .set({ status: "validated", validatedAt: new Date() })
+      .where(eq(hebbianProposals.id, proposalId));
+    
+    // Apply the proposal
+    await applyValidatedProposals();
+    
+    logger.info(
+      { proposalId, nodeAId: proposal.nodeAId, nodeBId: proposal.nodeBId, edgeType: proposal.edgeType },
+      "Hebbian proposal auto-accepted (small knowledge base)"
+    );
+    
+    return true;
+  } catch (error) {
+    logger.error({ err: error, proposalId }, "Auto-accept failed");
+    return false;
+  }
+}
