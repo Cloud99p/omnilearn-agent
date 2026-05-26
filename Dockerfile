@@ -15,7 +15,7 @@ COPY . .
 RUN pnpm install --dangerously-allow-all-builds
 
 # Install markitdown for better PDF/DOCX extraction
-RUN pip3 install markitdown
+RUN pip3 install --break-system-packages markitdown
 
 # Build only network-hierarchy (api-server doesn't have a build step)
 RUN cd packages/network-hierarchy && pnpm build
