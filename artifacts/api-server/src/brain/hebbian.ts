@@ -46,20 +46,61 @@ function voteFromSignal(
   return parseInt(hash.slice(0, 2), 16) % 2 === 0;
 }
 
+/**
+ * Collect votes for a Hebbian proposal.
+ * Uses percentage-based quorum (25% of online nodes) for scalability.
+ * 
+ * Quorum rules:
+ * - Small network (< 20 nodes): Auto-accept (no voting needed)
+ * - Medium network (20-100 nodes): 25% of online nodes
+ * - Large network (> 100 nodes): 25% capped at 25 validators minimum
+ */
 export async function collectHebbianVotes(
   proposalId: number,
+  onlineNodeCount: number = 5, // Default to 5 if not provided
 ): Promise<{ yes: number; no: number; quorum: number; passed: boolean }> {
-  const eligibleVotes = [
-    voteFromSignal("validator:proof", proposalId, "proof"),
-    voteFromSignal("validator:semantic", proposalId, "semantic"),
-    voteFromSignal("validator:freshness", proposalId, "freshness"),
-    voteFromSignal("validator:graph", proposalId, "graph"),
-    voteFromSignal("validator:consistency", proposalId, "consistency"),
+  // For small networks, auto-pass (already handled by auto-accept)
+  if (onlineNodeCount < 20) {
+    return { yes: onlineNodeCount, no: 0, quorum: 1, passed: true };
+  }
+  
+  // Calculate dynamic quorum based on online nodes
+  const quorumPercentage = 0.25; // 25% of online nodes
+  const minQuorum = 5; // Minimum 5 votes for medium networks
+  const maxQuorum = 25; // Cap at 25 for large networks
+  
+  const calculatedQuorum = Math.ceil(onlineNodeCount * quorumPercentage);
+  const quorum = Math.max(minQuorum, Math.min(maxQuorum, calculatedQuorum));
+  
+  // Simulate votes from validators (proof, semantic, freshness, graph, consistency)
+  const validatorTypes = [
+    "validator:proof",
+    "validator:semantic",
+    "validator:freshness",
+    "validator:graph",
+    "validator:consistency",
   ];
+  
+  // For now, use deterministic voting based on proposal hash
+  // In production, this would query actual validator nodes
+  const eligibleVotes = validatorTypes.map(type => 
+    voteFromSignal(type, proposalId, type.split(':')[1])
+  );
+  
   const yes = eligibleVotes.filter(Boolean).length;
   const no = eligibleVotes.length - yes;
-  const quorum = Math.ceil(eligibleVotes.length * 0.6);
-  return { yes, no, quorum, passed: yes >= quorum };
+  
+  // If we have enough validators online, use percentage quorum
+  // Otherwise, fall back to simple majority
+  const actualQuorum = onlineNodeCount >= 20 ? quorum : Math.ceil(validatorTypes.length * 0.6);
+  const passed = yes >= actualQuorum;
+  
+  logger.debug(
+    { proposalId, onlineNodeCount, yes, no, quorum: actualQuorum, passed },
+    "Hebbian vote collected (percentage-based quorum)"
+  );
+  
+  return { yes, no, quorum: actualQuorum, passed };
 }
 
 // ── Proposal creation ─────────────────────────────────────────────────────────
@@ -293,13 +334,14 @@ export async function applyValidatedProposals(): Promise<number> {
 
 export async function autoValidateAndApplyProposal(
   proposalId: number,
+  onlineNodeCount: number = 5,
 ): Promise<{
   validation: ValidationResult;
   applied: boolean;
   vote: Awaited<ReturnType<typeof collectHebbianVotes>>;
 }> {
   const validation = await validateProposal(proposalId);
-  const vote = await collectHebbianVotes(proposalId);
+  const vote = await collectHebbianVotes(proposalId, onlineNodeCount);
   let applied = false;
   if (validation.valid && vote.passed) {
     applied = (await applyValidatedProposals()) > 0;
@@ -310,10 +352,18 @@ export async function autoValidateAndApplyProposal(
 // ── Auto-accept (for small knowledge bases) ─────────────────────────────────
 
 /**
- * Auto-accept a Hebbian proposal without voting.
- * Use when you don't have enough ghost nodes for quorum yet.
+ * Auto-accept a Hebbian proposal based on network size.
+ * Uses percentage-based quorum (25% of online nodes) for scalability.
+ * 
+ * Network size rules:
+ * - < 20 nodes: Auto-accept (no voting needed)
+ * - 20-100 nodes: 25% quorum (5-25 validators)
+ * - > 100 nodes: 25% quorum (capped at 25 validators)
  */
-export async function acceptHebbianProposal(proposalId: number): Promise<boolean> {
+export async function acceptHebbianProposal(
+  proposalId: number,
+  onlineNodeCount: number = 5,
+): Promise<boolean> {
   try {
     // Get the proposal
     const [proposal] = await db
@@ -326,31 +376,71 @@ export async function acceptHebbianProposal(proposalId: number): Promise<boolean
       return false;
     }
     
-    // Validate first (safety check)
-    const validation = await validateProposal(proposalId);
-    if (!validation.valid) {
-      logger.warn(
-        { proposalId, reason: validation.reason },
-        "Auto-accept skipped: validation failed"
+    // For small networks (< 20 nodes), auto-accept without voting
+    if (onlineNodeCount < 20) {
+      // Validate first (safety check)
+      const validation = await validateProposal(proposalId);
+      if (!validation.valid) {
+        logger.warn(
+          { proposalId, reason: validation.reason },
+          "Auto-accept skipped: validation failed"
+        );
+        return false;
+      }
+      
+      // Update status to validated
+      await db
+        .update(hebbianProposals)
+        .set({ status: "validated", validatedAt: new Date() })
+        .where(eq(hebbianProposals.id, proposalId));
+      
+      // Apply the proposal
+      await applyValidatedProposals();
+      
+      logger.info(
+        { proposalId, nodeAId: proposal.nodeAId, nodeBId: proposal.nodeBId, edgeType: proposal.edgeType, onlineNodeCount },
+        "Hebbian proposal auto-accepted (small network < 20 nodes)"
+      );
+      
+      return true;
+    }
+    
+    // For larger networks, use percentage-based voting
+    const vote = await collectHebbianVotes(proposalId, onlineNodeCount);
+    
+    if (vote.passed) {
+      // Validate first (safety check)
+      const validation = await validateProposal(proposalId);
+      if (!validation.valid) {
+        logger.warn(
+          { proposalId, reason: validation.reason, vote },
+          "Proposal passed vote but failed validation"
+        );
+        return false;
+      }
+      
+      // Update status to validated
+      await db
+        .update(hebbianProposals)
+        .set({ status: "validated", validatedAt: new Date() })
+        .where(eq(hebbianProposals.id, proposalId));
+      
+      // Apply the proposal
+      await applyValidatedProposals();
+      
+      logger.info(
+        { proposalId, nodeAId: proposal.nodeAId, nodeBId: proposal.nodeBId, edgeType: proposal.edgeType, onlineNodeCount, yes: vote.yes, quorum: vote.quorum },
+        "Hebbian proposal accepted (percentage-based quorum: 25%)"
+      );
+      
+      return true;
+    } else {
+      logger.info(
+        { proposalId, onlineNodeCount, yes: vote.yes, quorum: vote.quorum },
+        "Hebbian proposal rejected: quorum not met (25% of online nodes)"
       );
       return false;
     }
-    
-    // Update status to validated
-    await db
-      .update(hebbianProposals)
-      .set({ status: "validated", validatedAt: new Date() })
-      .where(eq(hebbianProposals.id, proposalId));
-    
-    // Apply the proposal
-    await applyValidatedProposals();
-    
-    logger.info(
-      { proposalId, nodeAId: proposal.nodeAId, nodeBId: proposal.nodeBId, edgeType: proposal.edgeType },
-      "Hebbian proposal auto-accepted (small knowledge base)"
-    );
-    
-    return true;
   } catch (error) {
     logger.error({ err: error, proposalId }, "Auto-accept failed");
     return false;

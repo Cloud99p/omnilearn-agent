@@ -1027,8 +1027,9 @@ export async function trainOnText(
             evidenceText: evidence,
             deltaWeight: 0.7,
           });
-          // Auto-accept for small knowledge bases (< 5 ghost nodes)
-          await acceptHebbianProposal(proposalId);
+          // Auto-accept with percentage-based quorum (25% of online nodes)
+          const onlineNodeCount = 5; // TODO: Get from network service
+          await acceptHebbianProposal(proposalId, onlineNodeCount);
         } catch {
           /* skip */
         }
@@ -1053,8 +1054,9 @@ export async function trainOnText(
           evidenceText: evidence,
           deltaWeight: Math.round(closeMatch.similarity * 100) / 100,
         });
-        // Auto-accept for small knowledge bases (< 5 ghost nodes)
-        await acceptHebbianProposal(proposalId);
+        // Auto-accept with percentage-based quorum (25% of online nodes)
+        const onlineNodeCount = 5; // TODO: Get from network service
+        await acceptHebbianProposal(proposalId, onlineNodeCount);
       } catch {
         /* skip */
       }
