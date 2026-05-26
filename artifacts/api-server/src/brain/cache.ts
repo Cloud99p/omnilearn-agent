@@ -58,11 +58,12 @@ queryCache.on('del', (key) => {
  * Generate cache key from query parameters
  */
 function generateCacheKey(
-  query: string,
+  query: string | null | undefined,
   clerkId: string | null,
   topK: number
 ): string {
-  return `query:${query.toLowerCase().trim()}:${clerkId ?? 'global'}:${topK}`;
+  const safeQuery = (query ?? '').toLowerCase().trim();
+  return `query:${safeQuery}:${clerkId ?? 'global'}:${topK}`;
 }
 
 /**
