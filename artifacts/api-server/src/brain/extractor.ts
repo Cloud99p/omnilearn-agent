@@ -526,6 +526,8 @@ export function normalizePDFText(text: string): string {
   const commonSplits: Array<[RegExp, string]> = [
     // Handle both newline and space splits (\s+ matches both)
     [/manuf\s+acturing/gi, 'manufacturing'],
+    [/manuf\s+acture/gi, 'manufacture'],
+    [/manuf\s+actured/gi, 'manufactured'],
     [/engineer\s+ing/gi, 'engineering'],
     [/weld\s+ing/gi, 'welding'],
     [/machin\s+ing/gi, 'machining'],
@@ -536,6 +538,7 @@ export function normalizePDFText(text: string): string {
     [/cast\s+ing/gi, 'casting'],
     [/forg\s+ing/gi, 'forging'],
     [/assembl\s+y/gi, 'assembly'],
+    [/assembl\s+ing/gi, 'assembling'],
     [/fitt\s+ing/gi, 'fitting'],
     [/safe\s+ty/gi, 'safety'],
     [/quali\s+ty/gi, 'quality'],
@@ -560,8 +563,9 @@ export function normalizePDFText(text: string): string {
     [/acti\s+ve/gi, 'active'],
     [/constructi\s+on/gi, 'construction'],
     [/producti\s+on/gi, 'production'],
-    [/producti\s+vity/gi, 'productivity'], // FIX: Add productivity
-    [/produc\s+tivity/gi, 'productivity'], // FIX: Alternative split
+    [/producti\s+vity/gi, 'productivity'],
+    [/produc\s+tivity/gi, 'productivity'],
+    [/produc\s+t/gi, 'product'],
     [/operati\s+on/gi, 'operation'],
     [/generati\s+on/gi, 'generation'],
     [/informa\s+tion/gi, 'information'],
@@ -582,6 +586,7 @@ export function normalizePDFText(text: string): string {
     [/responsibl\s+e/gi, 'responsible'],
     [/estab\s+lish/gi, 'establish'],
     [/estab\s+lishing/gi, 'establishing'],
+    [/estab\s+lishment/gi, 'establishment'],
     [/pub\s+lish/gi, 'publish'],
     [/fin\s+ish/gi, 'finish'],
     [/pol\s+ish/gi, 'polish'],
@@ -612,6 +617,19 @@ export function normalizePDFText(text: string): string {
     [/finish\s+es/gi, 'finishes'],
     [/joint\s+s/gi, 'joints'],
     [/weld\s+s/gi, 'welds'],
+    // FIX: Add missing splits from the truncated facts
+    [/scale\s+reading/gi, 'scale reading'],
+    [/spiral\s+flutes/gi, 'spiral flutes'],
+    [/spira\s+l/gi, 'spiral'],
+    [/ordinary\s+combustibles/gi, 'ordinary combustibles'],
+    [/in\s+to/gi, 'into'],
+    [/in\s+vo/gi, 'invo'],  // partial fix for 'involving'
+    [/involv\s+ing/gi, 'involving'],
+    [/class\s+a/gi, 'class A'],
+    [/fire\s+s/gi, 'fires'],
+    [/scientific/gi, 'scientific'],  // ensure not split
+    [/functional/gi, 'functional'],  // ensure not split
+    [/strategic/gi, 'strategic'],  // ensure not split
   ];
   
   for (const [pattern, replacement] of commonSplits) {
