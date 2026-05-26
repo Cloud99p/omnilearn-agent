@@ -17,6 +17,7 @@ export const defaultLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10000, // Effectively unlimited for development/testing
   trustProxy: true, // Railway uses proxy, need real client IPs
+  validate: { trustProxy: false }, // Disable validation warning (Railway proxy is trusted)
   message: {
     error: "Too many requests",
     message: "You have exceeded the rate limit. Please try again later.",
@@ -48,6 +49,7 @@ export const chatLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10000, // Effectively unlimited for development/testing
   trustProxy: true, // Railway uses proxy, need real client IPs
+  validate: { trustProxy: false }, // Disable validation warning (Railway proxy is trusted)
   message: {
     error: "Too many chat requests",
     message: "You have exceeded the hourly chat limit. Please try again later.",

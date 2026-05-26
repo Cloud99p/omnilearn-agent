@@ -744,13 +744,9 @@ export async function getNetworkStats() {
   const [agentRow] = await db
     .select({
       totalAgents: count(),
-      votingMembers: count().filterWhere(
-        eq(networkAgents.phase, "voting_member"),
-      ),
-      probationary: count().filterWhere(
-        eq(networkAgents.phase, "probationary"),
-      ),
-      observers: count().filterWhere(eq(networkAgents.phase, "observer")),
+      votingMembers: sql<number>`COUNT(CASE WHEN ${networkAgents.phase} = 'voting_member' THEN 1 END)`,
+      probationary: sql<number>`COUNT(CASE WHEN ${networkAgents.phase} = 'probationary' THEN 1 END)`,
+      observers: sql<number>`COUNT(CASE WHEN ${networkAgents.phase} = 'observer' THEN 1 END)`,
     })
     .from(networkAgents);
 
