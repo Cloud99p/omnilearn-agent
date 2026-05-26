@@ -847,7 +847,7 @@ export async function trainOnText(
     ? normalizePDFText(text) 
     : text;
   
-  const facts = extractFacts(normalizedText);
+  const facts = extractFacts(normalizedText, source);
   logger.info({ factCount: facts.length, textLength: text.length }, "extractFacts returned");
   if (facts.length > 0) {
     logger.info({ firstFact: facts[0].content.slice(0, 200) }, "First extracted fact");

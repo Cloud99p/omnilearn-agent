@@ -335,15 +335,57 @@ export function hasKnowledgeQuality(text: string): boolean {
 }
 
 /**
- * Check if text is a question, command, or request (NOT a learnable fact)
+ * Lenient filtering for educational/document content
+ * Allows technical definitions, lists, specifications
  */
-function isNonLearnable(text: string): boolean {
+function isNonLearnableDocumentMode(text: string): boolean {
   const trimmed = text.trim().toLowerCase();
-  console.log(`[NonLearnable] Checking: ${trimmed.slice(0, 80)}...`);
+  
+  // Filter out page artifacts
+  if (/^--\s*\d+\s+of\s+\d+\s*--$/.test(trimmed)) return true;
+  if (/^\d+\s*--\s*$/.test(trimmed)) return true;
+  if (/^\d+\s+of\s+\d+\s*$/.test(trimmed)) return true;
+  
+  // Filter out pure figure/table references
+  if (/^figure\s*\d+\.?\d*:?/.test(trimmed) && trimmed.length < 50) return true;
+  if (/^table\s*\d+\.?\d*:?/.test(trimmed) && trimmed.length < 50) return true;
+  
+  // Filter out pure lists of names without context
+  if (/^[a-z]+,\s*[a-z]+(,\s*[a-z]+)*$/.test(trimmed) && trimmed.length < 30) return true;
+  
+  // Too short for educational content
+  if (trimmed.length < 15) return true;
+  
+  // Questions
+  if (trimmed.endsWith("?")) return true;
+  
+  // Allow everything else for documents
+  return false;
+}
+
+/**
+ * Check if text is a question, command, or request (NOT a learnable fact)
+ * For educational/document content, use more lenient filtering
+ */
+function isNonLearnable(text: string, isDocumentContent: boolean = false): boolean {
+  const trimmed = text.trim().toLowerCase();
+  
+  // For document content (PDFs, textbooks), be more lenient
+  if (isDocumentContent) {
+    return isNonLearnableDocumentMode(trimmed);
+  }
+  
+  // Remove excessive console.log to avoid Railway rate limit
+  // Only log in development or for debugging
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[NonLearnable] Checking: ${trimmed.slice(0, 80)}...`);
+  }
 
   // Empty or too short
   if (trimmed.length < 10) {
-    console.log(`[NonLearnable] TRUE - too short (${trimmed.length})`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[NonLearnable] TRUE - too short (${trimmed.length})`);
+    }
     return true;
   }
 
@@ -588,7 +630,7 @@ export function normalizePDFText(text: string): string {
   return normalized;
 }
 
-export function extractFacts(text: string): ExtractedFact[] {
+export function extractFacts(text: string, source: string = "manual"): ExtractedFact[] {
   const facts: ExtractedFact[] = [];
   const seen = new Set<string>();
   
@@ -614,8 +656,9 @@ export function extractFacts(text: string): ExtractedFact[] {
     return facts;
   }
   
-  // Check if non-learnable
-  const nonLearnable = isNonLearnable(normalizedText);
+  // Check if non-learnable (use document mode for file/url sources)
+  const isDocumentSource = source.startsWith("file:") || source.startsWith("url:");
+  const nonLearnable = isNonLearnable(normalizedText, isDocumentSource);
   // console.log(`[EXTRACT] isNonLearnable: ${nonLearnable}`);
   if (nonLearnable) {
     // console.log(`[EXTRACT] Returning empty - non-learnable`);
@@ -683,8 +726,9 @@ export function extractFacts(text: string): ExtractedFact[] {
       const key = clean.toLowerCase().slice(0, 50);
       if (seen.has(key)) continue;
 
-      // Skip questions/commands
-      if (isNonLearnable(clean)) continue;
+      // Skip questions/commands (use document mode for file/url sources)
+      const isDocumentSource = source.startsWith("file:") || source.startsWith("url:");
+      if (isNonLearnable(clean, isDocumentSource)) continue;
 
       // CRITICAL: Skip sentence fragments (not standalone facts)
       const fragmentStarts = /^(which|that|where|when|who|whom|whose|what|while|although|though|because|since|unless|until|if|though|although|despite|whereas|whereby)\b/i;
@@ -757,7 +801,7 @@ export function extractFacts(text: string): ExtractedFact[] {
     const normalised = sentence.toLowerCase().replace(/\s+/g, " ");
     if (
       !seen.has(`sent::${normalised}`) &&
-      !isNonLearnable(sentence) &&
+      !isNonLearnable(sentence, isDocumentSource) &&
       hasKnowledgeQuality(sentence)
     ) {
       seen.add(`sent::${normalised}`);

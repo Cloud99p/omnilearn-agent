@@ -11,6 +11,9 @@ COPY . .
 # Install with all build scripts allowed (safe in isolated Docker build)
 RUN pnpm install --dangerously-allow-all-builds
 
+# Install markitdown for better PDF/DOCX extraction
+RUN pip install markitdown
+
 # Build only network-hierarchy (api-server doesn't have a build step)
 RUN cd packages/network-hierarchy && pnpm build
 
