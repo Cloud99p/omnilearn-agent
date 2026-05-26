@@ -110,13 +110,42 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-// Allow all origins (for development + Vercel + Railway)
+// Secure CORS configuration - restrict to specific origins
+// SECURITY FIX: Prevent CSRF attacks by not allowing all origins with credentials
+const ALLOWED_ORIGINS = [
+  // Production (Railway deployment)
+  /^https:\/\/omnilearn-.*\.up\.railway\.app$/,
+  // Production (Vercel frontend)
+  /^https:\/\/omnilearn-.*\.vercel\.app$/,
+  // Development
+  /^http:\/\/localhost:\d+$/,
+  /^http:\/\/127\.0\.0\.1:\d+$/,
+];
+
+function corsOriginValidator(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+  // Allow requests with no origin (mobile apps, Postman, etc.)
+  if (!origin) {
+    return callback(null, true);
+  }
+  
+  // Check against allowlist
+  const isAllowed = ALLOWED_ORIGINS.some(pattern => pattern.test(origin));
+  
+  if (!isAllowed) {
+    logger.warn({ origin }, "CORS request blocked: origin not in allowlist");
+  }
+  
+  callback(null, isAllowed);
+}
+
 app.use(
   cors({
     credentials: true,
-    origin: true,
+    origin: corsOriginValidator,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Content-Length", "X-Request-Id"],
+    maxAge: 86400, // Cache preflight for 24 hours
   }),
 );
 // Increase body size limit to 10MB (default is 100KB)
