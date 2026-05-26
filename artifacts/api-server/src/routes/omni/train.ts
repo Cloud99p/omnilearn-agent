@@ -104,30 +104,38 @@ router.post("/", upload.single("file"), async (req, res) => {
   }
 
   logger.info({ textLength: textToTrain.length, source: extractionMethod }, "Training request received");
-  const result = await trainOnText(textToTrain, extractionMethod, clerkId);
-  logger.info({ added: result.added, skipped: result.skipped, total: result.nodes.length }, "Training complete");
+  
+  try {
+    const result = await trainOnText(textToTrain, extractionMethod, clerkId);
+    logger.info({ added: result.added, skipped: result.skipped, total: result.nodes.length }, "Training complete");
 
-  // Feed extracted knowledge into the shared network brain (fire-and-forget)
-  if (result.nodes && result.nodes.length > 0) {
-    contributeNeurons(
-      result.nodes.map(
-        (n: { content: string; type?: string; tags?: string[] }) => ({
-          content: n.content,
-          type: n.type,
-          tags: n.tags ?? [],
-        }),
-      ),
-      "self",
-    ).catch(() => {});
+    // Feed extracted knowledge into the shared network brain (fire-and-forget)
+    if (result.nodes && result.nodes.length > 0) {
+      contributeNeurons(
+        result.nodes.map(
+          (n: { content: string; type?: string; tags?: string[] }) => ({
+            content: n.content,
+            type: n.type,
+            tags: n.tags ?? [],
+          }),
+        ),
+        "self",
+      ).catch(() => {});
+    }
+
+    res.json({
+      ...result,
+      message:
+        result.added > 0
+          ? `Integrated ${result.added} knowledge item${result.added > 1 ? "s" : ""}. ${result.skipped > 0 ? `${result.skipped} skipped (already known).` : ``}
+          : `No new knowledge extracted. ${result.skipped} items already in knowledge base.`,
+    });
+  } catch (err) {
+    logger.error({ err }, "Training failed");
+    res.status(500).json({
+      error: `Training failed: ${err instanceof Error ? err.message : String(err)}`,
+    });
   }
-
-  res.json({
-    ...result,
-    message:
-      result.added > 0
-        ? `Integrated ${result.added} knowledge item${result.added > 1 ? "s" : ""}. ${result.skipped > 0 ? `${result.skipped} skipped (already known).` : ""}`
-        : `No new knowledge extracted. ${result.skipped} items already in knowledge base.`,
-  });
 });
 
 export default router;
