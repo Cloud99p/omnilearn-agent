@@ -15,16 +15,9 @@
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { createOpenAI } from '@ai-sdk/openai';
-import { createProvider } from 'freellm';
 
-// FreeLLM provider (recommended - free, no limits)
-const freellm = createProvider({
-  baseURL: process.env.FREELLM_BASE_URL || 'https://freellm.com/api/v1',
-  apiKey: process.env.FREELLM_API_KEY || '',
-});
-
-// Fallback to OpenAI-compatible API
-const openai = createOpenAI({
+// FreeLLM provider (FREE - uses OpenAI-compatible API endpoint)
+const freeLLM = createOpenAI({
   baseURL: process.env.FREELLM_BASE_URL || 'https://freellm.com/api/v1',
   apiKey: process.env.FREELLM_API_KEY || 'not-needed',
 });
@@ -94,7 +87,7 @@ export async function extractFactsWithAI(
     const startTime = Date.now();
     
     const result = await generateObject({
-      model: openai(model), // Use FreeLLM's OpenAI-compatible endpoint
+      model: freeLLM(model), // Use FreeLLM's OpenAI-compatible endpoint
       schema: factSchema,
       prompt: prompt,
       temperature: 0.1, // Low temp for consistent extraction
