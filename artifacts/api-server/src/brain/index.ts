@@ -850,9 +850,8 @@ export async function trainOnText(
     : text;
   
   // Determine if AI should be used (respects feature flags)
-  const useAI = aiConfig.enabled && 
-                aiConfig.extraction.enabled && 
-                (source.includes('pdf') || source.includes('docx') || text.length > 50000);
+  // Since FreeLLM is FREE, enable AI for ALL input types (pdf, docx, url, manual text)
+  const useAI = aiConfig.enabled && aiConfig.extraction.enabled;
   
   let facts: Array<{ content: string; type: string; tags: string[]; confidence: number }>;
   let extractionMethod = 'regex';
