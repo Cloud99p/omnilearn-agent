@@ -230,7 +230,7 @@ export async function retrieveRelevantNodes(
   
   // PHASE 2 IMPROVEMENT: Query caching (skip if noCache option set)
   if (!options?.noCache) {
-    const cached = await retrieveFromCache<RetrievedNode[]>(enrichedQuery, clerkId, topK);
+    const cached = await retrieveWithCache<RetrievedNode[]>(enrichedQuery, clerkId, topK);
     if (cached) {
       logger.info({ query: enrichedQuery.slice(0, 50) }, "Cache hit, returning cached results");
       return cached;
