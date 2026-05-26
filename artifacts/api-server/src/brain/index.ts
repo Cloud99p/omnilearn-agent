@@ -23,6 +23,8 @@ import {
 } from "./tfidf.js";
 import { extractFacts, detectQueryType, extractKeyTerms, normalizePDFText } from "./extractor.js";
 import { embedText, cosineSimilarity } from "./embeddings.js";
+import { chunkDocument, shouldChunk } from "./chunker.js";
+import { maximalMarginalRelevance, suggestLambda } from "./mmr.js";
 import { broadcastKnowledgeToCluster, classifyShareLevel } from "../lib/knowledge-sync.js";
 import {
   applyDeltas,
@@ -43,6 +45,39 @@ import { SEED_KNOWLEDGE } from "./seed.js";
 import { moderateContent, logModerationAudit } from "../lib/moderation.js";
 import { logger } from "../lib/logger.js";
 import { hasKnowledgeQuality } from "./extractor.js";
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PHASE 1 IMPROVEMENT: Dynamic Threshold Function
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Get dynamic similarity threshold based on query type and characteristics
+ * Higher thresholds = more precise, fewer results
+ * Lower thresholds = more recall, broader results
+ */
+function getDynamicThreshold(query: string, queryType: string): number {
+  // Specific questions need higher precision
+  if (queryType === "question" && query.length < 50) {
+    return 0.35;
+  }
+  
+  // Broad exploratory queries can be more lenient
+  if (
+    queryType === "statement" ||
+    query.includes("tell me about") ||
+    query.includes("what do you know")
+  ) {
+    return 0.15;
+  }
+  
+  // Technical/specific queries need high precision
+  if (/\b(how|what|why|when|where)\b/i.test(query)) {
+    return 0.3;
+  }
+  
+  // Default balanced threshold
+  return 0.2;
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Character state (per clerkId or global)
@@ -277,12 +312,34 @@ export async function retrieveRelevantNodes(
     })
     .sort((a, b) => b.similarity - a.similarity);
 
-  // Filter by similarity threshold AND exclude low-quality matches
-  // CRITICAL: Threshold must be high enough to exclude irrelevant results
-  const MIN_SIMILARITY = 0.2; // Minimum similarity for relevant results (balanced threshold)
-  const semanticResults = scored
-    .filter((n) => n.similarity >= MIN_SIMILARITY)
-    .slice(0, topK);
+  // PHASE 1 IMPROVEMENT: Dynamic thresholds based on query type
+  const queryType = detectQueryType(enrichedQuery);
+  const MIN_SIMILARITY = getDynamicThreshold(enrichedQuery, queryType);
+  
+  let semanticResults = scored
+    .filter((n) => n.similarity >= MIN_SIMILARITY);
+  
+  // PHASE 1 IMPROVEMENT: MMR re-ranking for diversity
+  if (queryEmbedding && semanticResults.length > 0) {
+    const lambda = suggestLambda(enrichedQuery);
+    const mmrResults = maximalMarginalRelevance(
+      queryEmbedding,
+      semanticResults,
+      lambda,
+      topK
+    );
+    
+    // Log diversity improvement
+    logger.info(
+      { query, lambda, mmrScores: mmrResults.map(r => r.mmrScore.toFixed(3)) },
+      "MMR re-ranking applied"
+    );
+    
+    semanticResults = mmrResults;
+  } else {
+    // Fall back to simple top-K if no embeddings
+    semanticResults = semanticResults.slice(0, topK);
+  }
   
   // DEBUG: Log retrieval results
   logger.info(
@@ -355,6 +412,7 @@ export async function retrieveRelevantNodes(
 // Knowledge insertion
 // ──────────────────────────────────────────────────────────────────────────────
 
+// PHASE 1 IMPROVEMENT: Insert node with optional chunking
 async function insertNode(
   content: string,
   type: string,
@@ -363,7 +421,45 @@ async function insertNode(
   source: string,
   clerkId: string | null,
   userIdentity: boolean = false,
+  options?: { skipChunking?: boolean };
 ): Promise<KnowledgeNode> {
+  // PHASE 1 IMPROVEMENT: Chunk long documents for better retrieval
+  const shouldChunkDoc = !options?.skipChunking && shouldChunk(content);
+  
+  if (shouldChunkDoc) {
+    logger.info(
+      { contentLength: content.length, estimatedTokens: content.split(/\s+/).length },
+      "Document exceeds token limit, chunking for better retrieval"
+    );
+    
+    const chunks = chunkDocument(content, {
+      chunkTokens: 400,
+      overlapTokens: 80,
+    });
+    
+    // Insert each chunk as a separate node with parent reference
+    const insertedChunks: KnowledgeNode[] = [];
+    
+    for (const chunk of chunks) {
+      const chunkNode = await insertNode(
+        chunk.content,
+        type,
+        tags,
+        confidence,
+        source,
+        clerkId,
+        userIdentity,
+        { skipChunking: true } // Prevent infinite recursion
+      );
+      
+      insertedChunks.push(chunkNode);
+    }
+    
+    // Return the first chunk (primary representation)
+    // All chunks are queryable individually
+    return insertedChunks[0];
+  }
+  
   const tokens = tokenize(content);
 
   // Get existing vectors for IDF
