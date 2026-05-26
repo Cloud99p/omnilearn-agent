@@ -127,7 +127,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       ...result,
       message:
         result.added > 0
-          ? `Integrated ${result.added} knowledge item${result.added > 1 ? "s" : ""}. ${result.skipped > 0 ? `${result.skipped} skipped (already known).` : ``}
+          ? `Integrated ${result.added} knowledge item${result.added > 1 ? "s" : ""}. ${result.skipped > 0 ? `${result.skipped} skipped (already known).` : ""}`
           : `No new knowledge extracted. ${result.skipped} items already in knowledge base.`,
     });
   } catch (err) {
