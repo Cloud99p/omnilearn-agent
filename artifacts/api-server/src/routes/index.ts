@@ -34,7 +34,15 @@ const router: IRouter = Router();
 
 // Apply rate limiters to routes
 router.use(healthRouter); // No rate limit on health checks
-router.use(debugRouter); // Debug/test endpoints (no rate limit)
+
+// SECURITY: Debug endpoints ONLY in development
+// Disabled in production to prevent reconnaissance
+if (process.env.NODE_ENV === "development" || process.env.DEBUG === "true") {
+  router.use(debugRouter); // Debug/test endpoints (no rate limit)
+  logger.info("Debug endpoints enabled (development mode)");
+} else {
+  logger.info("Debug endpoints disabled (production mode)");
+}
 router.use("/anthropic", chatLimiter, chatRouter); // Main chat (30 req/hour)
 router.use("/local", chatLimiter, localChatRouter); // Local chat (30 req/hour)
 router.use("/skills", defaultLimiter, skillsRouter); // Default limit (100 req/15min)
