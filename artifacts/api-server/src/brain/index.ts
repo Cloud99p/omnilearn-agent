@@ -22,6 +22,8 @@ import {
   computeIdfFromVectors,
 } from "./tfidf.js";
 import { extractFacts, detectQueryType, extractKeyTerms, normalizePDFText } from "./extractor.js";
+import { extractFactsWithAI } from "./ai-extractor.js";
+import { aiConfig, logAIUsage } from "./ai-config.js";
 import { embedText, cosineSimilarity } from "./embeddings.js";
 import { chunkDocument, shouldChunk } from "./chunker.js";
 import { maximalMarginalRelevance, suggestLambda } from "./mmr.js";
@@ -847,10 +849,100 @@ export async function trainOnText(
     ? normalizePDFText(text) 
     : text;
   
-  const facts = extractFacts(normalizedText, source);
-  logger.info({ factCount: facts.length, textLength: text.length }, "extractFacts returned");
+  // Determine if AI should be used (respects feature flags)
+  const useAI = aiConfig.enabled && 
+                aiConfig.extraction.enabled && 
+                (source.includes('pdf') || source.includes('docx') || text.length > 50000);
+  
+  let facts: Array<{ content: string; type: string; tags: string[]; confidence: number }>;
+  let extractionMethod = 'regex';
+  let extractionLatency = 0;
+  let tokenCount = 0;
+  
+  if (useAI) {
+    const startTime = Date.now();
+    
+    try {
+      logger.info(
+        { source, textLength: text.length, model: aiConfig.extraction.model },
+        "Using AI extraction (feature flag enabled)"
+      );
+      
+      const extraction = await extractFactsWithAI(text, source.includes('pdf') ? 'pdf' : 'text', {
+        maxFacts: 50,
+        minConfidence: 0.6,
+        model: aiConfig.extraction.model,
+      });
+      
+      facts = extraction.facts.map(f => ({
+        content: f.content,
+        type: f.category || 'fact',
+        tags: [],
+        confidence: f.confidence,
+      }));
+      extractionMethod = extraction.model;
+      extractionLatency = Date.now() - startTime;
+      tokenCount = extraction.tokenCount || 0;
+      
+      logger.info(
+        { 
+          factCount: facts.length, 
+          model: extraction.model,
+          latency: extractionLatency,
+          tokens: tokenCount,
+          summary: extraction.summary?.substring(0, 100)
+        },
+        "AI extraction completed successfully"
+      );
+      
+      if (extraction.unknown_terms?.length) {
+        logger.info(
+          { terms: extraction.unknown_terms.slice(0, 10) },
+          "Unknown technical terms found"
+        );
+      }
+      
+      // Log usage for monitoring
+      logAIUsage('extraction', {
+        enabled: true,
+        method: 'ai',
+        latency: extractionLatency,
+        tokens: tokenCount,
+        result: { factCount: facts.length }
+      });
+      
+    } catch (error) {
+      extractionLatency = Date.now() - startTime;
+      
+      logger.error({ err: error }, "AI extraction failed, falling back to regex");
+      
+      // FALLBACK: Always falls back to regex on error
+      facts = extractFacts(normalizedText, source);
+      extractionMethod = 'regex-fallback';
+      
+      logAIUsage('extraction', {
+        enabled: true,
+        method: 'fallback',
+        latency: extractionLatency,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  } else {
+    // Use regex extraction (feature flag disabled or plain text)
+    const startTime = Date.now();
+    facts = extractFacts(normalizedText, source);
+    extractionMethod = 'regex';
+    extractionLatency = Date.now() - startTime;
+    
+    logger.debug(
+      { factCount: facts.length, method: extractionMethod, reason: !aiConfig.extraction.enabled ? 'feature-disabled' : 'text-source' },
+      "Using regex extraction"
+    );
+  }
+  
+  logger.info({ factCount: facts.length, textLength: text.length, method: extractionMethod }, "extractFacts returned");
   if (facts.length > 0) {
-    logger.info({ firstFact: facts[0].content.slice(0, 200) }, "First extracted fact");
+    logger.info({ firstFact: facts[0].content.slice(0, 200), method: extractionMethod }, "First extracted fact");
   }
   
   let added = 0;
