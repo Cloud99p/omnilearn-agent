@@ -482,6 +482,7 @@ export function fixWordTruncation(text: string): string {
   
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
+    let matched = false;
     
     // Check if this looks like a split word fragment
     if (word.length >= 2 && word.length <= 4 && i < words.length - 1) {
@@ -493,14 +494,13 @@ export function fixWordTruncation(text: string): string {
           // Found a match - replace the pair
           fixedWords.push(commonWord);
           i++; // Skip next word as it's been combined
+          matched = true;
           break;
         }
       }
-      
-      if (fixedWords[fixedWords.length - 1] !== commonWord) {
-        fixedWords.push(word);
-      }
-    } else {
+    }
+    
+    if (!matched) {
       fixedWords.push(word);
     }
   }
