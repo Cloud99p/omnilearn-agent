@@ -1,0 +1,151 @@
+# AI Extraction Integration for train.ts
+# Apply these changes to enable AI-powered fact extraction
+
+## Step 1: Add imports at top of train.ts
+
+```typescript
+// ADD after existing imports
+import { extractFactsWithAI } from '../../brain/ai-extractor.js';
+```
+
+## Step 2: Replace extractFacts call (around line 130-140)
+
+**FIND this code:**
+```typescript
+const facts = extractFacts(textToTrain, source);
+
+logger.info(
+  { factCount: facts.length, textLength: textToTrain.length },
+  "extractFacts returned"
+);
+
+if (facts.length === 0) {
+  res.status(400).json({ error: "No learnable content found in text" });
+  return;
+}
+
+logger.info({ firstFact: facts[0] }, "First extracted fact");
+```
+
+**REPLACE with:**
+```typescript
+// Use AI-powered extraction for PDFs and large documents
+const useAI = source.includes('pdf') || source.includes('docx') || textToTrain.length > 50000;
+
+let facts: string[];
+let extractionMethod = 'regex';
+
+if (useAI) {
+  try {
+    logger.info({ source, textLength: textToTrain.length }, "Using AI extraction");
+    
+    const extraction = await extractFactsWithAI(textToTrain, source.includes('pdf') ? 'pdf' : 'text', {
+      maxFacts: 50,
+      minConfidence: 0.6,
+      model: 'claude-sonnet-4-20250514',
+    });
+    
+    facts = extraction.facts.map(f => f.content);
+    extractionMethod = extraction.model;
+    
+    logger.info(
+      { 
+        factCount: facts.length, 
+        model: extraction.model,
+        tokenCount: extraction.tokenCount,
+        summary: extraction.summary?.substring(0, 100)
+      },
+      "AI extraction completed"
+    );
+    
+    if (extraction.unknown_terms?.length) {
+      logger.info(
+        { terms: extraction.unknown_terms.slice(0, 10) },
+        "Unknown technical terms found"
+      );
+    }
+  } catch (error) {
+    logger.error({ err: error }, "AI extraction failed, falling back to regex");
+    facts = extractFacts(textToTrain, source);
+    extractionMethod = 'regex-fallback';
+  }
+} else {
+  facts = extractFacts(textToTrain, source);
+  extractionMethod = 'regex';
+}
+
+logger.info(
+  { factCount: facts.length, textLength: textToTrain.length, method: extractionMethod },
+  "extractFacts returned"
+);
+
+if (facts.length === 0) {
+  res.status(400).json({ error: "No learnable content found in text" });
+  return;
+}
+
+logger.info({ firstFact: facts[0], method: extractionMethod }, "First extracted fact");
+```
+
+## Step 3: Update training completion log (around line 180)
+
+**FIND:**
+```typescript
+logger.info(
+  { added: result.added, skipped: result.skipped, total: result.nodes },
+  "Training complete"
+);
+```
+
+**REPLACE with:**
+```typescript
+logger.info(
+  { 
+    added: result.added, 
+    skipped: result.skipped, 
+    total: result.nodes,
+    extractionMethod 
+  },
+  "Training complete"
+);
+```
+
+## Step 4: Add API key to Railway
+
+In Railway dashboard → Variables:
+```
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+## Step 5: Install dependencies
+
+```bash
+cd artifacts/api-server
+pnpm add ai @ai-sdk/anthropic zod
+```
+
+## Step 6: Test
+
+```bash
+# Upload PDF with AI extraction
+curl -X POST https://your-railway.app/api/omni/train \
+  -F "file=@GET-204-Module-1-8.pdf"
+
+# Check logs for:
+# "[AI extraction completed]" 
+# "First extracted fact: Establishments where raw wood..."
+```
+
+## Expected Results
+
+**Before (regex):**
+```
+First extracted fact: "ment where raw wood from commercial forms..."
+```
+
+**After (AI):**
+```
+First extracted fact: "Establishments where raw wood from commercial forms is converted into finished wooden products"
+```
+
+No more truncation! 🎉
