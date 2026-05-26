@@ -85,6 +85,184 @@ const SUPPORTED_TYPES: Record<
 // Provides better quality extraction than individual JS libraries
 // Supports: PDF, DOCX, XLSX, PPTX, EPUB, audio transcription, YouTube URLs, images
 
+// FIX: Comprehensive word truncation patterns for PDF line breaks
+// These patterns join words that are split across lines in PDFs
+const WORD_TRUNCATION_PATTERNS: Array<[RegExp, string]> = [
+  // Common -tion/-ment/-ity splits
+  [/produc\s+tivity/gi, 'productivity'],
+  [/qualit\s+y/gi, 'quality'],
+  [/facilit\s+y/gi, 'facility'],
+  [/equipmen\s+t/gi, 'equipment'],
+  [/developmen\s+t/gi, 'development'],
+  [/managemen\s+t/gi, 'management'],
+  [/environmen\s+t/gi, 'environment'],
+  [/governmen\s+t/gi, 'government'],
+  [/departmen\s+t/gi, 'department'],
+  [/experimen\s+t/gi, 'experiment'],
+  [/documen\s+t/gi, 'document'],
+  [/instrumen\s+t/gi, 'instrument'],
+  [/argumen\s+t/gi, 'argument'],
+  [/paymen\s+t/gi, 'payment'],
+  [/requiremen\s+t/gi, 'requirement'],
+  [/achievemen\s+t/gi, 'achievement'],
+  [/assessmen\s+t/gi, 'assessment'],
+  [/treatmen\s+t/gi, 'treatment'],
+  [/measuremen\s+t/gi, 'measurement'],
+  [/improvemen\s+t/gi, 'improvement'],
+  [/involv\s+ing/gi, 'involving'],
+  [/follow\s+ing/gi, 'following'],
+  [/includ\s+ing/gi, 'including'],
+  [/dur\s+ing/gi, 'during'],
+  [/build\s+ing/gi, 'building'],
+  [/operat\s+ing/gi, 'operating'],
+  [/generat\s+ing/gi, 'generating'],
+  [/calculat\s+ing/gi, 'calculating'],
+  [/indicat\s+ing/gi, 'indicating'],
+  [/locat\s+ion/gi, 'location'],
+  [/informa\s+tion/gi, 'information'],
+  [/educa\s+tion/gi, 'education'],
+  [/communica\s+tion/gi, 'communication'],
+  [/applica\s+tion/gi, 'application'],
+  [/founda\s+tion/gi, 'foundation'],
+  [/combusti\s+on/gi, 'combustion'],
+  [/opera\s+tion/gi, 'operation'],
+  [/genera\s+ion/gi, 'generation'],
+  [/rela\s+ion/gi, 'relation'],
+  [/crea\s+ion/gi, 'creation'],
+  [/forma\s+ion/gi, 'formation'],
+  [/observa\s+ion/gi, 'observation'],
+  [/presen\s+ation/gi, 'presentation'],
+  [/representa\s+ion/gi, 'representation'],
+  
+  // -ive/-able/-ible splits
+  [/protecti\s+ve/gi, 'protective'],
+  [/effecti\s+ve/gi, 'effective'],
+  [/relati\s+ve/gi, 'relative'],
+  [/acti\s+ve/gi, 'active'],
+  [/producti\s+ve/gi, 'productive'],
+  [/competi\s+ve/gi, 'competitive'],
+  [/sensiti\s+ve/gi, 'sensitive'],
+  [/extensi\s+ve/gi, 'extensive'],
+  [/suitabl\s+e/gi, 'suitable'],
+  [/availabl\s+e/gi, 'available'],
+  [/reliabl\s+e/gi, 'reliable'],
+  [/responsibl\s+e/gi, 'responsible'],
+  [/portabl\s+e/gi, 'portable'],
+  [/flammabl\s+e/gi, 'flammable'],
+  [/combustibl\s+e/gi, 'combustible'],
+  [/accessibl\s+e/gi, 'accessible'],
+  [/compatibl\s+e/gi, 'compatible'],
+  
+  // -ish/-ish splits
+  [/estab\s+lish/gi, 'establish'],
+  [/estab\s+lishing/gi, 'establishing'],
+  [/pub\s+lish/gi, 'publish'],
+  [/fin\s+ish/gi, 'finish'],
+  [/pol\s+ish/gi, 'polish'],
+  [/dimin\s+ish/gi, 'diminish'],
+  
+  // -sion/-tion splits
+  [/dimen\s+sion/gi, 'dimension'],
+  [/ten\s+sion/gi, 'tension'],
+  [/suspen\s+sion/gi, 'suspension'],
+  [/exten\s+sion/gi, 'extension'],
+  [/inten\s+sion/gi, 'intension'],
+  [/conver\s+sion/gi, 'conversion'],
+  [/transmis\s+ion/gi, 'transmission'],
+  [/permis\s+ion/gi, 'permission'],
+  [/decis\s+ion/gi, 'decision'],
+  [/divis\s+ion/gi, 'division'],
+  
+  // Other common splits
+  [/extinguish\s+er/gi, 'extinguisher'],
+  [/fire\s+fighter/gi, 'firefighter'],
+  [/work\s+place/gi, 'workplace'],
+  [/work\s+er/gi, 'worker'],
+  [/safet\s+y/gi, 'safety'],
+  [/qualit\s+y/gi, 'quality'],
+  [/quantit\s+y/gi, 'quantity'],
+  [/authorit\s+y/gi, 'authority'],
+  [/securit\s+y/gi, 'security'],
+  [/priorit\s+y/gi, 'priority'],
+  [/activit\s+y/gi, 'activity'],
+  [/capacit\s+y/gi, 'capacity'],
+  [/electricit\s+y/gi, 'electricity'],
+  [/humidit\s+y/gi, 'humidity'],
+  [/toxicit\s+y/gi, 'toxicity'],
+  
+  // Technical/engineering terms
+  [/scale\s+reading/gi, 'scale reading'],
+  [/spira\s+l/gi, 'spiral'],
+  [/damage\s+d/gi, 'damaged'],
+  [/damag\s+e/gi, 'damage'],
+  [/temperatur\s+e/gi, 'temperature'],
+  [/pressur\s+e/gi, 'pressure'],
+  [/volum\s+e/gi, 'volume'],
+  [/diamet\s+er/gi, 'diameter'],
+  [/circumferenc\s+e/gi, 'circumference'],
+  [/thicknes\s+s/gi, 'thickness'],
+  [/lengt\s+h/gi, 'length'],
+  [/widt\s+h/gi, 'width'],
+  [/heigh\s+t/gi, 'height'],
+  [/weigh\s+t/gi, 'weight'],
+  [/strengt\s+h/gi, 'strength'],
+  [/toleranc\s+e/gi, 'tolerance'],
+  [/clearanc\s+e/gi, 'clearance'],
+  [/allowanc\s+e/gi, 'allowance'],
+  [/maintenanc\s+e/gi, 'maintenance'],
+  [/performanc\s+e/gi, 'performance'],
+  [/resistanc\s+e/gi, 'resistance'],
+  [/conductanc\s+e/gi, 'conductance'],
+  
+  // Common prefixes/suffixes
+  [/re\s+move/gi, 'remove'],
+  [/re\s+move/gi, 'remove'],
+  [/re\s+duce/gi, 'reduce'],
+  [/re\s+quire/gi, 'require'],
+  [/re\s+cord/gi, 'record'],
+  [/re\s+port/gi, 'report'],
+  [/re\s+spect/gi, 'respect'],
+  [/un\s+safe/gi, 'unsafe'],
+  [/un\s+able/gi, 'unable'],
+  [/un\s+less/gi, 'unless'],
+  [/un\s+til/gi, 'until'],
+  [/be\s+cause/gi, 'because'],
+  [/becom\s+e/gi, 'become'],
+  [/befor\s+e/gi, 'before'],
+  [/betwe\s+en/gi, 'between'],
+  [/among\s+t/gi, 'amongst'],
+  
+  // Measurement units
+  [/millimet\s+er/gi, 'millimeter'],
+  [/centimet\s+er/gi, 'centimeter'],
+  [/metr\s+e/gi, 'metre'],
+  [/metr\s+ic/gi, 'metric'],
+  [/kilogram\s+s/gi, 'kilograms'],
+  [/gram\s+s/gi, 'grams'],
+  [/litr\s+e/gi, 'litre'],
+];
+
+/**
+ * Fix word truncation from PDF line breaks
+ * Joins words that are split across lines (e.g., "product\nivity" → "productivity")
+ */
+export function fixWordTruncation(text: string): string {
+  let result = text;
+  
+  // Apply all truncation patterns
+  for (const [pattern, replacement] of WORD_TRUNCATION_PATTERNS) {
+    result = result.replace(pattern, replacement);
+  }
+  
+  // Join hyphenated line breaks
+  result = result.replace(/([a-zA-Z])\-\s*\n\s*([a-zA-Z])/g, '$1$2');
+  
+  // Normalize multiple spaces to single space
+  result = result.replace(/\s+/g, ' ').trim();
+  
+  return result;
+}
+
 async function extractWithMarkitdown(
   filePath: string,
   originalName: string,
@@ -102,7 +280,10 @@ async function extractWithMarkitdown(
       throw new Error(`markitdown error: ${stderr}`);
     }
     
-    const text = stdout || "";
+    let text = stdout || "";
+    
+    // FIX: Apply word truncation fixes to markitdown output (PDF line breaks)
+    text = fixWordTruncation(text);
     
     // Extract metadata from markitdown output if available
     const metadata: Record<string, unknown> = {
