@@ -293,15 +293,15 @@ export function hasKnowledgeQuality(text: string): boolean {
   if (brokenWordPatterns.some(p => p.test(trimmed))) return false;
   
   // Check if text ends mid-word (no punctuation and last word looks incomplete)
-  if (!/[.!?]$/.test(trimmed)) {
-    const words = trimmed.split(/\s+/);
-    const lastWord = words[words.length - 1]?.toLowerCase().replace(/[^a-z]/g, '');
-    // Common incomplete word patterns
-    const incompleteEndings = /^(.{3,})(ing|tion|ment|ness|ity|able|ible|ful|less|ize|ise|ed|ly)$/i;
-    if (lastWord && incompleteEndings.test(lastWord) && lastWord.length < 12) {
-      return false;
-    }
-  }
+  // DISABLED: This is too aggressive for educational content - textbook sentences often end with prepositions/verbs
+  // if (!/[.!?]$/.test(trimmed)) {
+  //   const words = trimmed.split(/\s+/);
+  //   const lastWord = words[words.length - 1]?.toLowerCase().replace(/[^a-z]/g, '');
+  //   const incompleteEndings = /^(.{3,})(ing|tion|ment|ness|ity|able|ible|ful|less|ize|ise|ed|ly)$/i;
+  //   if (lastWord && incompleteEndings.test(lastWord) && lastWord.length < 12) {
+  //     return false;
+  //   }
+  // }
 
   // AI shouldn't claim agency (working on features, building things)
   const agencyPatterns = [
@@ -491,36 +491,36 @@ export function normalizePDFText(text: string): string {
   // FIRST: Handle common suffix splits generically (catches ANY word split at common suffix)
   normalized = normalized
     // -ing splits (welding, machining, engineering, etc.)
-    .replace(/\b([a-z]{3,})\s+(ing)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(ing)\b/gi, '$1$2')
     // -tion splits (operation, production, etc.)
-    .replace(/\b([a-z]{3,})\s+(tion)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(tion)\b/gi, '$1$2')
     // -ment splits (equipment, arrangement, etc.)
-    .replace(/\b([a-z]{3,})\s+(ment)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(ment)\b/gi, '$1$2')
     // -ness splits (stiffness, hardness, etc.)
-    .replace(/\b([a-z]{3,})\s+(ness)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(ness)\b/gi, '$1$2')
     // -ity splits (quality, facility, etc.)
-    .replace(/\b([a-z]{3,})\s+(ity)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(ity)\b/gi, '$1$2')
     // -able/-ible splits (portable, suitable, etc.)
-    .replace(/\b([a-z]{3,})\s+(able)\b/gi, '$1$2')
-    .replace(/\b([a-z]{3,})\s+(ible)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(able)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(ible)\b/gi, '$1$2')
     // -ive splits (protective, effective, etc.)
-    .replace(/\b([a-z]{3,})\s+(ive)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(ive)\b/gi, '$1$2')
     // -ous splits (various, etc.)
-    .replace(/\b([a-z]{3,})\s+(ous)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(ous)\b/gi, '$1$2')
     // -al splits (manual, industrial, etc.)
-    .replace(/\b([a-z]{3,})\s+(al)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(al)\b/gi, '$1$2')
     // -er/-or splits (worker, operator, etc.)
-    .replace(/\b([a-z]{3,})\s+(er)\b/gi, '$1$2')
-    .replace(/\b([a-z]{3,})\s+(or)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(er)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(or)\b/gi, '$1$2')
     // -ly splits (generally, typically, etc.)
-    .replace(/\b([a-z]{3,})\s+(ly)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(ly)\b/gi, '$1$2')
     // -ed splits (used, formed, etc.)
-    .replace(/\b([a-z]{3,})\s+(ed)\b/gi, '$1$2')
+    .replace(/\b([a-z]{2,})\s+(ed)\b/gi, '$1$2')
     // -s/-es splits (tools, machines, processes, etc.)
-    .replace(/\b([a-z]{4,})\s+(ses)\b/gi, '$1$2')
-    .replace(/\b([a-z]{4,})\s+(zes)\b/gi, '$1$2')
+    .replace(/\b([a-z]{3,})\s+(ses)\b/gi, '$1$2')
+    .replace(/\b([a-z]{3,})\s+(zes)\b/gi, '$1$2')
     // -ish splits (establish, publish, finish, etc.)
-    .replace(/\b([a-z]{3,})\s+(ish)\b/gi, '$1$2');
+    .replace(/\b([a-z]{2,})\s+(ish)\b/gi, '$1$2');
   
   // SECOND: Handle specific known splits that generic patterns miss
   const commonSplits: Array<[RegExp, string]> = [
