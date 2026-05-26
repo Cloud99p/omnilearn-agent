@@ -421,7 +421,7 @@ async function insertNode(
   source: string,
   clerkId: string | null,
   userIdentity: boolean = false,
-  options?: { skipChunking?: boolean };
+  options?: { skipChunking?: boolean },
 ): Promise<KnowledgeNode> {
   // PHASE 1 IMPROVEMENT: Chunk long documents for better retrieval
   const shouldChunkDoc = !options?.skipChunking && shouldChunk(content);
