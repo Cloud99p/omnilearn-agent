@@ -1,15 +1,17 @@
 /**
  * WebSocket Server for Network Discovery
  * Real-time node discovery and cluster communication
- * SECURED: Requires signed token (GHOST_SECRET) for node registration
+ * SECURED: Clerk authentication required for node registration
  */
 
 import { WebSocketServer, WebSocket } from "ws";
 import { EventEmitter } from "events";
 import { logger } from "./logger.js";
 import crypto from "crypto";
+import { jwtVerifier } from "@clerk/backend/jwt";
 
 const GHOST_SECRET = process.env.GHOST_SECRET || "insecure-dev-secret-change-in-production";
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
 
 export interface DiscoveryMessage {
   type: "hello" | "heartbeat" | "goodbye" | "cluster-update" | "query" | "response";
@@ -19,12 +21,13 @@ export interface DiscoveryMessage {
   capacity?: number;
   data?: any;
   token?: string; // Authentication token
+  clerkToken?: string; // Clerk JWT for authentication
 }
 
 export class DiscoveryServer extends EventEmitter {
   private wss: WebSocketServer;
   private clients: Map<string, WebSocket> = new Map();
-  private authenticatedNodes: Set<string> = new Set();
+  private authenticatedNodes: Map<string, { clerkId: string; authenticatedAt: Date }> = new Map();
   private port: number;
 
   constructor(port: number = 8765) {
@@ -41,65 +44,39 @@ export class DiscoveryServer extends EventEmitter {
         "SECURITY WARNING: GHOST_SECRET not set! Using insecure default. Set GHOST_SECRET env var in production."
       );
     }
+    
+    if (!CLERK_SECRET_KEY) {
+      logger.warn(
+        "SECURITY WARNING: CLERK_SECRET_KEY not set! WebSocket auth will fail in production."
+      );
+    }
   }
 
   /**
-   * Generate authentication token for a node
+   * Verify Clerk JWT token
    */
-  static generateNodeToken(nodeId: string): string {
-    const timestamp = Date.now();
-    const payload = `${nodeId}:${timestamp}`;
-    const signature = crypto
-      .createHmac("sha256", GHOST_SECRET)
-      .update(payload)
-      .digest("hex");
-    return `${payload}:${signature}`;
-  }
-
-  /**
-   * Validate authentication token
-   */
-  private validateToken(nodeId: string, token: string): boolean {
+  private async verifyClerkToken(clerkToken: string): Promise<{ valid: boolean; clerkId?: string; error?: string }> {
     try {
-      const parts = token.split(":");
-      if (parts.length !== 3) {
-        logger.warn({ nodeId }, "Invalid token format");
-        return false;
+      if (!CLERK_SECRET_KEY) {
+        return { valid: false, error: "CLERK_SECRET_KEY not configured" };
       }
 
-      const [tokenNodeId, timestampStr, signature] = parts;
-      const timestamp = parseInt(timestampStr, 10);
+      // Remove "Bearer " prefix if present
+      const token = clerkToken.startsWith("Bearer ") ? clerkToken.slice(7) : clerkToken;
 
-      // Check if token is for this node
-      if (tokenNodeId !== nodeId) {
-        logger.warn({ nodeId, tokenNodeId }, "Token node ID mismatch");
-        return false;
+      // Verify JWT using Clerk's verifier
+      const jwt = await jwtVerifier(token, {
+        secretKey: CLERK_SECRET_KEY,
+      });
+
+      if (!jwt || !jwt.sub) {
+        return { valid: false, error: "Invalid JWT payload" };
       }
 
-      // Check if token is recent (within 5 minutes)
-      const age = Date.now() - timestamp;
-      const maxAge = 5 * 60 * 1000; // 5 minutes
-      if (age > maxAge || age < 0) {
-        logger.warn({ nodeId, age }, "Token expired or invalid timestamp");
-        return false;
-      }
-
-      // Verify signature
-      const payload = `${tokenNodeId}:${timestamp}`;
-      const expectedSignature = crypto
-        .createHmac("sha256", GHOST_SECRET)
-        .update(payload)
-        .digest("hex");
-
-      if (signature !== expectedSignature) {
-        logger.warn({ nodeId }, "Invalid token signature");
-        return false;
-      }
-
-      return true;
+      return { valid: true, clerkId: jwt.sub };
     } catch (err) {
-      logger.error({ err, nodeId }, "Token validation error");
-      return false;
+      logger.error({ err }, "Clerk token verification failed");
+      return { valid: false, error: err instanceof Error ? err.message : "JWT verification failed" };
     }
   }
 
@@ -110,28 +87,33 @@ export class DiscoveryServer extends EventEmitter {
 
       // Wait for authentication message
       let authenticated = false;
+      let clerkId: string | null = null;
 
-      ws.on("message", (data) => {
+      ws.on("message", async (data) => {
         try {
           const message: DiscoveryMessage = JSON.parse(data.toString());
 
-          // First message must be hello with token for authentication
+          // First message must be hello with Clerk token for authentication
           if (!authenticated && message.type === "hello") {
-            if (!message.token) {
-              logger.warn({ nodeId }, "Connection rejected: no auth token");
+            if (!message.clerkToken) {
+              logger.warn({ nodeId }, "Connection rejected: no Clerk token");
               ws.send(JSON.stringify({
                 type: "error",
                 fromNodeId: "server",
                 timestamp: new Date(),
-                data: { error: "Authentication required. Provide token in hello message." }
+                data: { error: "Authentication required. Provide Clerk JWT token in clerkToken field." }
               }));
               ws.close(4001, "Authentication required");
               return;
             }
 
-            // Validate token
-            if (!this.validateToken(nodeId, message.token)) {
-              logger.warn({ nodeId }, "Connection rejected: invalid token");
+            // Verify Clerk token
+            const verification = await this.verifyClerkToken(message.clerkToken);
+            if (!verification.valid || !verification.clerkId) {
+              logger.warn(
+                { nodeId, error: verification.error },
+                "Connection rejected: invalid Clerk token"
+              );
               ws.send(JSON.stringify({
                 type: "error",
                 fromNodeId: "server",
@@ -144,19 +126,37 @@ export class DiscoveryServer extends EventEmitter {
 
             // Authentication successful
             authenticated = true;
-            this.authenticatedNodes.add(nodeId);
+            clerkId = verification.clerkId;
+            
+            // Store authenticated node with Clerk ID
+            this.authenticatedNodes.set(nodeId, {
+              clerkId,
+              authenticatedAt: new Date()
+            });
             this.clients.set(nodeId, ws);
-            logger.info({ nodeId }, "Node authenticated successfully");
+            
+            logger.info(
+              { nodeId, clerkId },
+              "Node authenticated successfully via Clerk"
+            );
+
+            // Generate node token for ongoing communication (optional, for extra security)
+            const nodeToken = DiscoveryServer.generateNodeToken(nodeId);
 
             // Emit authenticated hello
             this.emit("node-hello", nodeId, message);
 
-            // Send success response
+            // Send success response with node token
             ws.send(JSON.stringify({
               type: "hello",
               fromNodeId: "server",
               timestamp: new Date(),
-              data: { message: "Authenticated successfully", authenticated: true }
+              data: {
+                message: "Authenticated successfully via Clerk",
+                authenticated: true,
+                clerkId,
+                nodeToken // For subsequent message validation
+              }
             }));
             return;
           }
@@ -176,7 +176,7 @@ export class DiscoveryServer extends EventEmitter {
       });
 
       ws.on("close", () => {
-        logger.info({ nodeId }, "WebSocket client disconnected");
+        logger.info({ nodeId, clerkId }, "WebSocket client disconnected");
         this.clients.delete(nodeId);
         this.authenticatedNodes.delete(nodeId);
         this.emit("node-offline", nodeId);
@@ -194,7 +194,7 @@ export class DiscoveryServer extends EventEmitter {
           type: "hello",
           fromNodeId: "server",
           timestamp: new Date(),
-          data: { message: "Connected. Send hello with token to authenticate." },
+          data: { message: "Connected. Send hello with Clerk JWT token to authenticate." },
         }),
       );
     });
@@ -266,9 +266,32 @@ export class DiscoveryServer extends EventEmitter {
     return Array.from(this.authenticatedNodes.keys());
   }
 
+  /** Get authenticated node info */
+  getAuthenticatedNodeInfo(nodeId: string): { clerkId: string; authenticatedAt: Date } | undefined {
+    return this.authenticatedNodes.get(nodeId);
+  }
+
   /** Check if node is authenticated */
   isAuthenticated(nodeId: string): boolean {
     return this.authenticatedNodes.has(nodeId);
+  }
+
+  /** Get Clerk ID for authenticated node */
+  getClerkId(nodeId: string): string | undefined {
+    return this.authenticatedNodes.get(nodeId)?.clerkId;
+  }
+
+  /**
+   * Generate authentication token for a node (for ongoing message validation)
+   */
+  static generateNodeToken(nodeId: string): string {
+    const timestamp = Date.now();
+    const payload = `${nodeId}:${timestamp}`;
+    const signature = crypto
+      .createHmac("sha256", GHOST_SECRET)
+      .update(payload)
+      .digest("hex");
+    return `${payload}:${signature}`;
   }
 
   /** Close server */

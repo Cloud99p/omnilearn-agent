@@ -1028,7 +1028,9 @@ export async function trainOnText(
             deltaWeight: 0.7,
           });
           // Auto-accept with percentage-based quorum (25% of online nodes)
-          const onlineNodeCount = 5; // TODO: Get from network service
+          // TODO: Import discovery server instance and get real count
+          // const onlineNodeCount = discoveryServer?.getConnectedCount() || 5;
+          const onlineNodeCount = 5; // Temporary: will get from network service
           await acceptHebbianProposal(proposalId, onlineNodeCount);
         } catch {
           /* skip */
@@ -1055,7 +1057,9 @@ export async function trainOnText(
           deltaWeight: Math.round(closeMatch.similarity * 100) / 100,
         });
         // Auto-accept with percentage-based quorum (25% of online nodes)
-        const onlineNodeCount = 5; // TODO: Get from network service
+        // TODO: Import discovery server instance and get real count
+        // const onlineNodeCount = discoveryServer?.getConnectedCount() || 5;
+        const onlineNodeCount = 5; // Temporary: will get from network service
         await acceptHebbianProposal(proposalId, onlineNodeCount);
       } catch {
         /* skip */
