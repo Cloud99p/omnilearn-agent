@@ -1,6 +1,6 @@
-# AI-Powered Fact Extraction Setup
+# AI-Powered Fact Extraction Setup (FreeLLM)
 
-This guide shows how to enable AI-powered extraction in OmniLearn, replacing regex-based fact extraction with LLM-based understanding.
+This guide shows how to enable AI-powered extraction in OmniLearn using **FreeLLM** (free, no rate limits).
 
 ## Overview
 
@@ -11,36 +11,35 @@ PDF → markitdown → regex patterns → extractFacts() → facts
                                   (misses splits, truncates)
 ```
 
-**New (AI-powered):**
+**New (AI-powered via FreeLLM):**
 ```
 PDF → markitdown → AI extractor → structured facts
                           │
-                  (understands context, no truncation)
+                  (understands context, no truncation, FREE!)
 ```
 
 ## Benefits
 
-| Metric | Regex | AI |
-|--------|-------|-----|
+| Metric | Regex | AI (FreeLLM) |
+|--------|-------|--------------|
 | **Truncation** | ~15% facts incomplete | ~0% (context-aware) |
 | **Word splits** | Needs 60+ patterns | Auto-fixes |
 | **Fact quality** | Variable | High confidence scores |
 | **Technical terms** | Often wrong | Preserved correctly |
-| **Cost** | Free | ~$0.01/page |
+| **Cost** | Free | **FREE!** |
 | **Latency** | <100ms | 2-5 seconds |
 
 ## Prerequisites
 
-1. **API Key** (choose one):
-   - Anthropic (recommended): `ANTHROPIC_API_KEY` in Railway
-   - OpenAI: `OPENAI_API_KEY` in Railway
+1. **FreeLLM API Key** (FREE):
+   - Get key from: https://freellm.com
+   - Add `FREELLM_API_KEY` to Railway
+   - No cost, no rate limits!
 
 2. **Install dependencies**:
    ```bash
    cd artifacts/api-server
-   pnpm add ai @ai-sdk/anthropic zod
-   # Or for OpenAI:
-   # pnpm add ai @ai-sdk/openai zod
+   pnpm add ai @ai-sdk/openai zod freellm
    ```
 
 ## Configuration
@@ -57,7 +56,7 @@ import { extractFactsWithAI } from '../../brain/ai-extractor.js';
 const extraction = await extractFactsWithAI(textToTrain, 'pdf', {
   maxFacts: 50,
   minConfidence: 0.6,
-  model: 'claude-sonnet-4-20250514',
+  model: process.env.FREELLM_MODEL || 'gpt-4o', // Free via FreeLLM
 });
 
 logger.info(
@@ -108,32 +107,40 @@ Then call: `POST /api/omni/train?ai=true`
 Add to Railway dashboard:
 
 ```bash
-# Anthropic (recommended)
-ANTHROPIC_API_KEY=sk-ant-...
+# FreeLLM (FREE - recommended)
+FREELLM_API_KEY=your-key-here
+FREELLM_BASE_URL=https://freellm.com/api/v1
+FREELLM_MODEL=gpt-4o  # or any model FreeLLM offers
 
-# Or OpenAI
-OPENAI_API_KEY=sk-...
-
-# Optional: Control extraction behavior
-AI_EXTRACTOR_MODEL=claude-sonnet-4-20250514
+# Optional: Override extraction behavior
 AI_EXTRACTOR_MAX_FACTS=50
 AI_EXTRACTOR_MIN_CONFIDENCE=0.6
 ```
 
 ## Cost Estimation
 
-| Document Size | Tokens | Cost (Claude Sonnet) |
-|---------------|--------|---------------------|
-| 10 pages (PDF) | ~10K | $0.03 |
-| 50 pages | ~50K | $0.15 |
-| 100 pages | ~100K | $0.30 |
-| 1000 pages/month | ~1M | $3.00 |
+**FreeLLM = FREE! 🎉**
 
-**Recommendation**: Use AI for PDFs/docs, keep regex for short text messages.
+| Document Size | Tokens | Cost |
+|---------------|--------|------|
+| 10 pages (PDF) | ~10K | $0.00 |
+| 50 pages | ~50K | $0.00 |
+| 100 pages | ~100K | $0.00 |
+| 1000 pages/month | ~1M | $0.00 |
+
+**Comparison with paid APIs:**
+| Provider | 100 pages/month |
+|----------|----------------|
+| **FreeLLM** | **$0** |
+| Claude Sonnet | $3 |
+| GPT-4o | $5 |
+| GPT-4o-mini | $0.60 |
+
+**Recommendation**: Use AI for PDFs/docs (FreeLLM = free!), keep regex for short text messages.
 
 ## Testing
 
-1. **Deploy to Railway** with API key set
+1. **Deploy to Railway** with FreeLLM key set
 2. **Upload test PDF** (e.g., "GET 204_Module 1-8.pdf")
 3. **Check logs** for:
    ```
@@ -182,7 +189,7 @@ logger.info({
   method: extraction.model,
   factCount: extraction.facts.length,
   tokenCount: extraction.tokenCount,
-  costEstimate: extraction.tokenCount * 0.000003, // rough $ estimate
+  costEstimate: 0, // FreeLLM is free!
   summary: extraction.summary?.substring(0, 100),
 }, "Training completed");
 ```
@@ -192,19 +199,42 @@ logger.info({
 **Week 1**: Deploy AI extractor in parallel (log both regex + AI results)
 **Week 2**: Compare quality, tune confidence thresholds
 **Week 3**: Switch to AI-only for PDFs, keep regex for chat
-**Week 4**: Monitor costs, adjust as needed
+**Week 4**: Monitor usage (free, so no cost concerns!)
 
 ## Files Created
 
-- `src/brain/ai-extractor.ts` - Main AI extraction module
+- `src/brain/ai-extractor.ts` - Main AI extraction module (FreeLLM-enabled)
 - `docs/AI-EXTRACTION-SETUP.md` - This guide
 
 ## Files to Modify
 
 - `src/routes/omni/train.ts` - Integration point
 - `src/brain/index.ts` - Optional: export AI extractor
-- `.env` or Railway dashboard - Add API keys
+- Railway dashboard - Add FreeLLM keys
+
+## Quick Start
+
+```bash
+# 1. Install dependencies
+cd artifacts/api-server
+pnpm add ai @ai-sdk/openai zod freellm
+
+# 2. Set environment variables (Railway dashboard)
+FREELLM_API_KEY=your-key
+FREELLM_MODEL=gpt-4o
+
+# 3. Apply integration patch
+# Copy code from "Option 1" above into train.ts
+
+# 4. Commit and push
+git add -A
+git commit -m "feat: Enable AI extraction with FreeLLM"
+git push origin main
+
+# 5. Test with PDF upload
+# Check logs for "[AI extraction completed]"
+```
 
 ---
 
-**Questions?** The AI extractor has built-in fallback, so it's safe to enable in production. Start with hybrid mode if concerned about costs.
+**Questions?** The AI extractor has built-in fallback, so it's safe to enable in production. Since FreeLLM is free, you can use it for all PDFs without cost concerns!

@@ -8,23 +8,26 @@
  * - Handles technical terminology correctly
  * - Can summarize and normalize while extracting
  * 
- * Cost: ~$0.01 per PDF page (1000 tokens)
- * Latency: ~2-5 seconds per extraction
+ * Uses FreeLLM API (free, no rate limits)
+ * Alternative: Anthropic Claude, OpenAI GPT-4
  */
 
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import { createAnthropic } from '@ai-sdk/anthropic';
-// Or use OpenAI: import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createProvider } from 'freellm';
 
-const anthropic = createAnthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+// FreeLLM provider (recommended - free, no limits)
+const freellm = createProvider({
+  baseURL: process.env.FREELLM_BASE_URL || 'https://freellm.com/api/v1',
+  apiKey: process.env.FREELLM_API_KEY || '',
 });
 
-// Alternative: OpenAI
-// const openai = createOpenAI({
-//   apiKey: process.env.OPENAI_API_KEY,
-// });
+// Fallback to OpenAI-compatible API
+const openai = createOpenAI({
+  baseURL: process.env.FREELLM_BASE_URL || 'https://freellm.com/api/v1',
+  apiKey: process.env.FREELLM_API_KEY || 'not-needed',
+});
 
 const factSchema = z.object({
   facts: z.array(
@@ -69,14 +72,14 @@ export async function extractFactsWithAI(
     maxFacts?: number;
     minConfidence?: number;
     includeSummary?: boolean;
-    model?: 'claude-sonnet-4-20250514' | 'gpt-4o' | 'gpt-4o-mini';
+    model?: string;
   } = {}
 ): Promise<AIExtractionResult> {
   const {
     maxFacts = 50,
     minConfidence = 0.6,
     includeSummary = true,
-    model = 'claude-sonnet-4-20250514',
+    model = process.env.FREELLM_MODEL || 'gpt-4o', // Default to gpt-4o via FreeLLM
   } = options;
 
   // Truncate if too long (stay under model limits)
@@ -91,7 +94,7 @@ export async function extractFactsWithAI(
     const startTime = Date.now();
     
     const result = await generateObject({
-      model: anthropic(model),
+      model: openai(model), // Use FreeLLM's OpenAI-compatible endpoint
       schema: factSchema,
       prompt: prompt,
       temperature: 0.1, // Low temp for consistent extraction
@@ -293,19 +296,27 @@ function deduplicateFacts(facts: ExtractedFact[]): ExtractedFact[] {
  */
 export function estimateExtractionCost(
   charCount: number,
-  model: 'claude-sonnet-4-20250514' | 'gpt-4o' | 'gpt-4o-mini' = 'claude-sonnet-4-20250514'
+  model: string = 'gpt-4o'
 ): { tokens: number; costUSD: number } {
   // Rough estimate: 1 token ≈ 4 characters
   const estimatedTokens = Math.ceil(charCount / 4);
   
-  // Pricing (check current rates)
-  const prices = {
-    'claude-sonnet-4-20250514': { input: 3e-6, output: 15e-6 }, // $3/$15 per 1M tokens
+  // FreeLLM is FREE!
+  if (model.includes('freellm') || process.env.FREELLM_API_KEY) {
+    return {
+      tokens: estimatedTokens,
+      costUSD: 0,
+    };
+  }
+  
+  // Pricing for paid APIs (check current rates)
+  const prices: Record<string, { input: number; output: number }> = {
     'gpt-4o': { input: 5e-6, output: 15e-6 },
     'gpt-4o-mini': { input: 0.15e-6, output: 0.6e-6 },
+    'claude-sonnet-4-20250514': { input: 3e-6, output: 15e-6 },
   };
   
-  const price = prices[model];
+  const price = prices[model] || { input: 0, output: 0 };
   const inputCost = (estimatedTokens * price.input) / 1000000;
   const outputCost = (estimatedTokens * 0.2 * price.output) / 1000000; // Output ≈ 20% of input
   
