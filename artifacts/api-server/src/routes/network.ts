@@ -191,18 +191,23 @@ router.post("/network/decay", async (req, res) => {
 });
 
 router.post("/network/sync", async (req, res) => {
-  // SECURITY: Use Clerk JWT authentication instead of header-based secrets
-  // This prevents secret leakage in logs and provides proper user scoping
+  // SECURITY: Support both Clerk JWT (preferred) and GHOST_SECRET header (legacy)
   const clerkId = (req as any).auth?.userId;
+  const GHOST_SECRET = process.env.GHOST_SECRET;
+  const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
+  
+  // Require either Clerk auth OR valid GHOST_SECRET
   if (!clerkId) {
-    req.log.warn(
-      { agentName: req.body.agentName, agentEndpoint: req.body.agentEndpoint, ip: req.ip },
-      "Unauthorized network sync attempt - no authentication"
-    );
-    res.status(401).json({ 
-      error: "Unauthorized: Authentication required. Use Clerk JWT token." 
-    });
-    return;
+    if (!GHOST_SECRET || providedSecret !== GHOST_SECRET) {
+      req.log.warn(
+        { agentName: req.body.agentName, agentEndpoint: req.body.agentEndpoint, ip: req.ip },
+        "Unauthorized network sync attempt - no valid authentication"
+      );
+      res.status(401).json({ 
+        error: "Unauthorized: Provide Clerk JWT token or X-Ghost-Secret header" 
+      });
+      return;
+    }
   }
 
   const { knowledge, agentName, agentEndpoint, relayPath } = req.body as {
@@ -239,13 +244,19 @@ router.post("/network/sync", async (req, res) => {
 });
 
 router.post("/network/vote/:id", async (req, res) => {
-  // SECURITY: Use Clerk JWT authentication
+  // SECURITY: Support both Clerk JWT (preferred) and GHOST_SECRET header (legacy)
   const clerkId = (req as any).auth?.userId;
+  const GHOST_SECRET = process.env.GHOST_SECRET;
+  const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
+  
+  // Require either Clerk auth OR valid GHOST_SECRET
   if (!clerkId) {
-    res.status(401).json({ 
-      error: "Unauthorized: Authentication required. Use Clerk JWT token." 
-    });
-    return;
+    if (!GHOST_SECRET || providedSecret !== GHOST_SECRET) {
+      res.status(401).json({ 
+        error: "Unauthorized: Provide Clerk JWT token or X-Ghost-Secret header" 
+      });
+      return;
+    }
   }
 
   const id = Number(req.params.id);
@@ -286,13 +297,19 @@ router.post("/network/vote/:id", async (req, res) => {
 
 // POST /api/network/ratify/:id — ratify a neuron (requires authentication)
 router.post("/network/ratify/:id", async (req, res) => {
-  // SECURITY: Use Clerk JWT authentication
+  // SECURITY: Support both Clerk JWT (preferred) and GHOST_SECRET header (legacy)
   const clerkId = (req as any).auth?.userId;
+  const GHOST_SECRET = process.env.GHOST_SECRET;
+  const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
+  
+  // Require either Clerk auth OR valid GHOST_SECRET
   if (!clerkId) {
-    res.status(401).json({ 
-      error: "Unauthorized: Authentication required. Use Clerk JWT token." 
-    });
-    return;
+    if (!GHOST_SECRET || providedSecret !== GHOST_SECRET) {
+      res.status(401).json({ 
+        error: "Unauthorized: Provide Clerk JWT token or X-Ghost-Secret header" 
+      });
+      return;
+    }
   }
 
   const id = Number(req.params.id);
