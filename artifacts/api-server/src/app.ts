@@ -114,9 +114,11 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 // SECURITY FIX: Prevent CSRF attacks by not allowing all origins with credentials
 const ALLOWED_ORIGINS = [
   // Production (Railway deployment)
-  /^https:\/\/omnilearn-.*\.up\.railway\.app$/,
+  /^https:\/\/.*\.up\.railway\.app$/,
   // Production (Vercel frontend)
-  /^https:\/\/omnilearn-.*\.vercel\.app$/,
+  /^https:\/\/.*\.vercel\.app$/,
+  // Custom domain (user's frontend)
+  /^https:\/\/omnilearn\.dpdns\.org$/,
   // Development
   /^http:\/\/localhost:\d+$/,
   /^http:\/\/127\.0\.0\.1:\d+$/,
