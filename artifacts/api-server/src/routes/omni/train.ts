@@ -18,19 +18,51 @@ const uploadsDir = path.join(__dirname, "../../../uploads/train");
 await fs.mkdir(uploadsDir, { recursive: true }).catch(() => {});
 
 // Configure multer for file uploads in train endpoint
+// SECURITY: Validate file types to prevent malicious uploads
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  'text/plain',
+  'text/markdown',
+];
+
 const upload = multer({
   dest: uploadsDir,
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB limit
   },
+  fileFilter: (_req, file, cb) => {
+    // SECURITY: Only allow safe document types
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      const error = new Error(`File type not allowed: ${file.mimetype}`);
+      (error as any).code = 'UNSUPPORTED_MEDIA_TYPE';
+      cb(error, false);
+      logger.warn(
+        { mimetype: file.mimetype, originalname: file.originalname },
+        "Blocked malicious file upload attempt"
+      );
+    }
+  },
 });
 
 // POST /api/omni/train — ingest text and extract knowledge from it
 // Supports: { text, url, file, source } — if url or file provided, fetches/extracts first
-// NOTE: No auth required - anyone can train
+// SECURITY: Requires Clerk authentication to prevent knowledge poisoning
 router.post("/", upload.single("file"), async (req, res) => {
-  // Get clerkId if user is authenticated (optional)
-  const clerkId = (req as any).auth?.userId || null;
+  // SECURITY: Require authentication
+  const clerkId = (req as any).auth?.userId;
+  if (!clerkId) {
+    logger.warn(
+      { ip: req.ip, userAgent: req.get('user-agent') },
+      "Unauthorized training attempt blocked"
+    );
+    res.status(401).json({
+      error: "Authentication required. Please log in to train the model.",
+    });
+    return;
+  }
   const {
     text,
     url,

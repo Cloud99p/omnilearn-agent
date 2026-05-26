@@ -191,18 +191,17 @@ router.post("/network/decay", async (req, res) => {
 });
 
 router.post("/network/sync", async (req, res) => {
-  const GHOST_SECRET = process.env.GHOST_SECRET;
-
-  // SECURITY: Require ghost secret header for sync operations
-  const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
-  if (GHOST_SECRET && providedSecret !== GHOST_SECRET) {
+  // SECURITY: Use Clerk JWT authentication instead of header-based secrets
+  // This prevents secret leakage in logs and provides proper user scoping
+  const clerkId = (req as any).auth?.userId;
+  if (!clerkId) {
     req.log.warn(
-      { agentName: req.body.agentName, agentEndpoint: req.body.agentEndpoint },
-      "Unauthorized network sync attempt - invalid or missing ghost secret",
+      { agentName: req.body.agentName, agentEndpoint: req.body.agentEndpoint, ip: req.ip },
+      "Unauthorized network sync attempt - no authentication"
     );
-    res
-      .status(401)
-      .json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
+    res.status(401).json({ 
+      error: "Unauthorized: Authentication required. Use Clerk JWT token." 
+    });
     return;
   }
 
@@ -240,13 +239,12 @@ router.post("/network/sync", async (req, res) => {
 });
 
 router.post("/network/vote/:id", async (req, res) => {
-  const GHOST_SECRET = process.env.GHOST_SECRET;
-  const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
-
-  if (GHOST_SECRET && providedSecret !== GHOST_SECRET) {
-    res
-      .status(401)
-      .json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
+  // SECURITY: Use Clerk JWT authentication
+  const clerkId = (req as any).auth?.userId;
+  if (!clerkId) {
+    res.status(401).json({ 
+      error: "Unauthorized: Authentication required. Use Clerk JWT token." 
+    });
     return;
   }
 
@@ -286,15 +284,14 @@ router.post("/network/vote/:id", async (req, res) => {
   }
 });
 
-// POST /api/network/ratify/:id — ratify a neuron (requires GHOST_SECRET)
+// POST /api/network/ratify/:id — ratify a neuron (requires authentication)
 router.post("/network/ratify/:id", async (req, res) => {
-  const GHOST_SECRET = process.env.GHOST_SECRET;
-  const providedSecret = req.headers["x-ghost-secret"] as string | undefined;
-
-  if (GHOST_SECRET && providedSecret !== GHOST_SECRET) {
-    res
-      .status(401)
-      .json({ error: "Unauthorized: valid X-Ghost-Secret header required" });
+  // SECURITY: Use Clerk JWT authentication
+  const clerkId = (req as any).auth?.userId;
+  if (!clerkId) {
+    res.status(401).json({ 
+      error: "Unauthorized: Authentication required. Use Clerk JWT token." 
+    });
     return;
   }
 
