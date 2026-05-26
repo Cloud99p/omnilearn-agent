@@ -243,16 +243,6 @@ export async function retrieveRelevantNodes(
   const allNodes = await getAllNodes(clerkId);
   if (allNodes.length === 0) return [];
 
-  // Perform retrieval
-  const results = await performRetrieval(enrichedQuery, allNodes, queryTokens, options?.noDecay);
-  
-  // Store in cache
-  if (!options?.noCache) {
-    storeInCache(enrichedQuery, clerkId, topK, results);
-  }
-  
-  return results;
-
   // FILTER: Identity facts are user-specific - only include if they belong to this user
   const filteredNodes = allNodes.filter((node) => {
     if (node.type === "identity") {
