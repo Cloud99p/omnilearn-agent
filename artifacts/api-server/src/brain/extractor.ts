@@ -287,6 +287,8 @@ export function hasKnowledgeQuality(text: string): boolean {
     /^drillin\b/i, /^millin\b/i, /^turnin\b/i, /^grindin\b/i,
     /^assembl\b/i, /^fittin\b/i, /^safet\b/i, /^equipmen\b/i,
     /^protectiv\b/i, /^extinguish\b/i, /^combust\b/i, /^flammabl\b/i,
+    // FIX: Add common productivity-related truncations
+    /^product\b/i, /^produc\b/i, /^ducat\b/i, /^cumen\b/i,
   ];
   if (brokenWordPatterns.some(p => p.test(trimmed))) return false;
   
@@ -516,6 +518,8 @@ export function normalizePDFText(text: string): string {
     [/acti\s+ve/gi, 'active'],
     [/constructi\s+on/gi, 'construction'],
     [/producti\s+on/gi, 'production'],
+    [/producti\s+vity/gi, 'productivity'], // FIX: Add productivity
+    [/produc\s+tivity/gi, 'productivity'], // FIX: Alternative split
     [/operati\s+on/gi, 'operation'],
     [/generati\s+on/gi, 'generation'],
     [/informa\s+tion/gi, 'information'],
