@@ -23,6 +23,7 @@ import configRouter from "./config.js";
 import storageRouter from "./storage.js";
 import repositoriesRouter from "./repositories.js";
 import documentsRouter from "./documents.js";
+import { logger } from "../lib/logger.js";
 import {
   defaultLimiter,
   chatLimiter,
