@@ -7,6 +7,10 @@ const router: IRouter = Router();
 const startTime = Date.now();
 
 router.get("/healthz", async (_req, res) => {
+  // SECURITY: Minimal health check for production (prevents recon)
+  // Detailed checks only in development
+  const isDevelopment = process.env.NODE_ENV === "development" || process.env.DEBUG === "true";
+  
   const checks: {
     status: "ok" | "degraded" | "error";
     version: string;
@@ -21,12 +25,20 @@ router.get("/healthz", async (_req, res) => {
     timestamp: new Date().toISOString(),
   };
 
-  // Database health check
+  // Database health check (detailed in dev, minimal in prod)
   try {
     const dbStart = Date.now();
     await pool.query("SELECT 1");
     const dbLatency = Date.now() - dbStart;
-    checks.database = { status: "connected", latencyMs: dbLatency };
+    
+    if (isDevelopment) {
+      // Dev: expose latency for debugging
+      checks.database = { status: "connected", latencyMs: dbLatency };
+    } else {
+      // Prod: minimal response (prevents recon)
+      checks.database = { status: "connected" };
+    }
+    
     logger.debug({ dbLatency }, "Database health check passed");
   } catch (error) {
     checks.database = { status: "error" };
@@ -34,13 +46,15 @@ router.get("/healthz", async (_req, res) => {
     logger.error({ error }, "Database health check failed");
   }
 
-  // Clerk configuration check
-  if (process.env.CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY) {
-    checks.clerk = { status: "configured" };
-  } else {
-    checks.clerk = { status: "missing" };
-    checks.status = "degraded";
-    logger.warn("Clerk keys not configured");
+  // Clerk configuration check (only in development)
+  if (isDevelopment) {
+    if (process.env.CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY) {
+      checks.clerk = { status: "configured" };
+    } else {
+      checks.clerk = { status: "missing" };
+      checks.status = "degraded";
+      logger.warn("Clerk keys not configured");
+    }
   }
 
   const data = HealthCheckResponse.parse(checks);
