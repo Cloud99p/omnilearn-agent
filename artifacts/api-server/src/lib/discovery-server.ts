@@ -8,10 +8,13 @@ import { WebSocketServer, WebSocket } from "ws";
 import { EventEmitter } from "events";
 import { logger } from "./logger.js";
 import crypto from "crypto";
-import { jwtVerifier } from "@clerk/backend/jwt";
+import { createClerkClient } from "@clerk/backend";
 
 const GHOST_SECRET = process.env.GHOST_SECRET || "insecure-dev-secret-change-in-production";
 const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
+
+// Initialize Clerk client
+const clerkClient = CLERK_SECRET_KEY ? createClerkClient({ secretKey: CLERK_SECRET_KEY }) : null;
 
 export interface DiscoveryMessage {
   type: "hello" | "heartbeat" | "goodbye" | "cluster-update" | "query" | "response";
@@ -57,23 +60,21 @@ export class DiscoveryServer extends EventEmitter {
    */
   private async verifyClerkToken(clerkToken: string): Promise<{ valid: boolean; clerkId?: string; error?: string }> {
     try {
-      if (!CLERK_SECRET_KEY) {
+      if (!CLERK_SECRET_KEY || !clerkClient) {
         return { valid: false, error: "CLERK_SECRET_KEY not configured" };
       }
 
       // Remove "Bearer " prefix if present
       const token = clerkToken.startsWith("Bearer ") ? clerkToken.slice(7) : clerkToken;
 
-      // Verify JWT using Clerk's verifier
-      const jwt = await jwtVerifier(token, {
-        secretKey: CLERK_SECRET_KEY,
-      });
+      // Verify JWT using Clerk client
+      const payload = await clerkClient.verifyToken(token);
 
-      if (!jwt || !jwt.sub) {
+      if (!payload || !payload.sub) {
         return { valid: false, error: "Invalid JWT payload" };
       }
 
-      return { valid: true, clerkId: jwt.sub };
+      return { valid: true, clerkId: payload.sub };
     } catch (err) {
       logger.error({ err }, "Clerk token verification failed");
       return { valid: false, error: err instanceof Error ? err.message : "JWT verification failed" };
