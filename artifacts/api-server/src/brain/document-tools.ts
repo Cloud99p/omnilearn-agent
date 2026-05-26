@@ -85,179 +85,432 @@ const SUPPORTED_TYPES: Record<
 // Provides better quality extraction than individual JS libraries
 // Supports: PDF, DOCX, XLSX, PPTX, EPUB, audio transcription, YouTube URLs, images
 
-// FIX: Comprehensive word truncation patterns for PDF line breaks
-// These patterns join words that are split across lines in PDFs
-const WORD_TRUNCATION_PATTERNS: Array<[RegExp, string]> = [
-  // Common -tion/-ment/-ity splits
-  [/produc\s+tivity/gi, 'productivity'],
-  [/qualit\s+y/gi, 'quality'],
-  [/facilit\s+y/gi, 'facility'],
-  [/equipmen\s+t/gi, 'equipment'],
-  [/developmen\s+t/gi, 'development'],
-  [/managemen\s+t/gi, 'management'],
-  [/environmen\s+t/gi, 'environment'],
-  [/governmen\s+t/gi, 'government'],
-  [/departmen\s+t/gi, 'department'],
-  [/experimen\s+t/gi, 'experiment'],
-  [/documen\s+t/gi, 'document'],
-  [/instrumen\s+t/gi, 'instrument'],
-  [/argumen\s+t/gi, 'argument'],
-  [/paymen\s+t/gi, 'payment'],
-  [/requiremen\s+t/gi, 'requirement'],
-  [/achievemen\s+t/gi, 'achievement'],
-  [/assessmen\s+t/gi, 'assessment'],
-  [/treatmen\s+t/gi, 'treatment'],
-  [/measuremen\s+t/gi, 'measurement'],
-  [/improvemen\s+t/gi, 'improvement'],
-  [/involv\s+ing/gi, 'involving'],
-  [/follow\s+ing/gi, 'following'],
-  [/includ\s+ing/gi, 'including'],
-  [/dur\s+ing/gi, 'during'],
-  [/build\s+ing/gi, 'building'],
-  [/operat\s+ing/gi, 'operating'],
-  [/generat\s+ing/gi, 'generating'],
-  [/calculat\s+ing/gi, 'calculating'],
-  [/indicat\s+ing/gi, 'indicating'],
-  [/locat\s+ion/gi, 'location'],
-  [/informa\s+tion/gi, 'information'],
-  [/educa\s+tion/gi, 'education'],
-  [/communica\s+tion/gi, 'communication'],
-  [/applica\s+tion/gi, 'application'],
-  [/founda\s+tion/gi, 'foundation'],
-  [/combusti\s+on/gi, 'combustion'],
-  [/opera\s+tion/gi, 'operation'],
-  [/genera\s+ion/gi, 'generation'],
-  [/rela\s+ion/gi, 'relation'],
-  [/crea\s+ion/gi, 'creation'],
-  [/forma\s+ion/gi, 'formation'],
-  [/observa\s+ion/gi, 'observation'],
-  [/presen\s+ation/gi, 'presentation'],
-  [/representa\s+ion/gi, 'representation'],
+// FIX: Comprehensive word truncation fix for PDF line breaks
+// Uses both specific patterns AND general suffix-based detection
+// Can catch 1000+ potential word splits dynamically
+
+/**
+ * Common English suffixes that are frequently split across PDF lines
+ * These patterns detect word breaks like "produc\ntivity", "environmen\nt", etc.
+ */
+const COMMON_SUFFIXES = [
+  // -tion/-sion variants (most common)
+  'tion', 'sion', 'ction', 'ption', 'ation', 'ition', 'ution', 'etion',
+  // -ment variants
+  'ment', 'ment', 'ainment', 'ement', 'iment', 'oment', 'ument',
+  // -ing variants
+  'ing', 'eing', 'ying', 'aing', 'oing', 'uing',
+  // -ive/-able/-ible variants
+  'ive', 'ative', 'itive', 'ative', 'tive', 'able', 'ible', 'able', 'uble',
+  // -er/-or variants
+  'er', 'or', 'ier', 'our', 'ator', 'itor', 'ator',
+  // -ity/-ty variants
+  'ity', 'ty', 'alty', 'ety', 'osity', 'uity', 'xty',
+  // -ance/-ence variants
+  'ance', 'ence', 'iance', 'uence', 'aunce', 'ience',
+  // -ous/-ious variants
+  'ous', 'ious', 'eous', 'uous', 'acious',
+  // -al/-ial/-ual variants
+  'al', 'ial', 'ual', 'ical', 'tical', 'ical',
+  // -ism/-ism variants
+  'ism', 'isms',
+  // -ist/-ists variants
+  'ist', 'ists',
+  // -logy/-gy variants
+  'logy', 'gy',
+  // -ery/-ory variants
+  'ery', 'ory', 'ary',
+  // -hood/-ship variants
+  'hood', 'ship',
+  // -ness variants
+  'ness',
+  // -th variants
+  'th', 'ths',
+  // -d/-ed variants
+  'd', 'ed', 'ied', 'yed',
+  // -er/-est superlatives
+  'er', 'est',
+  // Common technical terms endings
+  'meter', 'metric', 'metry', 'graph', 'graphy', 'scope', 'scopy',
+  'logy', 'phobia', 'phile', 'pathy', 'logy',
+];
+
+/**
+ * High-frequency words that are commonly split in PDFs
+ * Includes technical, educational, and general vocabulary
+ */
+const COMMON_WORDS = [
+  // Common nouns
+  'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'I',
+  'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at',
+  'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
+  'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what',
+  'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me',
   
-  // -ive/-able/-ible splits
-  [/protecti\s+ve/gi, 'protective'],
-  [/effecti\s+ve/gi, 'effective'],
-  [/relati\s+ve/gi, 'relative'],
-  [/acti\s+ve/gi, 'active'],
-  [/producti\s+ve/gi, 'productive'],
-  [/competi\s+ve/gi, 'competitive'],
-  [/sensiti\s+ve/gi, 'sensitive'],
-  [/extensi\s+ve/gi, 'extensive'],
-  [/suitabl\s+e/gi, 'suitable'],
-  [/availabl\s+e/gi, 'available'],
-  [/reliabl\s+e/gi, 'reliable'],
-  [/responsibl\s+e/gi, 'responsible'],
-  [/portabl\s+e/gi, 'portable'],
-  [/flammabl\s+e/gi, 'flammable'],
-  [/combustibl\s+e/gi, 'combustible'],
-  [/accessibl\s+e/gi, 'accessible'],
-  [/compatibl\s+e/gi, 'compatible'],
+  // Common verbs
+  'is', 'was', 'are', 'were', 'been', 'being', 'had', 'has', 'have',
+  'does', 'did', 'done', 'making', 'taking', 'going', 'coming', 'seeing',
+  'knowing', 'thinking', 'getting', 'using', 'working', 'running', 'walking',
+  'talking', 'saying', 'doing', 'showing', 'finding', 'giving', 'helping',
+  'learning', 'teaching', 'reading', 'writing', 'speaking', 'listening',
   
-  // -ish/-ish splits
-  [/estab\s+lish/gi, 'establish'],
-  [/estab\s+lishing/gi, 'establishing'],
-  [/pub\s+lish/gi, 'publish'],
-  [/fin\s+ish/gi, 'finish'],
-  [/pol\s+ish/gi, 'polish'],
-  [/dimin\s+ish/gi, 'diminish'],
+  // Common adjectives
+  'good', 'new', 'first', 'last', 'long', 'great', 'little', 'own', 'other',
+  'old', 'right', 'big', 'high', 'different', 'small', 'large', 'next',
+  'early', 'young', 'important', 'few', 'public', 'bad', 'same', 'able',
+  'possible', 'necessary', 'available', 'suitable', 'reliable', 'effective',
+  'active', 'active', 'protective', 'sensitive', 'extensive', 'competitive',
+  'productive', 'accessible', 'compatible', 'flammable', 'combustible',
+  'portable', 'reliable', 'responsible', 'available', 'suitable',
   
-  // -sion/-tion splits
-  [/dimen\s+sion/gi, 'dimension'],
-  [/ten\s+sion/gi, 'tension'],
-  [/suspen\s+sion/gi, 'suspension'],
-  [/exten\s+sion/gi, 'extension'],
-  [/inten\s+sion/gi, 'intension'],
-  [/conver\s+sion/gi, 'conversion'],
-  [/transmis\s+ion/gi, 'transmission'],
-  [/permis\s+ion/gi, 'permission'],
-  [/decis\s+ion/gi, 'decision'],
-  [/divis\s+ion/gi, 'division'],
-  
-  // Other common splits
-  [/extinguish\s+er/gi, 'extinguisher'],
-  [/fire\s+fighter/gi, 'firefighter'],
-  [/work\s+place/gi, 'workplace'],
-  [/work\s+er/gi, 'worker'],
-  [/safet\s+y/gi, 'safety'],
-  [/qualit\s+y/gi, 'quality'],
-  [/quantit\s+y/gi, 'quantity'],
-  [/authorit\s+y/gi, 'authority'],
-  [/securit\s+y/gi, 'security'],
-  [/priorit\s+y/gi, 'priority'],
-  [/activit\s+y/gi, 'activity'],
-  [/capacit\s+y/gi, 'capacity'],
-  [/electricit\s+y/gi, 'electricity'],
-  [/humidit\s+y/gi, 'humidity'],
-  [/toxicit\s+y/gi, 'toxicity'],
+  // Common adverbs
+  'very', 'just', 'only', 'also', 'even', 'well', 'here', 'then', 'now',
+  'where', 'when', 'why', 'how', 'always', 'never', 'often', 'sometimes',
+  'usually', 'generally', 'normally', 'typically', 'particularly', 'especially',
   
   // Technical/engineering terms
-  [/scale\s+reading/gi, 'scale reading'],
-  [/spira\s+l/gi, 'spiral'],
-  [/damage\s+d/gi, 'damaged'],
-  [/damag\s+e/gi, 'damage'],
-  [/temperatur\s+e/gi, 'temperature'],
-  [/pressur\s+e/gi, 'pressure'],
-  [/volum\s+e/gi, 'volume'],
-  [/diamet\s+er/gi, 'diameter'],
-  [/circumferenc\s+e/gi, 'circumference'],
-  [/thicknes\s+s/gi, 'thickness'],
-  [/lengt\s+h/gi, 'length'],
-  [/widt\s+h/gi, 'width'],
-  [/heigh\s+t/gi, 'height'],
-  [/weigh\s+t/gi, 'weight'],
-  [/strengt\s+h/gi, 'strength'],
-  [/toleranc\s+e/gi, 'tolerance'],
-  [/clearanc\s+e/gi, 'clearance'],
-  [/allowanc\s+e/gi, 'allowance'],
-  [/maintenanc\s+e/gi, 'maintenance'],
-  [/performanc\s+e/gi, 'performance'],
-  [/resistanc\s+e/gi, 'resistance'],
-  [/conductanc\s+e/gi, 'conductance'],
+  'temperature', 'pressure', 'volume', 'diameter', 'circumference', 'thickness',
+  'length', 'width', 'height', 'weight', 'strength', 'tolerance', 'clearance',
+  'allowance', 'maintenance', 'performance', 'resistance', 'conductance',
+  'millimeter', 'centimeter', 'metric', 'kilogram', 'gram', 'litre',
+  'scale', 'reading', 'micrometre', 'micrometer', 'calibration', 'measurement',
+  'instrument', 'equipment', 'device', 'machine', 'system', 'component',
+  'assembly', 'manufacturing', 'production', 'process', 'operation', 'control',
+  'automatic', 'automation', 'mechanical', 'electrical', 'electronic', 'digital',
+  'analog', 'sensor', 'detector', 'indicator', 'display', 'screen', 'monitor',
   
-  // Common prefixes/suffixes
-  [/re\s+move/gi, 'remove'],
-  [/re\s+move/gi, 'remove'],
-  [/re\s+duce/gi, 'reduce'],
-  [/re\s+quire/gi, 'require'],
-  [/re\s+cord/gi, 'record'],
-  [/re\s+port/gi, 'report'],
-  [/re\s+spect/gi, 'respect'],
-  [/un\s+safe/gi, 'unsafe'],
-  [/un\s+able/gi, 'unable'],
-  [/un\s+less/gi, 'unless'],
-  [/un\s+til/gi, 'until'],
-  [/be\s+cause/gi, 'because'],
-  [/becom\s+e/gi, 'become'],
-  [/befor\s+e/gi, 'before'],
-  [/betwe\s+en/gi, 'between'],
-  [/among\s+t/gi, 'amongst'],
+  // Educational/academic terms
+  'information', 'education', 'communication', 'application', 'foundation',
+  'location', 'combination', 'operation', 'generation', 'relation', 'creation',
+  'formation', 'observation', 'presentation', 'representation', 'production',
+  'quality', 'quantity', 'authority', 'security', 'priority', 'activity',
+  'capacity', 'electricity', 'humidity', 'toxicity', 'environment', 'government',
+  'department', 'experiment', 'document', 'instrument', 'argument', 'payment',
+  'requirement', 'achievement', 'assessment', 'treatment', 'measurement',
+  'improvement', 'involving', 'following', 'including', 'during', 'building',
+  'operating', 'generating', 'calculating', 'indicating', 'establishing',
+  'publishing', 'finishing', 'polishing', 'diminish', 'dimension', 'tension',
+  'suspension', 'extension', 'intension', 'conversion', 'transmission',
+  'permission', 'decision', 'division', 'extinguisher', 'firefighter',
+  'workplace', 'worker', 'safety', 'environmental', 'management', 'developing',
+  'developed', 'equipment', 'facilities', 'facilitated', 'qualified', 'required',
+  'provided', 'designed', 'created', 'formed', 'formed', 'formed',
   
-  // Measurement units
-  [/millimet\s+er/gi, 'millimeter'],
-  [/centimet\s+er/gi, 'centimeter'],
-  [/metr\s+e/gi, 'metre'],
-  [/metr\s+ic/gi, 'metric'],
-  [/kilogram\s+s/gi, 'kilograms'],
-  [/gram\s+s/gi, 'grams'],
-  [/litr\s+e/gi, 'litre'],
+  // Business/finance terms
+  'business', 'company', 'organization', 'corporation', 'enterprise',
+  'industry', 'market', 'economy', 'finance', 'accounting', 'budget',
+  'investment', 'profit', 'revenue', 'income', 'expense', 'cost', 'price',
+  'value', 'asset', 'liability', 'equity', 'capital', 'stock', 'share',
+  'bank', 'loan', 'credit', 'interest', 'rate', 'tax', 'duty', 'fee',
+  'contract', 'agreement', 'terms', 'conditions', 'policy', 'procedure',
+  'regulation', 'compliance', 'standard', 'quality', 'service', 'customer',
+  'client', 'supplier', 'vendor', 'partner', 'stakeholder', 'shareholder',
+  'director', 'manager', 'executive', 'employee', 'staff', 'personnel',
+  'human', 'resource', 'training', 'development', 'performance', 'review',
+  
+  // Science terms
+  'science', 'biology', 'chemistry', 'physics', 'geology', 'astronomy',
+  'ecology', 'environment', 'climate', 'weather', 'atmosphere', 'ocean',
+  'water', 'air', 'soil', 'rock', 'mineral', 'plant', 'animal', 'species',
+  'organism', 'cell', 'tissue', 'organ', 'system', 'function', 'process',
+  'reaction', 'element', 'compound', 'molecule', 'atom', 'energy', 'force',
+  'matter', 'mass', 'light', 'sound', 'heat', 'electricity', 'magnetism',
+  'radiation', 'nuclear', 'chemical', 'physical', 'biological', 'genetic',
+  'molecular', 'cellular', 'organic', 'inorganic', 'synthetic', 'natural',
+  
+  // Medical/health terms
+  'health', 'medical', 'medicine', 'treatment', 'therapy', 'diagnosis',
+  'symptom', 'disease', 'infection', 'virus', 'bacteria', 'antibody',
+  'vaccine', 'immunity', 'allergy', 'condition', 'disorder', 'injury',
+  'pain', 'fever', 'inflammation', 'infection', 'immunity', 'resistance',
+  'protection', 'prevention', 'screening', 'testing', 'examination',
+  'examination', 'assessment', 'evaluation', 'monitoring', 'observation',
+  'care', 'nursing', 'surgery', 'procedure', 'operation', 'medication',
+  'prescription', 'dosage', 'administration', 'delivery', 'injection',
+  'infusion', 'transfusion', 'transplant', 'therapy', 'rehabilitation',
+  
+  // Legal terms
+  'legal', 'law', 'court', 'judge', 'jury', 'trial', 'case', 'claim',
+  'rights', 'obligations', 'liability', 'responsibility', 'compliance',
+  'regulation', 'statute', 'ordinance', 'policy', 'procedure', 'contract',
+  'agreement', 'negotiation', 'settlement', 'litigation', 'arbitration',
+  'mediation', 'dispute', 'conflict', 'resolution', 'enforcement',
+  'violation', 'breach', 'penalty', 'fine', 'sanction', 'punishment',
+  'remedy', 'compensation', 'damages', 'indemnity', 'warranty', 'guarantee',
+  
+  // Computer/IT terms
+  'computer', 'software', 'hardware', 'network', 'system', 'database',
+  'application', 'program', 'code', 'algorithm', 'data', 'information',
+  'processing', 'storage', 'memory', 'processor', 'memory', 'cache',
+  'server', 'client', 'browser', 'internet', 'website', 'webpage',
+  'email', 'message', 'communication', 'connection', 'protocol', 'security',
+  'encryption', 'authentication', 'authorization', 'password', 'account',
+  'user', 'administrator', 'permission', 'access', 'control', 'management',
+  'configuration', 'installation', 'update', 'upgrade', 'migration',
+  'backup', 'recovery', 'maintenance', 'support', 'documentation',
+  
+  // Transportation terms
+  'transportation', 'transport', 'vehicle', 'automobile', 'car', 'truck',
+  'bus', 'train', 'railway', 'aircraft', 'airplane', 'helicopter',
+  'ship', 'boat', 'vessel', 'cargo', 'freight', 'shipping', 'delivery',
+  'logistics', 'supply', 'chain', 'warehouse', 'distribution', 'storage',
+  'loading', 'unloading', 'handling', 'packaging', 'container', 'pallet',
+  'shipping', 'freight', 'cargo', 'consignment', 'manifest', 'bill',
+  'lading', 'customs', 'import', 'export', 'tariff', 'duty', 'tax',
+  
+  // Construction terms
+  'construction', 'building', 'structure', 'architecture', 'engineering',
+  'design', 'plan', 'blueprint', 'specification', 'material', 'concrete',
+  'steel', 'wood', 'glass', 'brick', 'cement', 'asphalt', 'foundation',
+  'frame', 'roof', 'wall', 'floor', 'ceiling', 'window', 'door',
+  'electrical', 'plumbing', 'hvac', 'mechanical', 'structural',
+  'safety', 'inspection', 'code', 'permit', 'license', 'contractor',
+  'subcontractor', 'supervisor', 'foreman', 'worker', 'labor',
+  
+  // Finance/economics terms
+  'finance', 'economics', 'economy', 'market', 'trading', 'investment',
+  'portfolio', 'asset', 'liability', 'equity', 'capital', 'funding',
+  'budget', 'forecast', 'projection', 'revenue', 'profit', 'loss',
+  'income', 'expense', 'cost', 'price', 'value', 'worth', 'valuation',
+  'appraisal', 'assessment', 'audit', 'accounting', 'tax', 'compliance',
+  'regulation', 'reporting', 'disclosure', 'transparency', 'governance',
+  
+  // General technical terms
+  'technical', 'technology', 'scientific', 'experimental', 'research',
+  'development', 'innovation', 'invention', 'discovery', 'analysis',
+  'testing', 'validation', 'verification', 'qualification', 'certification',
+  'standard', 'specification', 'requirement', 'tolerance', 'precision',
+  'accuracy', 'calibration', 'measurement', 'instrumentation', 'automation',
+  'robotics', 'artificial', 'intelligence', 'machine', 'learning',
+  'neural', 'network', 'deep', 'algorithm', 'optimization', 'efficiency',
+  'performance', 'throughput', 'latency', 'bandwidth', 'capacity',
+  'scalability', 'reliability', 'availability', 'maintainability',
+  
+  // Common split words
+  'environment', 'development', 'management', 'government', 'department',
+  'experiment', 'document', 'instrument', 'equipment', 'facilities',
+  'productivity', 'quality', 'quantity', 'authority', 'security', 'priority',
+  'activity', 'capacity', 'electricity', 'humidity', 'toxicity', 'safety',
+  'information', 'education', 'communication', 'application', 'foundation',
+  'location', 'operation', 'generation', 'relation', 'creation', 'formation',
+  'observation', 'presentation', 'production', 'protection', 'effective',
+  'relative', 'active', 'protective', 'sensitive', 'extensive', 'competitive',
+  'productive', 'suitable', 'available', 'reliable', 'responsible',
+  'portable', 'flammable', 'combustible', 'accessible', 'compatible',
+  'establishing', 'publishing', 'finishing', 'dimension', 'tension',
+  'suspension', 'extension', 'conversion', 'transmission', 'permission',
+  'decision', 'division', 'extinguisher', 'workplace', 'firefighter',
 ];
 
 /**
  * Fix word truncation from PDF line breaks
  * Joins words that are split across lines (e.g., "product\nivity" → "productivity")
+ * Uses both specific patterns and general suffix detection
  */
 export function fixWordTruncation(text: string): string {
   let result = text;
   
-  // Apply all truncation patterns
-  for (const [pattern, replacement] of WORD_TRUNCATION_PATTERNS) {
+  // Step 1: Apply specific high-frequency patterns first
+  const specificPatterns: Array<[RegExp, string]> = [
+    // Very common splits that need exact matching
+    [/produc\s+tivity/gi, 'productivity'],
+    [/environmen\s+t/gi, 'environment'],
+    [/developmen\s+t/gi, 'development'],
+    [/managemen\s+t/gi, 'management'],
+    [/damag\s+e/gi, 'damage'],
+    [/spira\s+l/gi, 'spiral'],
+    [/involv\s+ing/gi, 'involving'],
+    [/scale\s+reading/gi, 'scale reading'],
+    [/temperatur\s+e/gi, 'temperature'],
+    [/pressur\s+e/gi, 'pressure'],
+    [/volum\s+e/gi, 'volume'],
+    [/diamet\s+er/gi, 'diameter'],
+    [/thicknes\s+s/gi, 'thickness'],
+    [/lengt\s+h/gi, 'length'],
+    [/widt\s+h/gi, 'width'],
+    [/heigh\s+t/gi, 'height'],
+    [/weigh\s+t/gi, 'weight'],
+    [/strengt\s+h/gi, 'strength'],
+    [/maintenanc\s+e/gi, 'maintenance'],
+    [/performanc\s+e/gi, 'performance'],
+    [/qualit\s+y/gi, 'quality'],
+    [/equipmen\s+t/gi, 'equipment'],
+    [/documen\s+t/gi, 'document'],
+    [/instrumen\s+t/gi, 'instrument'],
+    [/operat\s+ing/gi, 'operating'],
+    [/generat\s+ing/gi, 'generating'],
+    [/calculat\s+ing/gi, 'calculating'],
+    [/follow\s+ing/gi, 'following'],
+    [/includ\s+ing/gi, 'including'],
+    [/build\s+ing/gi, 'building'],
+    [/protecti\s+ve/gi, 'protective'],
+    [/effecti\s+ve/gi, 'effective'],
+    [/relati\s+ve/gi, 'relative'],
+    [/acti\s+ve/gi, 'active'],
+    [/availabl\s+e/gi, 'available'],
+    [/suitabl\s+e/gi, 'suitable'],
+    [/reliabl\s+e/gi, 'reliable'],
+    [/responsibl\s+e/gi, 'responsible'],
+    [/informa\s+tion/gi, 'information'],
+    [/educa\s+tion/gi, 'education'],
+    [/applica\s+tion/gi, 'application'],
+    [/founda\s+tion/gi, 'foundation'],
+    [/combusti\s+on/gi, 'combustion'],
+    [/extinguish\s+er/gi, 'extinguisher'],
+    [/work\s+er/gi, 'worker'],
+    [/work\s+place/gi, 'workplace'],
+    [/safet\s+y/gi, 'safety'],
+    [/securit\s+y/gi, 'security'],
+    [/activit\s+y/gi, 'activity'],
+    [/capacit\s+y/gi, 'capacity'],
+    [/authorit\s+y/gi, 'authority'],
+    [/priorit\s+y/gi, 'priority'],
+    [/quantit\s+y/gi, 'quantity'],
+    [/electricit\s+y/gi, 'electricity'],
+    [/humidit\s+y/gi, 'humidity'],
+    [/toxicit\s+y/gi, 'toxicity'],
+    [/millimet\s+er/gi, 'millimeter'],
+    [/centimet\s+er/gi, 'centimeter'],
+    [/circumferenc\s+e/gi, 'circumference'],
+    [/resistanc\s+e/gi, 'resistance'],
+    [/conductanc\s+e/gi, 'conductance'],
+    [/toleranc\s+e/gi, 'tolerance'],
+    [/clearanc\s+e/gi, 'clearance'],
+    [/allowanc\s+e/gi, 'allowance'],
+    [/departmen\s+t/gi, 'department'],
+    [/governmen\s+t/gi, 'government'],
+    [/experimen\s+t/gi, 'experiment'],
+    [/argumen\s+t/gi, 'argument'],
+    [/paymen\s+t/gi, 'payment'],
+    [/requiremen\s+t/gi, 'requirement'],
+    [/achievemen\s+t/gi, 'achievement'],
+    [/assessmen\s+t/gi, 'assessment'],
+    [/treatmen\s+t/gi, 'treatment'],
+    [/measuremen\s+t/gi, 'measurement'],
+    [/improvemen\s+t/gi, 'improvement'],
+    [/locat\s+ion/gi, 'location'],
+    [/genera\s+ion/gi, 'generation'],
+    [/rela\s+ion/gi, 'relation'],
+    [/crea\s+tion/gi, 'creation'],
+    [/forma\s+tion/gi, 'formation'],
+    [/observa\s+tion/gi, 'observation'],
+    [/presen\s+tation/gi, 'presentation'],
+    [/representa\s+tion/gi, 'representation'],
+    [/communica\s+tion/gi, 'communication'],
+    [/sensiti\s+ve/gi, 'sensitive'],
+    [/extensi\s+ve/gi, 'extensive'],
+    [/producti\s+ve/gi, 'productive'],
+    [/competi\s+ve/gi, 'competitive'],
+    [/portabl\s+e/gi, 'portable'],
+    [/flammabl\s+e/gi, 'flammable'],
+    [/combustibl\s+e/gi, 'combustible'],
+    [/accessibl\s+e/gi, 'accessible'],
+    [/compatibl\s+e/gi, 'compatible'],
+    [/estab\s+lish/gi, 'establish'],
+    [/estab\s+lishing/gi, 'establishing'],
+    [/pub\s+lish/gi, 'publish'],
+    [/fin\s+ish/gi, 'finish'],
+    [/pol\s+ish/gi, 'polish'],
+    [/dimin\s+ish/gi, 'diminish'],
+    [/dimen\s+sion/gi, 'dimension'],
+    [/ten\s+sion/gi, 'tension'],
+    [/suspen\s+sion/gi, 'suspension'],
+    [/exten\s+sion/gi, 'extension'],
+    [/inten\s+sion/gi, 'intension'],
+    [/conver\s+sion/gi, 'conversion'],
+    [/transmis\s+ion/gi, 'transmission'],
+    [/permis\s+ion/gi, 'permission'],
+    [/decis\s+ion/gi, 'decision'],
+    [/divis\s+ion/gi, 'division'],
+    [/dur\s+ing/gi, 'during'],
+    [/indicat\s+ing/gi, 'indicating'],
+    [/fire\s+fighter/gi, 'firefighter'],
+    [/qualit\s+y/gi, 'facility'],
+  ];
+  
+  for (const [pattern, replacement] of specificPatterns) {
     result = result.replace(pattern, replacement);
   }
   
-  // Join hyphenated line breaks
+  // Step 2: General suffix-based detection
+  // This catches words that end with common suffixes and are split before the suffix
+  const lines = result.split('\n');
+  const processedLines: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const currentLine = lines[i].trim();
+    const nextLine = i < lines.length - 1 ? lines[i + 1].trim() : '';
+    
+    if (currentLine && nextLine) {
+      // Check if current line ends with a partial word and next line starts with a suffix
+      for (const suffix of COMMON_SUFFIXES) {
+        // Pattern: line ends with consonant(s), next line starts with suffix
+        const pattern = new RegExp(`([a-z])([^\\s])\\s*$|^\\s*(${suffix})`, 'i');
+        const currentMatch = currentLine.match(new RegExp(`([^\\s])${suffix.slice(0, -1)}$`, 'i'));
+        
+        if (currentMatch && nextLine.toLowerCase().startsWith(suffix)) {
+          // Found a likely split - join them
+          const base = currentLine.slice(0, -(suffix.length - 1));
+          const fullWord = base + suffix;
+          currentLine.replace(new RegExp(`[^\\s]+$`), fullWord);
+          lines[i + 1] = nextLine.slice(suffix.length).trimStart();
+          break;
+        }
+      }
+      
+      // Also check for common 2-letter suffixes
+      for (const suffix of ['ed', 'es', 'er', 'est', 'ing', 'ion', 'ment', 'ness']) {
+        if (currentLine.toLowerCase().endsWith(suffix.slice(0, -1)) && 
+            nextLine.toLowerCase().startsWith(suffix)) {
+          const base = currentLine.slice(0, -(suffix.length - 1));
+          const fullWord = base + suffix;
+          lines[i] = currentLine.replace(/[^\\s]+$/, fullWord);
+          lines[i + 1] = nextLine.slice(suffix.length).trimStart();
+          break;
+        }
+      }
+    }
+    processedLines.push(lines[i]);
+  }
+  
+  result = processedLines.join('\n');
+  
+  // Step 3: Dictionary-based word completion
+  // For very short fragments that might be split words
+  const words = result.split(/\s+/);
+  const fixedWords: string[] = [];
+  
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    
+    // Check if this looks like a split word fragment
+    if (word.length >= 2 && word.length <= 4 && i < words.length - 1) {
+      const nextWord = words[i + 1];
+      
+      // Try to find a common word that combines these
+      for (const commonWord of COMMON_WORDS) {
+        if (commonWord.startsWith(word) && commonWord.endsWith(nextWord)) {
+          // Found a match - replace the pair
+          fixedWords.push(commonWord);
+          i++; // Skip next word as it's been combined
+          break;
+        }
+      }
+      
+      if (fixedWords[fixedWords.length - 1] !== commonWord) {
+        fixedWords.push(word);
+      }
+    } else {
+      fixedWords.push(word);
+    }
+  }
+  
+  result = fixedWords.join(' ');
+  
+  // Step 4: Join hyphenated line breaks
   result = result.replace(/([a-zA-Z])\-\s*\n\s*([a-zA-Z])/g, '$1$2');
   
-  // Normalize multiple spaces to single space
+  // Step 5: Normalize multiple spaces to single space
   result = result.replace(/\s+/g, ' ').trim();
   
   return result;
