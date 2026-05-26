@@ -25,7 +25,7 @@ import { extractFacts, detectQueryType, extractKeyTerms, normalizePDFText } from
 import { embedText, cosineSimilarity } from "./embeddings.js";
 import { chunkDocument, shouldChunk } from "./chunker.js";
 import { maximalMarginalRelevance, suggestLambda } from "./mmr.js";
-import { retrieveWithCache, storeInCache, getCacheStats } from "./cache.js";
+import { retrieveFromCache, storeInCache, getCacheStats } from "./cache.js";
 import { applyTemporalDecay, calculateTemporalDecay, formatKnowledgeAge } from "./temporal-decay.js";
 import { broadcastKnowledgeToCluster, classifyShareLevel } from "../lib/knowledge-sync.js";
 import {
