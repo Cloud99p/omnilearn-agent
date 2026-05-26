@@ -3,6 +3,9 @@ FROM node:24-slim
 # Install pnpm
 RUN npm install -g pnpm
 
+# Install Python/pip for markitdown
+RUN apt-get update && apt-get install -y python3 python3-pip --no-install-recommends && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy everything at once
@@ -12,7 +15,7 @@ COPY . .
 RUN pnpm install --dangerously-allow-all-builds
 
 # Install markitdown for better PDF/DOCX extraction
-RUN pip install markitdown
+RUN pip3 install markitdown
 
 # Build only network-hierarchy (api-server doesn't have a build step)
 RUN cd packages/network-hierarchy && pnpm build
