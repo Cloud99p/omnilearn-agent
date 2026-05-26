@@ -25,6 +25,8 @@ import { extractFacts, detectQueryType, extractKeyTerms, normalizePDFText } from
 import { embedText, cosineSimilarity } from "./embeddings.js";
 import { chunkDocument, shouldChunk } from "./chunker.js";
 import { maximalMarginalRelevance, suggestLambda } from "./mmr.js";
+import { retrieveWithCache, storeInCache, getCacheStats } from "./cache.js";
+import { applyTemporalDecay, calculateTemporalDecay, formatKnowledgeAge } from "./temporal-decay.js";
 import { broadcastKnowledgeToCluster, classifyShareLevel } from "../lib/knowledge-sync.js";
 import {
   applyDeltas,
@@ -220,10 +222,20 @@ export async function retrieveRelevantNodes(
   clerkId: string | null,
   topK = 6,
   history?: Array<{ role: string; content: string }>,
+  options?: { noCache?: boolean; noDecay?: boolean },
 ): Promise<RetrievedNode[]> {
   // PHASE 2: Context-Aware Retrieval
   // Build enriched query from conversation context
   const enrichedQuery = buildContextualQuery(query, history);
+  
+  // PHASE 2 IMPROVEMENT: Query caching (skip if noCache option set)
+  if (!options?.noCache) {
+    const cached = await retrieveFromCache<RetrievedNode[]>(enrichedQuery, clerkId, topK);
+    if (cached) {
+      logger.info({ query: enrichedQuery.slice(0, 50) }, "Cache hit, returning cached results");
+      return cached;
+    }
+  }
   
   const queryTokens = tokenize(enrichedQuery);
   if (queryTokens.length === 0) return [];
@@ -319,6 +331,20 @@ export async function retrieveRelevantNodes(
   let semanticResults = scored
     .filter((n) => n.similarity >= MIN_SIMILARITY);
   
+  // PHASE 2 IMPROVEMENT: Temporal decay (skip if noDecay option set)
+  if (!options?.noDecay) {
+    semanticResults = applyTemporalDecay(semanticResults, {
+      halfLifeDays: 30,
+      minDecayFactor: 0.5, // SAFEGUARD: Never decay below 50% (aligned with "never forgets")
+      enabled: true,
+    });
+    
+    logger.info(
+      { query, decayApplied: true, minDecayFactor: 0.5 },
+      "Temporal decay applied"
+    );
+  }
+  
   // PHASE 1 IMPROVEMENT: MMR re-ranking for diversity
   if (queryEmbedding && semanticResults.length > 0) {
     const lambda = suggestLambda(enrichedQuery);
@@ -346,6 +372,11 @@ export async function retrieveRelevantNodes(
     { query, totalScored: scored.length, retrieved: semanticResults.length, similarities: semanticResults.map(n => ({ content: n.content.slice(0, 50), similarity: n.similarity })) },
     "Knowledge retrieval results"
   );
+  
+  // PHASE 2 IMPROVEMENT: Cache results (skip if noCache option set)
+  if (!options?.noCache) {
+    storeInCache(enrichedQuery, clerkId, topK, semanticResults);
+  }
 
   if (semanticResults.length === 0) {
     // Fallback: direct keyword/content match
