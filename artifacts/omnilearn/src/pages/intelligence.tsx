@@ -120,14 +120,21 @@ interface NetworkPulse {
   createdAt: string;
 }
 interface NetworkStats {
-  neurons: number;
-  synapses: number;
-  coreNeurons: number;
-  agents: number;
-  totalWeight: number;
-  avgWeight: number;
-  maxWeight: number;
-  health: number;
+  neurons: {
+    total: number;
+    totalWeight: number;
+    avgWeight: number;
+    maxWeight: number;
+    core: number;
+    ratified: number;
+    ratifiedPercentage: number;
+  };
+  agents: {
+    total: number;
+    votingMembers: number;
+    probationary: number;
+    observers: number;
+  };
 }
 interface HebbianProposal {
   id: number;
@@ -1277,31 +1284,31 @@ export default function IntelligencePage() {
                 {[
                   {
                     label: "Network Neurons",
-                    value: netStats?.neurons ?? 0,
+                    value: netStats?.neurons?.total ?? 0,
                     icon: Cpu,
                     color: "text-primary",
-                    sub: `${netStats?.coreNeurons ?? 0} core`,
+                    sub: `${netStats?.neurons?.core ?? 0} core`,
                   },
                   {
                     label: "Synaptic Links",
-                    value: netStats?.synapses ?? 0,
+                    value: netStats?.neurons?.totalWeight ?? 0,
                     icon: GitBranch,
                     color: "text-yellow-400",
-                    sub: `avg weight ${netStats?.avgWeight ?? 0}`,
+                    sub: `avg weight ${netStats?.neurons?.avgWeight ?? 0}`,
                   },
                   {
                     label: "Contributing Agents",
-                    value: netStats?.agents ?? 0,
+                    value: netStats?.agents?.total ?? 0,
                     icon: Users,
                     color: "text-violet-400",
                     sub: "ghost nodes + self",
                   },
                   {
                     label: "Network Health",
-                    value: `${netStats?.health ?? 0}%`,
+                    value: `${netStats?.neurons?.ratifiedPercentage ?? 0}%`,
                     icon: TrendingUp,
                     color: "text-emerald-400",
-                    sub: `total weight ${netStats?.totalWeight ?? 0}`,
+                    sub: `total weight ${netStats?.neurons?.totalWeight ?? 0}`,
                   },
                 ].map(({ label, value, icon: Icon, color, sub }) => (
                   <div
@@ -1367,8 +1374,8 @@ export default function IntelligencePage() {
                   <p className="text-[10px] font-mono text-muted-foreground/40">
                     Showing top {Math.min(netNeurons.length, 30)} neurons by
                     weight. Node size = weight. Connections = Hebbian synapses.
-                    {netStats?.coreNeurons
-                      ? ` Orange glow = core memory (${netStats.coreNeurons} neurons).`
+                    {netStats?.neurons?.core
+                      ? ` Orange glow = core memory (${netStats.neurons.core} neurons).`
                       : ""}
                   </p>
                 </div>
@@ -1461,7 +1468,7 @@ export default function IntelligencePage() {
                             <div
                               className="h-full rounded-full transition-all"
                               style={{
-                                width: `${Math.min(100, (n.weight / (netStats?.maxWeight ?? 1)) * 100)}%`,
+                                width: `${Math.min(100, (n.weight / (netStats?.neurons?.maxWeight ?? 1)) * 100)}%`,
                                 background: NEURON_COLORS[n.type] ?? "#22d3ee",
                               }}
                             />

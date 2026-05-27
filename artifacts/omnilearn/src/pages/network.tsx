@@ -1468,9 +1468,13 @@ function CollectiveEvolution({
     "growth",
   );
   const [netStats, setNetStats] = useState<{
-    neurons: number;
-    coreNeurons: number;
-    agents: number;
+    neurons: {
+      total: number;
+      core: number;
+    };
+    agents: {
+      total: number;
+    };
   } | null>(null);
   const [character, setCharacter] = useState<{
     totalInteractions: number;
@@ -1521,7 +1525,7 @@ function CollectiveEvolution({
     ? Math.max(1, Math.floor((character.totalInteractions ?? 0) / 50) + 1)
     : 1;
   const improvementsRatified = netStats
-    ? netStats.coreNeurons + netStats.agents
+    ? (netStats.neurons?.core ?? 0) + (netStats.agents?.total ?? 0)
     : 0;
   const contributionsThisEpoch =
     (character?.totalInteractions ?? 0) + tasksProcessed;
