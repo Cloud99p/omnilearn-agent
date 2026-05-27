@@ -867,6 +867,16 @@ export default function IntelligencePage() {
     await fetchProposals(proposalFilter);
   };
 
+  const handleValidateProposal = async (id: number) => {
+    await fetch(`${BASE}/api/brain/proposals/${id}/validate`, { method: "POST" });
+    await fetchProposals(proposalFilter);
+  };
+
+  const handleApplyProposal = async (id: number) => {
+    await fetch(`${BASE}/api/brain/proposals/${id}/apply`, { method: "POST" });
+    await fetchProposals(proposalFilter);
+  };
+
   const fetchNetwork = useCallback(async () => {
     setNetLoading(true);
     try {
@@ -2453,11 +2463,30 @@ export default function IntelligencePage() {
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {p.status === "pending" && (
+                          <>
+                            <button
+                              onClick={() => handleValidateProposal(p.id)}
+                              className="p-1.5 rounded-md border border-emerald-500/20 text-emerald-400/60 hover:bg-emerald-500/10 hover:text-emerald-400 transition-all"
+                              title="Validate proposal"
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => handleRejectProposal(p.id)}
+                              className="p-1.5 rounded-md border border-red-500/20 text-red-400/60 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                              title="Reject proposal"
+                            >
+                              <XCircle className="w-3 h-3" />
+                            </button>
+                          </>
+                        )}
+                        {p.status === "validated" && (
                           <button
-                            onClick={() => handleRejectProposal(p.id)}
-                            className="p-1.5 rounded-md border border-red-500/20 text-red-400/60 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                            onClick={() => handleApplyProposal(p.id)}
+                            className="p-1.5 rounded-md border border-primary/30 text-primary/60 hover:bg-primary/10 hover:text-primary transition-all"
+                            title="Apply edge"
                           >
-                            <XCircle className="w-3 h-3" />
+                            <ArrowRight className="w-3 h-3" />
                           </button>
                         )}
                       </div>
