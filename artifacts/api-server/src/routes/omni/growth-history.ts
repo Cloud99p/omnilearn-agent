@@ -1,19 +1,23 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { knowledgeNodes, learningLog } from "@workspace/db/schema";
-import { sql, desc } from "drizzle-orm";
+import { sql, desc, eq } from "drizzle-orm";
+import { requireAuth, AuthenticatedRequest } from "../../middlewares/requireAuth.js";
 
 const router = Router();
 
 // ─── GET /api/omni/growth-history ────────────────────────────────────────────
 // Returns actual cumulative knowledge growth bucketed by time period,
 // plus real learning-log entries to use as improvement milestones.
-router.get("/growth-history", async (req, res) => {
+router.get("/growth-history", requireAuth, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const clerkId = authReq.clerkId;
   try {
-    // 1. Earliest node date
+    // 1. Earliest node date for this user
     const [earliest] = await db
       .select({ ts: sql<string>`min(created_at)` })
-      .from(knowledgeNodes);
+      .from(knowledgeNodes)
+      .where(eq(knowledgeNodes.clerkId, clerkId));
 
     const firstDate = earliest?.ts ? new Date(earliest.ts) : new Date();
     const now = new Date();
@@ -23,7 +27,7 @@ router.get("/growth-history", async (req, res) => {
     // Use hourly buckets if < 48 h of data, otherwise daily
     const useHours = spanHours < 48;
 
-    // 2. Node counts grouped by bucket
+    // 2. Node counts grouped by bucket (user-specific)
     const bucketExpr = useHours
       ? sql<string>`date_trunc('hour', created_at AT TIME ZONE 'UTC')::text`
       : sql<string>`date_trunc('day',  created_at AT TIME ZONE 'UTC')::text`;
@@ -34,6 +38,7 @@ router.get("/growth-history", async (req, res) => {
         count: sql<number>`count(*)`,
       })
       .from(knowledgeNodes)
+      .where(eq(knowledgeNodes.clerkId, clerkId))
       .groupBy(bucketExpr)
       .orderBy(bucketExpr);
 
@@ -59,7 +64,7 @@ router.get("/growth-history", async (req, res) => {
       series.push({ label: "D1", bucket: "", nodes: 0, added: 0 });
     }
 
-    // 4. Real learning-log milestones — most recent first, up to 8
+    // 4. Real learning-log milestones for this user — most recent first, up to 8
     const logs = await db
       .select({
         id: learningLog.id,
@@ -70,6 +75,7 @@ router.get("/growth-history", async (req, res) => {
         createdAt: learningLog.createdAt,
       })
       .from(learningLog)
+      .where(eq(learningLog.agentId, clerkId))
       .orderBy(desc(learningLog.createdAt))
       .limit(8);
 
