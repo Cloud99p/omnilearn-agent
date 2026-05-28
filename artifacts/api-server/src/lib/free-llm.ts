@@ -22,6 +22,8 @@ if (!FREE_LLM_API_KEY) {
 
 /**
  * Call FreeLLMAPI to get an LLM response
+ * 
+ * Retry logic: If "auto" model fails, try specific working models
  */
 export async function callFreeLLM(
   query: string,
@@ -54,23 +56,42 @@ export async function callFreeLLM(
     },
   ];
 
-  const apiResponse = await openai.chat.completions.create({
-    model: "auto", // Let the router pick the best available model
-    messages,
-    stream: false,
-    max_tokens: 1000, // Limit response length
-  }, {
-    timeout: 15000, // 15 second timeout
-  });
+  // Try "auto" first, then fallback to specific working models
+  const modelsToTry = ["auto", "google/gemini-pro", "groq/llama-3.1-70b-versatile", "mistral/mistral-large-latest"];
+  let lastError: Error | null = null;
 
-  const content = apiResponse.choices[0]?.message?.content || "";
-  const routedVia = apiResponse.headers?.get("x-routed-via") || "unknown";
+  for (const model of modelsToTry) {
+    try {
+      const apiResponse = await openai.chat.completions.create({
+        model,
+        messages,
+        stream: false,
+        max_tokens: 1000,
+      }, {
+        timeout: 15000,
+      });
 
-  return {
-    response: content,
-    model: apiResponse.model,
-    routedVia,
-  };
+      const content = apiResponse.choices[0]?.message?.content || "";
+      const routedVia = apiResponse.headers?.get("x-routed-via") || model;
+
+      if (lastError) {
+        console.log(`[FreeLLM] Fallback succeeded with model: ${model}`);
+      }
+
+      return {
+        response: content,
+        model: apiResponse.model,
+        routedVia,
+      };
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.warn(`[FreeLLM] Model ${model} failed: ${lastError.message}`);
+      // Continue to next model
+    }
+  }
+
+  // All models failed
+  throw new Error(`All FreeLLM models failed. Last error: ${lastError?.message}`);
 }
 
 /**
