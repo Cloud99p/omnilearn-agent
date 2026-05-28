@@ -52,7 +52,11 @@ function extractFactsFromLLMResponse(response: string, query: string): string[] 
   return facts.slice(0, 5);
 }
 
-async function storeExtractedFacts(facts: string[], clerkId: string | null): Promise<{ added: number; skipped: number }> {
+async function storeExtractedFacts(
+  facts: string[],
+  clerkId: string | null,
+  logger: any,
+): Promise<{ added: number; skipped: number }> {
   let totalAdded = 0;
   let totalSkipped = 0;
   
@@ -62,7 +66,7 @@ async function storeExtractedFacts(facts: string[], clerkId: string | null): Pro
       const result = await trainOnText(fact, "llm-teacher", clerkId);
       totalAdded += result.added;
       totalSkipped += result.skipped;
-      req.log.info({ fact: fact.slice(0, 150), added: result.added, skipped: result.skipped }, "Fact storage result");
+      logger.info({ fact: fact.slice(0, 150), added: result.added, skipped: result.skipped }, "Fact storage result");
     } catch (err) {
       console.warn("Failed to store fact:", fact.slice(0, 100), err);
       totalSkipped++;
@@ -206,19 +210,28 @@ router.post("/chat", async (req, res) => {
           const extractedFacts = extractFactsFromLLMResponse(llmResult.response, query);
           req.log.info({ extractedCount: extractedFacts.length, firstFact: extractedFacts[0]?.slice(0, 150) }, "Extracted facts from LLM response");
           if (extractedFacts.length > 0) {
-            storeExtractedFacts(extractedFacts, clerkId)
+            storeExtractedFacts(extractedFacts, clerkId, req.log)
               .then(({ added, skipped }) => {
                 req.log.info({ added, skipped }, "Stored facts in knowledge graph");
+                // Send learning confirmation to frontend
+                sendEvent({ 
+                  learning: { 
+                    extracted: extractedFacts.length,
+                    stored: added,
+                    message: `Learned ${added} new fact${added === 1 ? '' : 's'} for future!`
+                  } 
+                });
               })
-              .catch(err => 
-                req.log.warn({ err }, "Failed to store extracted facts")
-              );
-            sendEvent({ 
-              learning: { 
-                extracted: extractedFacts.length,
-                message: `Learned ${extractedFacts.length} new facts for future!`
-              } 
-            });
+              .catch(err => {
+                req.log.warn({ err }, "Failed to store extracted facts");
+                sendEvent({
+                  learning: {
+                    extracted: extractedFacts.length,
+                    stored: 0,
+                    message: `Extracted ${extractedFacts.length} facts but storage failed`
+                  }
+                });
+              });
           }
         }
         
