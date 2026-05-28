@@ -231,7 +231,13 @@ router.post("/chat", async (req, res) => {
           } 
         });
       } catch (err) {
-        req.log.warn({ err }, "FreeLLMAPI call failed, using native response");
+        req.log.error({ 
+          err, 
+          message: err instanceof Error ? err.message : 'Unknown error',
+          FREELLM_API_URL: process.env.FREELLM_API_URL,
+          FREELLM_API_KEY: process.env.FREELLM_API_KEY ? 'SET' : 'NOT_SET',
+          ALWAYS_USE_LLM: process.env.ALWAYS_USE_LLM 
+        }, "FreeLLMAPI call failed, using native response");
         // Fall back to native response
       }
     }

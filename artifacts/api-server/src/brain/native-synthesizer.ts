@@ -1815,6 +1815,45 @@ function detectCountryMismatch(
 }
 
 /**
+ * Filter knowledge nodes to exclude those mentioning different countries than the query
+ * Prevents "Nigeria has 36 states" appearing in "Who is president of America?" response
+ */
+function filterNodesByQueryContext(
+  query: string,
+  nodes: RetrievedNode[],
+): RetrievedNode[] {
+  const lower = query.toLowerCase();
+  
+  // Check if query mentions a specific country
+  const queryCountries = [
+    'nigeria', 'ghana', 'kenya', 'south africa', 'egypt', 'ethiopia',
+    'united states', 'usa', 'us', 'america', 'american',
+    'canada', 'mexico', 'united kingdom', 'uk', 'britain', 'england',
+    'france', 'germany', 'italy', 'spain', 'russia',
+    'india', 'china', 'japan', 'south korea', 'australia', 'new zealand',
+  ];
+  
+  const mentionedCountry = queryCountries.find(country => 
+    new RegExp(`\\b${country}\\b`, 'i').test(lower)
+  );
+  
+  if (!mentionedCountry) {
+    // Query doesn't mention a specific country - filter out ALL country-specific nodes
+    // This prevents Nigeria content appearing for generic questions like "opposite of short"
+    const countryPatterns = queryCountries.map(c => new RegExp(`\\b${c}\\b`, 'i'));
+    return nodes.filter(node => {
+      const content = node.content.toLowerCase();
+      // Keep node only if it doesn't mention any country
+      return !countryPatterns.some(pattern => pattern.test(content));
+    });
+  }
+  
+  // Query mentions a specific country - keep only nodes about that country
+  const countryPattern = new RegExp(`\\b${mentionedCountry}\\b`, 'i');
+  return nodes.filter(node => countryPattern.test(node.content.toLowerCase()));
+}
+
+/**
  * Filter web search results to only include info about the queried country
  * Prevents "US has 50 states" appearing in "Nigeria has 36 states" response
  */
@@ -2006,17 +2045,23 @@ function synthesizeFromNodesAndWeb(
     if (webSection) parts.push(webSection);
   }
 
-  // Knowledge nodes (if available)
+  // Knowledge nodes (if available) - ONLY include if they're relevant to the query
+  // CRITICAL FIX: Don't include knowledge nodes when web search was triggered due to country mismatch
   if (nodes.length > 0) {
-    const knowledgeSection = synthesizeFromNodes(
-      query,
-      nodes,
-      character,
-      voice,
-      queryType,
-      history,
-    );
-    if (knowledgeSection) parts.push(knowledgeSection);
+    // Filter out nodes that mention different countries than the query
+    const filteredNodes = filterNodesByQueryContext(query, nodes);
+    
+    if (filteredNodes.length > 0) {
+      const knowledgeSection = synthesizeFromNodes(
+        query,
+        filteredNodes,
+        character,
+        voice,
+        queryType,
+        history,
+      );
+      if (knowledgeSection) parts.push(knowledgeSection);
+    }
   }
 
   // Conversational closer
