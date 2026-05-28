@@ -162,8 +162,10 @@ export default function Governance() {
     useState<Record<Trait, number>>(FALLBACK_STATE);
   const [liveLoaded, setLiveLoaded] = useState(false);
 
+  const { userId } = useAuth();
+
   useEffect(() => {
-    fetch(`${BASE}/api/omni/character`)
+    fetch(`${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`)
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null)
       .then((data) => {
@@ -177,7 +179,7 @@ export default function Governance() {
         });
         setLiveLoaded(true);
       });
-  }, []);
+  }, [userId]);
 
   const snapVals =
     buildSnapVals(currentState)[selectedSnap] ??

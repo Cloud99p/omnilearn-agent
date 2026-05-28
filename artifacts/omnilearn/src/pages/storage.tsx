@@ -191,13 +191,14 @@ export default function StoragePage() {
   const [docCount, setDocCount] = useState(100); // millions
   const [agentCount, setAgentCount] = useState(10);
   const [mode, setMode] = useState<StorageMode>("naive");
+  const { userId } = useAuth();
   const [liveNodes, setLiveNodes] = useState<{
     nodeCount: number;
     edgeCount: number;
   } | null>(null);
 
   useEffect(() => {
-    fetch(`${BASE}/api/omni/knowledge/stats`)
+    fetch(`${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`)
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null)
       .then((data) => {

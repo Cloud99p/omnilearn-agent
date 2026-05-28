@@ -46,9 +46,11 @@ function LiveSystemStats() {
   });
   const [loading, setLoading] = useState(true);
 
+  const { userId } = useAuth();
+
   useEffect(() => {
     Promise.all([
-      fetch(`${BASE}/api/omni/knowledge/stats`)
+      fetch(`${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`)
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
       fetch(`${BASE}/api/network/stats`)
@@ -57,14 +59,14 @@ function LiveSystemStats() {
       fetch(`${BASE}/api/ghost/status`)
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
-      fetch(`${BASE}/api/omni/character`)
+      fetch(`${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`)
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
     ]).then(([knowledge, network, ghost, character]) => {
       setSnap({ knowledge, network, ghost, character });
       setLoading(false);
     });
-  }, []);
+  }, [userId]);
 
   const stats = [
     {

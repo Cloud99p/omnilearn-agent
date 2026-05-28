@@ -142,6 +142,7 @@ export default function DnaPage() {
   const [checkpointTs, setCheckpointTs] = useState(() =>
     new Date().toISOString(),
   );
+  const { userId } = useAuth();
   const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -149,8 +150,8 @@ export default function DnaPage() {
     setLoading(true);
     try {
       const [cRes, kRes] = await Promise.all([
-        fetch(`${BASE}/api/omni/character`),
-        fetch(`${BASE}/api/omni/knowledge/stats`),
+        fetch(`${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`),
+        fetch(`${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`),
       ]);
       if (cRes.ok) setChar(await cRes.json());
       if (kRes.ok) setKnowledge(await kRes.json());
@@ -162,7 +163,7 @@ export default function DnaPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [userId]);
 
   const snapshot =
     char && knowledge ? buildSnapshot(char, knowledge, checkpointTs) : null;

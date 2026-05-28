@@ -1482,6 +1482,7 @@ function CollectiveEvolution({
   } | null>(null);
   const [growth, setGrowth] = useState<GrowthHistory | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const { userId } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchGrowth = useCallback(async () => {
@@ -1491,10 +1492,10 @@ function CollectiveEvolution({
         fetch(`${BASE}/api/network/stats`)
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
-        fetch(`${BASE}/api/omni/character`)
+        fetch(`${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`)
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
-        fetch(`${BASE}/api/omni/growth-history`)
+        fetch(`${BASE}/api/omni/growth-history${userId ? `?userId=${userId}` : ''}`)
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
       ]);
@@ -1505,7 +1506,7 @@ function CollectiveEvolution({
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchGrowth();

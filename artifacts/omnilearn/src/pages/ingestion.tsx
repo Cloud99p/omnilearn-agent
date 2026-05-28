@@ -312,6 +312,7 @@ export default function Ingestion() {
   const [detectUrl, setDetectUrl] = useState(SAMPLE_URLS[0]);
   const [customDetect, setCustomDetect] = useState("");
   const [activeUrl, setActiveUrl] = useState(SAMPLE_URLS[0]);
+  const { userId } = useAuth();
   const [liveKnowledge, setLiveKnowledge] = useState<{
     nodeCount: number;
     edgeCount: number;
@@ -319,7 +320,7 @@ export default function Ingestion() {
   } | null>(null);
 
   useEffect(() => {
-    fetch(`${BASE}/api/omni/knowledge/stats`)
+    fetch(`${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`)
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null)
       .then((data) => {
@@ -330,7 +331,7 @@ export default function Ingestion() {
             logCount: data.logCount,
           });
       });
-  }, []);
+  }, [userId]);
 
   const detected = detectTier(customDetect.trim() || activeUrl);
   const detectedTier = TIER_MAP[detected.tier] ?? TIERS[0];

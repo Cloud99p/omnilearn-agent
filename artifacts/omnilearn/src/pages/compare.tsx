@@ -201,8 +201,10 @@ export default function Compare() {
     knowledgeNodes: number;
   } | null>(null);
 
+  const { userId } = useAuth();
+
   useEffect(() => {
-    fetch(`${BASE}/api/omni/character`)
+    fetch(`${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`)
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null)
       .then((data) => {
@@ -219,7 +221,7 @@ export default function Compare() {
           knowledgeNodes: data.totalKnowledgeNodes,
         });
       });
-  }, []);
+  }, [userId]);
   // Live simulated peer — derived from Instance A traits with seeded divergence + gentle pulse
   const [liveB, setLiveB] = useState<InstanceProfile | null>(null);
   const [showInstanceB, setShowInstanceB] = useState(false);

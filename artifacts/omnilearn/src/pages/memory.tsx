@@ -342,6 +342,7 @@ export default function MemoryPage() {
   const [trustScore, setTrustScore] = useState(0.65);
   const [relevance, setRelevance] = useState(0.3);
   const [daysSinceCrawl, setDaysSinceCrawl] = useState(1);
+  const { userId } = useAuth();
   const [liveKnowledge, setLiveKnowledge] = useState<{
     nodeCount: number;
     edgeCount: number;
@@ -349,7 +350,7 @@ export default function MemoryPage() {
   } | null>(null);
 
   useEffect(() => {
-    fetch(`${BASE}/api/omni/knowledge/stats`)
+    fetch(`${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`)
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null)
       .then((data) => {
@@ -360,7 +361,7 @@ export default function MemoryPage() {
             logCount: data.logCount,
           });
       });
-  }, []);
+  }, [userId]);
 
   const [accessPattern, setAccessPattern] = useState<
     "never" | "once_early" | "frequent" | "bursty"
