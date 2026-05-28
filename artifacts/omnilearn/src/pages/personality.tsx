@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@clerk/react";
 import {
   LineChart,
   Line,
@@ -866,11 +867,11 @@ export default function Personality() {
   const [activeTraits, setActiveTraits] = useState<Set<Trait>>(
     new Set(ALL_TRAITS),
   );
+  const { userId } = useAuth();
 
   const fetchData = useCallback(async () => {
     try {
-      // Get userId from localStorage (set during auth)
-      const userId = localStorage.getItem('userId') || null;
+      // Use Clerk userId from auth context
       const [charRes, eventsRes] = await Promise.all([
         fetch(`${BASE}/api/omni/character${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
         fetch(`${BASE}/api/omni/character/events${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
@@ -883,7 +884,7 @@ export default function Personality() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchData();
