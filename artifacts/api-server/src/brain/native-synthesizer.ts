@@ -1201,47 +1201,27 @@ export async function synthesizeNative(
   // Track conversation turn
   const turnNumber = history.length;
 
-  // Determine conversation mode based on context
-  let mode = determineConversationMode(query, history, turnNumber);
-  
-  // PHASE 2 FIX: FORCE factual mode when we have retrieved knowledge nodes
-  // This prevents "Explain more on this" from being treated as casual chat
-  // when we actually have relevant knowledge to share
-  if (nodes && nodes.length > 0) {
-    // Check if any node has meaningful similarity (not just random matches)
-    const hasRelevantNodes = nodes.some(n => n.similarity >= 0.15);
-    if (hasRelevantNodes) {
-      mode = "factual"; // Override casual mode when we have relevant knowledge
-      logger.info(
-        { 
-          nodesCount: nodes.length, 
-          topSimilarity: nodes[0]?.similarity,
-          originalMode: "casual",
-          overrideMode: "factual"
-        },
-        "[Phase2] Forced factual mode - relevant knowledge available"
-      );
-    }
-  }
-  
-  CONVERSATION_STATE.mode = mode;
-
-  // LOGGING: Track mode decision for continuous improvement
-  logger.info(
-    {
-      query: query.slice(0, 100),
-      mode,
-      turnNumber,
-      queryLength: query.length,
-      context: getContextSummary(context),
-    },
-    "[MODE] Conversation mode decision"
-  );
-
   // IDENTITY ENFORCEMENT: Always respond as Omni when asked about identity
+  // Check this FIRST before any mode logic
   if (isIdentityQuery(query)) {
     return {
       text: buildIdentityResponse(query, character),
+      nodesUsed: 0,
+      newNodesAdded: 0,
+      learnedFacts: [],
+      character: {
+        curiosity: character.curiosity,
+        confidence: character.confidence,
+        technical: character.technical,
+      },
+    };
+  }
+
+  // GREETING CHECK: Handle greetings BEFORE any knowledge retrieval logic
+  // This prevents "hello" from triggering factual mode with random knowledge
+  if (isGreeting(query)) {
+    return {
+      text: buildGreetingResponse(query, character, history),
       nodesUsed: 0,
       newNodesAdded: 0,
       learnedFacts: [],
@@ -1273,6 +1253,22 @@ export async function synthesizeNative(
     };
   }
 
+  // GREETING CHECK: Handle greetings BEFORE any knowledge retrieval logic
+  // This prevents "hello" from triggering factual mode with random knowledge
+  if (isGreeting(query)) {
+    return {
+      text: buildGreetingResponse(query, character, history),
+      nodesUsed: 0,
+      newNodesAdded: 0,
+      learnedFacts: [],
+      character: {
+        curiosity: character.curiosity,
+        confidence: character.confidence,
+        technical: character.technical,
+      },
+    };
+  }
+
   // CRITICAL: If we have relevant knowledge nodes, ALWAYS use factual mode
   // This prevents "Explain more on this" from triggering casual follow-up responses
   // when we actually have knowledge to share
@@ -1288,20 +1284,6 @@ export async function synthesizeNative(
 
   // CASUAL MODE: Keep conversation flowing naturally
   if (mode === "casual") {
-    // Check for greetings - works anytime user says hello
-    if (isGreeting(query)) {
-      return {
-        text: buildGreetingResponse(query, character, history),
-        nodesUsed: 0,
-        newNodesAdded: 0,
-        learnedFacts: [],
-        character: {
-          curiosity: character.curiosity,
-          confidence: character.confidence,
-          technical: character.technical,
-        },
-      };
-    }
 
     // Check for casual follow-ups ("and you?", "good and you?", etc.)
     if (isCasualFollowUp(query)) {

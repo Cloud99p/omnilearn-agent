@@ -231,14 +231,31 @@ router.post("/chat", async (req, res) => {
           } 
         });
       } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
         req.log.error({ 
-          err, 
-          message: err instanceof Error ? err.message : 'Unknown error',
+          err,
+          errorStack: err instanceof Error ? err.stack : undefined,
+          message: errorMsg,
           FREELLM_API_URL: process.env.FREELLM_API_URL,
-          FREELLM_API_KEY: process.env.FREELLM_API_KEY ? 'SET' : 'NOT_SET',
-          ALWAYS_USE_LLM: process.env.ALWAYS_USE_LLM 
-        }, "FreeLLMAPI call failed, using native response");
+          FREELLM_API_KEY: process.env.FREELLM_API_KEY ? 'SET (length: ' + process.env.FREELLM_API_KEY.length + ')' : 'NOT_SET',
+          ALWAYS_USE_LLM: process.env.ALWAYS_USE_LLM,
+          shouldUseLLM,
+          useLLM,
+          isHybridCommand
+        }, "FreeLLM API call failed, falling back to native response");
+        
+        // Send error event to frontend for debugging
+        sendEvent({
+          error: {
+            type: 'freellm_failed',
+            message: errorMsg,
+            url: process.env.FREELLM_API_URL,
+            hasKey: !!process.env.FREELLM_API_KEY
+          }
+        });
+        
         // Fall back to native response
+        finalResponse = nativeResult.text;
       }
     }
 
