@@ -8,15 +8,24 @@ const router = Router();
 
 // GET /api/omni/character
 router.get("/", async (req, res) => {
-  const character = await getOrCreateCharacter(null);
+  // Get userId from query param (defaults to null for global view)
+  const userId = req.query.userId as string | undefined || null;
+  const character = await getOrCreateCharacter(userId);
   res.json(character);
 });
 
 // GET /api/omni/character/events
 router.get("/events", async (req, res) => {
+  // Get userId from query param (defaults to null for global view)
+  const userId = req.query.userId as string | undefined || null;
+  const query: any = {};
+  if (userId) {
+    query.agentId = userId;
+  }
   const events = await db
     .select()
     .from(learningLog)
+    .where(query)
     .orderBy(desc(learningLog.createdAt))
     .limit(100);
   res.json(events);

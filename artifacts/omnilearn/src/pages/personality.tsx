@@ -869,9 +869,11 @@ export default function Personality() {
 
   const fetchData = useCallback(async () => {
     try {
+      // Get userId from localStorage (set during auth)
+      const userId = localStorage.getItem('userId') || null;
       const [charRes, eventsRes] = await Promise.all([
-        fetch(`${BASE}/api/omni/character`),
-        fetch(`${BASE}/api/omni/character/events`),
+        fetch(`${BASE}/api/omni/character${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
+        fetch(`${BASE}/api/omni/character/events${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
       ]);
       if (charRes.ok) setCharacter(await charRes.json());
       if (eventsRes.ok) setEvents(await eventsRes.json());
