@@ -1201,6 +1201,9 @@ export async function synthesizeNative(
   // Track conversation turn
   const turnNumber = history.length;
 
+  // Determine conversation mode based on context
+  let mode = determineConversationMode(query, history, turnNumber);
+
   // IDENTITY ENFORCEMENT: Always respond as Omni when asked about identity
   // Check this FIRST before any mode logic
   if (isIdentityQuery(query)) {
@@ -1242,22 +1245,6 @@ export async function synthesizeNative(
     );
     return {
       text: buildSeriousResponse(query, character),
-      nodesUsed: 0,
-      newNodesAdded: 0,
-      learnedFacts: [],
-      character: {
-        curiosity: character.curiosity,
-        confidence: character.confidence,
-        technical: character.technical,
-      },
-    };
-  }
-
-  // GREETING CHECK: Handle greetings BEFORE any knowledge retrieval logic
-  // This prevents "hello" from triggering factual mode with random knowledge
-  if (isGreeting(query)) {
-    return {
-      text: buildGreetingResponse(query, character, history),
       nodesUsed: 0,
       newNodesAdded: 0,
       learnedFacts: [],
