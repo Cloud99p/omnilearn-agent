@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@clerk/react";
 import {
   Fingerprint,
   GitBranch,

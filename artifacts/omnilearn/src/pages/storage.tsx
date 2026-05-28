@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useAuth } from "@clerk/react";
 import {
   HardDrive,
   TrendingUp,

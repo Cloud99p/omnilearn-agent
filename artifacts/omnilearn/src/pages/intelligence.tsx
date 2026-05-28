@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@clerk/react";
 import {
   Brain,
   BookOpen,
@@ -732,24 +733,25 @@ export default function IntelligencePage() {
   const [decaying, setDecaying] = useState(false);
 
   // ── Fetchers ─────────────────────────────────────────────────────────────
+  const { userId } = useAuth();
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE}/api/omni/knowledge/stats`);
+      const res = await fetch(`${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`);
       if (res.ok) setStats(await res.json());
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [userId]);
 
   const fetchCharacter = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE}/api/omni/character`);
+      const res = await fetch(`${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`);
       if (res.ok) setCharacter(await res.json());
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [userId]);
 
   const fetchNodes = useCallback(async (q?: string) => {
     setSearching(true);

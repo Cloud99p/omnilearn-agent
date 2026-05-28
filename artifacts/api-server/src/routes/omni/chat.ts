@@ -4,6 +4,7 @@ import { conversations, messages, trainingLogs, chatPatterns } from "@workspace/
 import { eq, desc, sql } from "drizzle-orm";
 import { processMessage, seedIfEmpty, trainOnText } from "../../brain/index.js";
 import { callFreeLLM, scoreResponse } from "../../lib/free-llm.js";
+import { requireAuth, AuthenticatedRequest } from "../../middlewares/requireAuth.js";
 
 const router = Router();
 
@@ -77,7 +78,8 @@ async function storeExtractedFacts(
 }
 
 // POST /api/omni/chat  — SSE streaming native intelligence chat with optional LLM fallback
-router.post("/chat", async (req, res) => {
+router.post("/chat", requireAuth, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   const { content, conversationId, useLLM } = req.body as {
     content: string;
     conversationId?: number;
@@ -144,7 +146,8 @@ router.post("/chat", async (req, res) => {
       content: content.trim(),
     });
 
-    const clerkId = null; // Future: extract from auth
+    // Extract clerkId from authenticated request
+    const clerkId = authReq.clerkId;
     const query = content.trim();
 
     // Activity callback — streams search/fetch events to the client in real time

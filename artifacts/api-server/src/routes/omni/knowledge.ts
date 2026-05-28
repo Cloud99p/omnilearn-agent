@@ -5,7 +5,7 @@ import {
   knowledgeEdges,
   learningLog,
 } from "@workspace/db/schema";
-import { eq, desc, sql, like, or } from "drizzle-orm";
+import { eq, desc, sql, like, or, and } from "drizzle-orm";
 import {
   retrieveRelevantNodes,
   addDirectFact,
@@ -13,11 +13,15 @@ import {
 } from "../../brain/index.js";
 import { tokenize } from "../../brain/tfidf.js";
 import { contributeNeurons } from "../../brain/network.js";
+import { requireAuth, AuthenticatedRequest } from "../../middlewares/requireAuth.js";
 
 const router = Router();
 
-// GET /api/omni/knowledge — list knowledge nodes with optional search
-router.get("/", async (req, res) => {
+// GET /api/omni/knowledge — list knowledge nodes with optional search (user-specific)
+router.get("/", requireAuth, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const clerkId = authReq.clerkId;
+  
   await seedIfEmpty();
 
   const {
@@ -28,19 +32,16 @@ router.get("/", async (req, res) => {
   } = req.query as Record<string, string>;
 
   if (search?.trim()) {
-    const nodes = await retrieveRelevantNodes(search.trim(), null, 30);
+    const nodes = await retrieveRelevantNodes(search.trim(), clerkId, 30);
     res.json(nodes.filter((n) => n.similarity > 0.05).slice(0, Number(limit)));
     return;
   }
 
-  let query = db
-    .select()
-    .from(knowledgeNodes)
-    .orderBy(desc(knowledgeNodes.createdAt));
-
+  // Filter by user's clerkId
   const rows = await db
     .select()
     .from(knowledgeNodes)
+    .where(eq(knowledgeNodes.clerkId, clerkId))
     .orderBy(desc(knowledgeNodes.updatedAt))
     .limit(Number(limit))
     .offset(Number(offset));
@@ -53,26 +54,34 @@ router.get("/", async (req, res) => {
   res.json(result);
 });
 
-// GET /api/omni/knowledge/stats
-router.get("/stats", async (req, res) => {
+// GET /api/omni/knowledge/stats — user-specific stats
+router.get("/stats", requireAuth, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const clerkId = authReq.clerkId;
+  
   const [{ nodeCount }] = await db
     .select({ nodeCount: sql<number>`count(*)` })
-    .from(knowledgeNodes);
+    .from(knowledgeNodes)
+    .where(eq(knowledgeNodes.clerkId, clerkId));
   const [{ edgeCount }] = await db
     .select({ edgeCount: sql<number>`count(*)` })
-    .from(knowledgeEdges);
+    .from(knowledgeEdges)
+    .where(eq(knowledgeEdges.clerkId, clerkId));
   const [{ logCount }] = await db
     .select({ logCount: sql<number>`count(*)` })
-    .from(learningLog);
+    .from(learningLog)
+    .where(eq(learningLog.agentId, clerkId));
 
   const typeCounts = await db
     .select({ type: knowledgeNodes.type, count: sql<number>`count(*)` })
     .from(knowledgeNodes)
+    .where(eq(knowledgeNodes.clerkId, clerkId))
     .groupBy(knowledgeNodes.type);
 
   const recentLog = await db
     .select()
     .from(learningLog)
+    .where(eq(learningLog.agentId, clerkId))
     .orderBy(desc(learningLog.createdAt))
     .limit(10);
 
