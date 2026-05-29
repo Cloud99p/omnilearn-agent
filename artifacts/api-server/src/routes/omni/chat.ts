@@ -4,7 +4,8 @@ import { conversations, messages, trainingLogs, chatPatterns } from "@workspace/
 import { eq, desc, sql } from "drizzle-orm";
 import { processMessage, seedIfEmpty, trainOnText } from "../../brain/index.js";
 import { callFreeLLM, scoreResponse } from "../../lib/free-llm.js";
-import { requireAuth, optionalAuth, AuthenticatedRequest } from "../../middlewares/requireAuth.js";
+import { requireAuth, AuthenticatedRequest } from "../../middlewares/requireAuth.js";
+import { optionalAuth } from "../../middlewares/optionalAuth.js";
 
 const router = Router();
 
