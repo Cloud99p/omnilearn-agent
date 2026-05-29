@@ -31,13 +31,18 @@ interface UserProfile {
 }
 
 function AccountContent() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
     "profile" | "connections" | "security"
   >("profile");
+
+  // Redirect to sign-in if not authenticated
+  if (isLoaded && !user) {
+    return <Redirect to="/sign-in" />;
+  }
 
   useEffect(() => {
     fetch(`${basePath}/api/me`, { credentials: "include" })

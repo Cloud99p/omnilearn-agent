@@ -4,7 +4,7 @@ import { conversations, messages, trainingLogs, chatPatterns } from "@workspace/
 import { eq, desc, sql } from "drizzle-orm";
 import { processMessage, seedIfEmpty, trainOnText } from "../../brain/index.js";
 import { callFreeLLM, scoreResponse } from "../../lib/free-llm.js";
-import { requireAuth, AuthenticatedRequest } from "../../middlewares/requireAuth.js";
+import { requireAuth, optionalAuth, AuthenticatedRequest } from "../../middlewares/requireAuth.js";
 
 const router = Router();
 
@@ -78,7 +78,8 @@ async function storeExtractedFacts(
 }
 
 // POST /api/omni/chat  — SSE streaming native intelligence chat with optional LLM fallback
-router.post("/chat", requireAuth, async (req, res) => {
+// Works for both authenticated users (saves history) and anonymous users (no persistence)
+router.post("/chat", optionalAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   const { content, conversationId, useLLM } = req.body as {
     content: string;
@@ -98,6 +99,10 @@ router.post("/chat", requireAuth, async (req, res) => {
   // Don't learn from commands themselves
   const shouldSkipLearning = isHybridCommand || content.startsWith('/');
 
+  // Check if user is authenticated
+  const clerkId = authReq.clerkId;
+  const isAuthenticated = !!clerkId;
+
   // Set up SSE
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -111,11 +116,11 @@ router.post("/chat", requireAuth, async (req, res) => {
   try {
     await seedIfEmpty();
 
-    // Load conversation history
+    // Load conversation history (only for authenticated users)
     let history: Array<{ role: string; content: string }> = [];
     let convId = conversationId;
 
-    if (convId) {
+    if (isAuthenticated && convId) {
       const hist = await db
         .select()
         .from(messages)
@@ -125,8 +130,8 @@ router.post("/chat", requireAuth, async (req, res) => {
       history = hist
         .reverse()
         .map((m) => ({ role: m.role, content: m.content }));
-    } else {
-      // Create a new conversation
+    } else if (isAuthenticated && !convId) {
+      // Create a new conversation (only for authenticated users)
       const title = content.slice(0, 60);
       const [conv] = await db
         .insert(conversations)
@@ -138,17 +143,18 @@ router.post("/chat", requireAuth, async (req, res) => {
       convId = conv.id;
       sendEvent({ conversationId: convId });
     }
+    // Anonymous users: no conversation history, no new conversation created
 
-    // Save user message
-    await db.insert(messages).values({
-      conversationId: convId,
-      role: "user",
-      content: content.trim(),
-    });
+    // Save user message (only for authenticated users)
+    if (isAuthenticated && convId) {
+      await db.insert(messages).values({
+        conversationId: convId,
+        role: "user",
+        content: content.trim(),
+      });
+    }
 
-    // Extract clerkId from authenticated request
-    const clerkId = authReq.clerkId;
-    const query = content.trim();
+    const queryText = content.trim();
 
     // Activity callback — streams search/fetch events to the client in real time
     const onActivity = (event: {
@@ -306,104 +312,113 @@ router.post("/chat", requireAuth, async (req, res) => {
       },
     });
 
-    // Save assistant message
-    await db.insert(messages).values({
-      conversationId: convId,
-      role: "assistant",
-      content: finalResponse,
-    });
+    // Save assistant message (only for authenticated users)
+    if (isAuthenticated && convId) {
+      await db.insert(messages).values({
+        conversationId: convId,
+        role: "assistant",
+        content: finalResponse,
+      });
 
-    // Log conversation pattern for weekly analysis
-    try {
-      // Count turns in this conversation
-      const turnCount = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(messages)
-        .where(eq(messages.conversationId, convId));
-      const currentTurn = turnCount[0]?.count || 1;
+      // Log conversation pattern for weekly analysis (only for authenticated users)
+      try {
+        // Count turns in this conversation
+        const turnCount = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(messages)
+          .where(eq(messages.conversationId, convId));
+        const currentTurn = turnCount[0]?.count || 1;
 
-      // Get preceding context (last 3 messages before this one)
-      const precedingMessages = await db
-        .select()
-        .from(messages)
-        .where(eq(messages.conversationId, convId))
-        .orderBy(desc(messages.createdAt))
-        .limit(3);
-      const precedingContext = precedingMessages
-        .slice(1) // Skip current user message
-        .reverse()
-        .map((m) => ({ role: m.role, content: m.content }));
+        // Get preceding context (last 3 messages before this one)
+        const precedingMessages = await db
+          .select()
+          .from(messages)
+          .where(eq(messages.conversationId, convId))
+          .orderBy(desc(messages.createdAt))
+          .limit(3);
+        const precedingContext = precedingMessages
+          .slice(1) // Skip current user message
+          .reverse()
+          .map((m) => ({ role: m.role, content: m.content }));
 
-      // Classify query type
-      let queryType: "question" | "statement" | "command" | "greeting" | "casual" = "question";
-      const lowerQuery = query.toLowerCase().trim();
-      if (/^(hello|hi|hey|greetings|howdy|good morning|good afternoon|good evening)/.test(lowerQuery)) {
-        queryType = "greeting";
-      } else if (lowerQuery.includes("?") && !lowerQuery.startsWith("what") && !lowerQuery.startsWith("how") && !lowerQuery.startsWith("why") && !lowerQuery.startsWith("when") && !lowerQuery.startsWith("where") && !lowerQuery.startsWith("who")) {
-        queryType = "statement";
-      } else if (lowerQuery.match(/^(show|tell|find|search|list|get|create|update|delete|remove|add|open|close|start|stop|run|execute)/)) {
-        queryType = "command";
-      } else if (lowerQuery.length < 15 && !lowerQuery.includes("?") && !lowerQuery.includes("!")) {
-        queryType = "casual";
+        // Classify query type
+        let queryType: "question" | "statement" | "command" | "greeting" | "casual" = "question";
+        const lowerQuery = query.toLowerCase().trim();
+        if (/^(hello|hi|hey|greetings|howdy|good morning|good afternoon|good evening)/.test(lowerQuery)) {
+          queryType = "greeting";
+        } else if (lowerQuery.includes("?") && !lowerQuery.startsWith("what") && !lowerQuery.startsWith("how") && !lowerQuery.startsWith("why") && !lowerQuery.startsWith("when") && !lowerQuery.startsWith("where") && !lowerQuery.startsWith("who")) {
+          queryType = "statement";
+        } else if (lowerQuery.match(/^(show|tell|find|search|list|get|create|update|delete|remove|add|open|close|start|stop|run|execute)/)) {
+          queryType = "command";
+        } else if (lowerQuery.length < 15 && !lowerQuery.includes("?") && !lowerQuery.includes("!")) {
+          queryType = "casual";
+        }
+
+        await db.insert(chatPatterns).values({
+          conversationId: convId,
+          turnNumber: currentTurn,
+          query,
+          queryType,
+          precedingContext,
+          nodesRetrieved: nativeResult.nodes?.length || 0,
+          avgSimilarity: nativeResult.nodes?.length > 0
+            ? nativeResult.nodes.reduce((sum, n) => sum + n.similarity, 0) / nativeResult.nodes.length
+            : null,
+          topNodeContent: nativeResult.nodes?.[0]?.content || null,
+          responseLength: finalResponse.length,
+          nodesUsed: nativeResult.nodesUsed,
+          newNodesAdded: nativeResult.newNodesAdded,
+          useLLM: shouldUseLLM && llmResponse !== null,
+        });
+
+        // Learn from chat response (skip commands and hybrid failures)
+        if (!shouldSkipLearning) {
+          trainOnText(finalResponse, "chat-response", clerkId).catch((err) => {
+            req.log.warn({ err }, "Failed to learn from chat response");
+          });
+        }
+
+        // Log training data
+        try {
+          await db.insert(trainingLogs).values({
+            query,
+            retrievedNodes: nativeResult.nodes?.map((n) => ({
+              content: n.content,
+              similarity: n.similarity,
+            })) || [],
+            responseType: shouldUseLLM && llmResponse !== null ? "hybrid" : "native",
+            nativeResponse: nativeResult.text,
+            llmResponse,
+            finalResponse,
+            nodesUsed: nativeResult.nodesUsed,
+            avgSimilarity: nativeResult.nodes?.length > 0
+              ? nativeResult.nodes.reduce((sum, n) => sum + n.similarity, 0) / nativeResult.nodes.length
+              : null,
+            characterState: {
+              curiosity: nativeResult.character.curiosity,
+              confidence: nativeResult.character.confidence,
+              technical: nativeResult.character.technical,
+              empathy: nativeResult.character.empathy || 50,
+              creativity: nativeResult.character.creativity || 50,
+              verbosity: nativeResult.character.verbosity || 50,
+            },
+            conversationId: convId,
+            userReplied: false, // Will be updated when user replies
+            conversationTurns: 1,
+          });
+        } catch (err) {
+          req.log.warn({ err }, "Failed to log training data");
+        }
+      } catch (err) {
+        req.log.warn({ err }, "Failed to log chat pattern");
       }
-
-      await db.insert(chatPatterns).values({
-        conversationId: convId,
-        turnNumber: currentTurn,
-        query,
-        queryType,
-        precedingContext,
-        nodesRetrieved: nativeResult.nodes?.length || 0,
-        avgSimilarity: nativeResult.nodes?.length > 0
-          ? nativeResult.nodes.reduce((sum, n) => sum + n.similarity, 0) / nativeResult.nodes.length
-          : null,
-        topNodeContent: nativeResult.nodes?.[0]?.content || null,
-        responseLength: finalResponse.length,
-        nodesUsed: nativeResult.nodesUsed,
-        newNodesAdded: nativeResult.newNodesAdded,
-        useLLM: shouldUseLLM && llmResponse !== null,
-      });
-    } catch (err) {
-      req.log.warn({ err }, "Failed to log chat pattern");
-    }
-
-    // Learn from chat response (skip commands and hybrid failures)
-    if (!shouldSkipLearning) {
-      trainOnText(finalResponse, "chat-response", clerkId).catch((err) => {
-        req.log.warn({ err }, "Failed to learn from chat response");
-      });
-    }
-
-    // Log training data
-    try {
-      await db.insert(trainingLogs).values({
-        query,
-        retrievedNodes: nativeResult.nodes?.map((n) => ({
-          content: n.content,
-          similarity: n.similarity,
-        })) || [],
-        responseType: shouldUseLLM && llmResponse !== null ? "hybrid" : "native",
-        nativeResponse: nativeResult.text,
-        llmResponse,
-        finalResponse,
-        nodesUsed: nativeResult.nodesUsed,
-        avgSimilarity: nativeResult.nodes?.length > 0
-          ? nativeResult.nodes.reduce((sum, n) => sum + n.similarity, 0) / nativeResult.nodes.length
-          : null,
-        characterState: {
-          curiosity: nativeResult.character.curiosity,
-          confidence: nativeResult.character.confidence,
-          technical: nativeResult.character.technical,
-          empathy: nativeResult.character.empathy || 50,
-          creativity: nativeResult.character.creativity || 50,
-          verbosity: nativeResult.character.verbosity || 50,
-        },
-        conversationId: convId,
-        userReplied: false, // Will be updated when user replies
-        conversationTurns: 1,
-      });
-    } catch (err) {
-      req.log.warn({ err }, "Failed to log training data");
+    } else {
+      // Anonymous users: still learn from responses but don't persist
+      if (!shouldSkipLearning) {
+        trainOnText(finalResponse, "chat-response", null).catch((err) => {
+          req.log.warn({ err }, "Failed to learn from anonymous chat response");
+        });
+      }
     }
 
     sendEvent({ done: true, conversationId: convId });

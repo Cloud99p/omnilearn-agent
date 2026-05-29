@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link, useSearch, useLocation } from "wouter";
-import { useAuth } from "@clerk/react";
+import { useAuth, useUser } from "@clerk/react";
 
 // Use Railway API URL directly (Vercel proxy unreliable)
 const BASE =
@@ -269,6 +269,8 @@ export default function Chat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modeInitialized = useRef(false);
   const { getToken } = useAuth();
+  const { user, isLoaded: isAuthLoaded } = useUser();
+  const isAuthenticated = isAuthLoaded && !!user;
 
   const installedSkillIds = skills
     .filter((s) => s.isInstalled)
@@ -301,6 +303,9 @@ export default function Chat() {
   }, [activeConvId]);
 
   useEffect(() => {
+    // Only load conversations for authenticated users
+    if (!isAuthenticated) return;
+    
     fetchConversations();
     fetchSkills();
     fetchGhostStatus();
@@ -313,7 +318,7 @@ export default function Chat() {
       loadConversationById(parseInt(savedGhost, 10));
     else if (initialMode === "local" && savedLocal)
       loadConversationById(parseInt(savedLocal, 10));
-  }, [mode]);
+  }, [mode, isAuthenticated]);
 
   // Idle CPU contribution — when onboarded and not actively chatting, donate cycles to the ghost network
   useEffect(() => {
@@ -855,6 +860,18 @@ export default function Chat() {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Anonymous user banner */}
+      {isAuthenticated ? null : (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-full px-4">
+          <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-lg px-4 py-3 text-sm font-mono flex items-center gap-3 shadow-lg">
+            <Lock className="w-4 h-4 shrink-0" />
+            <span className="flex-1">
+              Anonymous mode — conversations not saved. <Link to="/sign-in" className="underline hover:text-amber-300">Sign in</Link> to save your chat history.
+            </span>
+          </div>
+        </div>
+      )}
+      
       {/* ── Conversation sidebar ── */}
       <div className="hidden md:flex w-56 border-r border-border/40 bg-card/30 flex-col shrink-0">
         <div className="px-4 py-4 border-b border-border/40">
