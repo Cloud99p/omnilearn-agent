@@ -6,6 +6,59 @@
 
 ---
 
+## Recent Migrations (May 28, 2026)
+
+### Network Tables Schema Update
+
+**Problem:** Network API endpoints (`/api/network/stats`, `/api/network/agents`, `/api/network/pulses`) were returning 500 errors due to missing columns in the database schema.
+
+**Solution:** Created standalone migration scripts (not Drizzle-generated) to add missing columns to network tables.
+
+**Migration Files:**
+- `migrate-network.sql` - Complete migration with all columns
+- `migrate-network-simple.sql` - Minimal column additions
+- `migrate-network.js` - Programmatic migration runner
+
+**Tables Updated:**
+
+**network_agents:**
+- `phase`, `phase_started_at`, `unique_domains`, `domain_score`
+- `submissions_count`, `ratified_count`, `accuracy_score`
+- `unique_relay_paths`, `topology_score`, `first_seen_at`
+- `age_multiplier`, `total_contributions`, `total_reinforcements`
+- `days_active`, `is_self`, `last_active_at`
+
+**network_neurons:**
+- `ratified_at`, `ratification_quorum`, `positive_votes`, `negative_votes`
+- `vote_score`, `weighted_vote_score`
+
+**network_pulses:**
+- `neurons_affected`, `synapses_affected`, `details`
+
+**How to Run:**
+
+```bash
+# Option 1: SQL (Supabase SQL Editor)
+# Copy contents of migrate-network-simple.sql and run
+
+# Option 2: Node.js script
+node migrate-network.js
+
+# Option 3: psql
+psql $DATABASE_URL < migrate-network-simple.sql
+```
+
+**Verification:**
+
+```bash
+# All should return 200 or 304 (not 500)
+curl https://YOUR-RAILWAY-URL.up.railway.app/api/network/stats
+curl https://YOUR-RAILWAY-URL.up.railway.app/api/network/agents
+curl https://YOUR-RAILWAY-URL.up.railway.app/api/network/pulses
+```
+
+---
+
 ## Quick Reference
 
 ```bash

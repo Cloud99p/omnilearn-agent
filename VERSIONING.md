@@ -1,10 +1,42 @@
 # OmniLearn Versioning
 
-## Current Version: **v3.0.1** (Development)
+## Current Version: **v3.1.0** (Production)
 
-**Release Date:** May 23, 2026  
-**Code Name:** "Context Awareness Optimization"  
+**Release Date:** May 29, 2026  
+**Code Name:** "Network Stability & Frontend Fixes"  
 **Live Deployment:** [workspaceapi-server-production-29ee.up.railway.app](https://workspaceapi-server-production-29ee.up.railway.app)
+
+---
+
+### v3.1.0 (May 29, 2026) - **Network Stability & Frontend Fixes** 🔧
+
+**Critical Bug Fixes:**
+
+- ✅ **Database Schema Migrations for Network Tables**
+  - Fixed 500 errors on `/api/network/stats`, `/api/network/agents`, `/api/network/pulses`
+  - Added missing columns to `network_agents`, `network_neurons`, `network_pulses`
+  - Created standalone migration scripts (not Drizzle-generated)
+  - All network endpoints now return 200/304
+
+- ✅ **Frontend React Rendering Error Fixed**
+  - Fixed crash on `/intelligence` page
+  - Updated `NetworkStats` interface to match nested API response structure
+  - Changed from flat to nested structure: `neurons: { total, totalWeight, ... }`, `agents: { total, votingMembers, ... }`
+  - Commit: `80721fc`
+
+**Migration Files Created:**
+- `migrate-network.sql` - Complete schema migration
+- `migrate-network-simple.sql` - Minimal column additions
+- `migrate-network.js` - Programmatic migration runner
+
+**Files Changed:**
+- `artifacts/omnilearn/src/pages/intelligence.tsx` - NetworkStats interface fix
+- `artifacts/omnilearn/src/pages/network.tsx` - Property access updates
+- `migrate-network.sql` - NEW: Full migration script
+- `migrate-network-simple.sql` - NEW: Minimal migration
+- `migrate-network.js` - NEW: Node.js migration runner
+
+**Impact:** All network API endpoints stable, frontend dashboard rendering correctly, production-ready for multi-node deployment.
 
 ---
 

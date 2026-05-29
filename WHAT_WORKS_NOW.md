@@ -1,7 +1,7 @@
 # OmniLearn Agent — What Works NOW
 
-**Current Version:** 3.0.0 (Production Mesh Network + Hybrid Intelligence)  
-**Last Updated:** May 21, 2026  
+**Current Version:** 3.1.0 (Production Mesh Network + Hybrid Intelligence + Network Fixes)
+**Last Updated:** May 29, 2026
 **Live Deployment:** [workspaceapi-server-production-29ee.up.railway.app](https://workspaceapi-server-production-29ee.up.railway.app)
 
 ---
@@ -28,7 +28,7 @@
 
 ## 🎯 What's Actually Shipped Today
 
-This document describes **what works right now** — not the vision, not the roadmap, the actual production-ready system you can deploy and use today.
+This document describes **what works right now** - not the vision, not the roadmap, the actual production-ready system you can deploy and use today.
 
 ---
 
@@ -141,13 +141,73 @@ User debates aggressively → Confidence may increase or decrease based on resol
 
 **Live Status:** ✅ All systems active
 
-### 9. **Hybrid LLM Intelligence** (100% Complete) ✨ NEW
+### 9. **Hybrid LLM Intelligence** (100% Complete) ✨
 
 **What it does:**
 - **Native synthesis** - Your knowledge graph, ontology, and reasoning (the BRAIN)
 - **LLM fallback** - Natural language synthesis from FreeLLMAPI (the MOUTH)
 - **Configurable fallback rate** - Default 30% of unknown queries use LLM
 - **Training data collection** - Logs all interactions to improve native synthesizer over time
+- **Country-context filtering** - Native synthesizer filters irrelevant geographic content
+- **Greeting detection** - Properly handles casual greetings without forcing factual mode
+
+**Live Status:** ✅ Deployed with enhanced error logging and country-aware filtering
+
+**Configuration:**
+```bash
+# Enable hybrid mode
+USE_LLM_FALLBACK=true
+LLM_FALLBACK_RATE=0.3
+
+# FreeLLM API (optional - native works standalone)
+FREELLM_API_URL=https://freellmapi-production-aebd.up.railway.app/v1
+FREELLM_API_KEY=<your-key>
+
+# Force native-only mode (FreeLLM down)
+ALWAYS_USE_LLM=false
+```
+
+---
+
+### 10. **Network API Endpoints** (100% Complete) ✨ NEW
+
+**What it does:**
+- Real-time network statistics (`/api/network/stats`)
+- Agent listing with phase tracking (`/api/network/agents`)
+- Neuron status with ratification data (`/api/network/neurons`)
+- Synapse connections (`/api/network/synapses`)
+- Activity pulse feed (`/api/network/pulses`)
+- Contribution submission (`/api/network/contribute`)
+- Ghost node sync (`/api/network/sync`)
+
+**Database Schema:**
+- **network_agents:** phase tracking, domain scores, topology metrics, contribution history
+- **network_neurons:** ratification quorum, vote scoring, weighted votes
+- **network_pulses:** activity tracking with neuron/synapse impact metrics
+
+**Live Status:** ✅ All endpoints returning 200/304 after May 28 migrations
+
+**Migration Scripts:**
+- `migrate-network.sql` - Full schema migration
+- `migrate-network-simple.sql` - Minimal column additions
+- `migrate-network.js` - Programmatic migration runner
+
+---
+
+### 11. **Frontend Intelligence Dashboard** (100% Complete) ✨ FIXED
+
+**What it does:**
+- Network brain visualization
+- Knowledge graph management
+- Real-time stats display (neurons, agents, health)
+- Character trait evolution tracking
+
+**Recent Fixes:**
+- Fixed React rendering error on `/intelligence` page
+- Updated `NetworkStats` interface to match nested API response structure
+- Proper handling of nested `neurons` and `agents` objects
+
+**Live Status:** ✅ Building successfully, no TypeScript errors
 
 **Live Status:** ✅ Deployed and actively learning
 
@@ -175,7 +235,7 @@ FREELLM_API_URL=http://localhost:3001/v1
 FREELLM_API_KEY=your-key-here
 ```
 
-**Key Principle:** OmniLearn innovations (knowledge graph, 7-tier architecture, ontology, Hebbian learning) stay as the **brain**. LLMs are just the **mouth** for natural language synthesis. We don't replace our architecture with LLM—we enhance it.
+**Key Principle:** OmniLearn innovations (knowledge graph, 7-tier architecture, ontology, Hebbian learning) stay as the **brain**. LLMs are just the **mouth** for natural language synthesis. We don't replace our architecture with LLM-we enhance it.
 
 ---
 
@@ -199,18 +259,18 @@ FREELLM_API_KEY=your-key-here
 
 ### Network Brain Visualization
 
-**Status:** 70% Complete  
-**What works:** Knowledge node browser, character state display, learning log  
-**What's broken:** Network graph visualization (being fixed)  
+**Status:** 70% Complete
+**What works:** Knowledge node browser, character state display, learning log
+**What's broken:** Network graph visualization (being fixed)
 **Timeline:** Full fix by May 25, 2026
 
 ---
 
 ### Ontology Self-Reflection
 
-**Status:** ✅ **Active in Production**  
-**What works:** Runs every 10 minutes, proposes edge type registrations, node merges/splits  
-**Current State:** Enabled with error handling (won't crash if DB schema incomplete)  
+**Status:** ✅ **Active in Production**
+**What works:** Runs every 10 minutes, proposes edge type registrations, node merges/splits
+**Current State:** Enabled with error handling (won't crash if DB schema incomplete)
 **Location:** `artifacts/api-server/src/app.ts` → `scheduleOntologyReflection()`
 
 ---
@@ -219,9 +279,9 @@ FREELLM_API_KEY=your-key-here
 
 ### 7-Tier Mesh Network
 
-**Status:** ✅ **Production Ready**  
-**What it is:** Planetary-scale distributed AI network with geographic clustering  
-**Current Reality:** Full implementation with database persistence + WebSocket transport  
+**Status:** ✅ **Production Ready**
+**What it is:** Planetary-scale distributed AI network with geographic clustering
+**Current Reality:** Full implementation with database persistence + WebSocket transport
 **Timeline:** Ready to deploy now
 
 **What's implemented:**

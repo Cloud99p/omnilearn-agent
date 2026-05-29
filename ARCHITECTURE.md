@@ -45,7 +45,7 @@ OmniLearn uses a **7-tier self-organizing mesh network** that scales from a sing
 
 ---
 
-## Current State (May 2026)
+## Current State (May 29, 2026)
 
 ### ✅ Shipped & Running
 
@@ -56,14 +56,17 @@ OmniLearn uses a **7-tier self-organizing mesh network** that scales from a sing
 | **Mode Detection** | ✅ Production | Casual/factual/serious/emotional |
 | **Content Moderation** | ✅ Production | Multi-layer safety |
 | **Hybrid LLM System** | ✅ Production | FreeLLMAPI fallback (configurable rate) |
+| **Native Synthesizer** | ✅ Production | Country-context filtering, greeting detection |
 | **Training Pipeline** | ✅ Production | Collecting data for analysis |
 | **Web Search** | ✅ Production | DuckDuckGo + URL fetching |
 | **User Auth** | ✅ Production | Clerk integration |
 | **Ontology Reflection** | ✅ Production | Runs every 10 min |
 | **Rate Limiting** | ✅ Production | express-rate-limit (100 req/15min) |
 | **7-Tier Mesh Network** | ✅ Production | Database + WebSocket transport |
+| **Network API Endpoints** | ✅ Production | All endpoints returning 200/304 after May 28 migrations |
 | **Cluster Formation** | ✅ Production | Auto-clustering at 50 nodes |
 | **Node Discovery** | ✅ Production | WebSocket-based real-time |
+| **Frontend Intelligence** | ✅ Production | Fixed React rendering, nested stats structure |
 
 **Network Production Features:**
 - PostgreSQL persistence for all cluster state
@@ -72,6 +75,18 @@ OmniLearn uses a **7-tier self-organizing mesh network** that scales from a sing
 - Heartbeat tracking in database
 - Hierarchical routing (Tier 1-7)
 - Survives server restarts
+- **Schema migrations:** `migrate-network.sql`, `migrate-network-simple.sql`, `migrate-network.js`
+
+**Network Tables:**
+- `network_agents`: phase tracking, domain scores, topology metrics, contribution history, age multipliers
+- `network_neurons`: ratification quorum, vote scoring, weighted votes, ratification timestamps
+- `network_pulses`: activity tracking with neuron/synapse impact metrics, detailed pulse data
+
+**Native Synthesizer Enhancements:**
+- `filterNodesByQueryContext()` - Filters irrelevant geographic content
+- `detectCountryMismatch()` - Triggers web search for cross-country queries
+- Greeting detection runs before factual mode override
+- Enhanced error logging for FreeLLM failures
 
 ### 📦 Infrastructure Ready (Future Scale)
 

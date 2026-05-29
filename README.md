@@ -1,5 +1,6 @@
 # OmniLearn Agent
 
+**Version:** 3.1.0 (Network Stability & Frontend Fixes)  
 **Created by:** Emmanuel Nenpan Hosea  
 **License:** AGPL v3
 
@@ -58,10 +59,12 @@ omnilearn-agent/
 | Document | Purpose |
 |----------|----------|
 | **[WHAT_WORKS_NOW.md](WHAT_WORKS_NOW.md)** | What's actually shipped today (start here!) |
-| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Complete deployment guide |
+| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Complete deployment guide including network migrations |
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | System architecture including 7-tier network |
 | **[ROADMAP.md](ROADMAP.md)** | Development timeline |
 | **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to contribute |
+| **[MIGRATIONS.md](MIGRATIONS.md)** | Database migration guide (includes network table migrations) |
+| **[VERSIONING.md](VERSIONING.md)** | Version history and changelog |
 
 ## 🧠 Core Features
 

@@ -207,6 +207,47 @@ pnpm run db:push
 
 ---
 
+## Step 6.5: Run Network Migrations (Critical for Network Endpoints)
+
+**Why:** Network API endpoints require additional columns not in the base schema.
+
+**Option A: Run SQL Migration (Recommended)**
+
+```bash
+# In Supabase SQL Editor, run:
+# Copy contents from migrate-network-simple.sql
+```
+
+**Option B: Run Node.js Migration Script**
+
+```bash
+# From project root
+cd omnilearn-agent
+node migrate-network.js
+```
+
+**Option C: Manual SQL (If you prefer control)**
+
+See `migrate-network.sql` for complete schema additions.
+
+**Tables Updated:**
+- `network_agents` - Adds phase tracking, domain scores, topology metrics, contribution history
+- `network_neurons` - Adds ratification quorum, vote scoring, weighted votes
+- `network_pulses` - Adds neuron/synapse impact tracking, detailed pulse data
+
+**Verify Migration:**
+
+```bash
+# Test network endpoints
+curl https://YOUR-RAILWAY-URL.up.railway.app/api/network/stats
+curl https://YOUR-RAILWAY-URL.up.railway.app/api/network/agents
+curl https://YOUR-RAILWAY-URL.up.railway.app/api/network/pulses
+```
+
+Expected: All return 200 or 304 (not 500 errors)
+
+---
+
 ## Step 7: Test Everything
 
 ### Health Check
@@ -284,6 +325,34 @@ Error: ENOENT: no such file or directory
 
 1. Check `outputDirectory` in `vercel.json` matches your build output
 2. Try building locally: `pnpm -r --filter @workspace/omnilearn run build`
+
+### Network endpoints return 500 errors
+
+```
+GET /api/network/stats 500
+Error: column "phase" does not exist
+```
+
+**Fix:** Run network migrations (Step 6.5). The database schema is missing columns required by the network API.
+
+```bash
+# In Supabase SQL Editor
+# Run contents of migrate-network-simple.sql
+```
+
+### Frontend `/intelligence` page crashes
+
+```
+Objects are not valid as a React child (found: object with keys {total, totalWeight...})
+```
+
+**Fix:** This was fixed in commit `80721fc`. Update your frontend:
+
+1. Pull latest changes: `git pull origin main`
+2. Redeploy to Vercel (auto-triggers on push)
+3. Clear browser cache if issue persists
+
+The issue was caused by nested API response structure not matching the frontend interface.
 
 ---
 
