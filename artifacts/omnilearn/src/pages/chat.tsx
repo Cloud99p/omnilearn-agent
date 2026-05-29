@@ -860,14 +860,18 @@ export default function Chat() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Anonymous user banner */}
+      {/* Anonymous user banner - subtle, matches dark theme */}
       {isAuthenticated ? null : (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-full px-4">
-          <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-lg px-4 py-3 text-sm font-mono flex items-center gap-3 shadow-lg">
-            <Lock className="w-4 h-4 shrink-0" />
-            <span className="flex-1">
-              Anonymous mode — conversations not saved. <Link to="/sign-in" className="underline hover:text-amber-300">Sign in</Link> to save your chat history.
+        <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-primary/5 to-transparent pb-4 pt-3 px-4">
+          <div className="max-w-2xl mx-auto bg-secondary/50 border border-border/30 text-muted-foreground rounded-lg px-4 py-2.5 text-xs font-mono flex items-center justify-center gap-2 shadow-sm">
+            <Lock className="w-3.5 h-3.5 shrink-0 opacity-60" />
+            <span>
+              Conversations aren't saved in anonymous mode
             </span>
+            <Link to="/sign-in" className="text-primary hover:text-primary/80 underline decoration-primary/30 hover:decoration-primary transition-all ml-1">
+              Sign in
+            </Link>
+            <span>to save history</span>
           </div>
         </div>
       )}
