@@ -860,24 +860,6 @@ export default function Chat() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Anonymous user banner - centered between logo and brain icon */}
-      {isAuthenticated ? null : (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50">
-          <div className="bg-secondary/90 backdrop-blur-sm border border-border/50 rounded-lg px-5 py-2.5 shadow-lg">
-            <div className="text-foreground/90 text-sm font-mono flex items-center gap-2">
-              <Lock className="w-4 h-4 shrink-0 text-primary" />
-              <span className="font-medium">
-                Conversations aren't saved
-              </span>
-              <Link to="/sign-in" className="text-primary hover:text-primary/80 font-semibold underline decoration-primary/50 hover:decoration-primary transition-all">
-                Sign in
-              </Link>
-              <span>to save history</span>
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* ── Conversation sidebar ── */}
       <div className="hidden md:flex w-56 border-r border-border/40 bg-card/30 flex-col shrink-0">
         <div className="px-4 py-4 border-b border-border/40">
@@ -1354,6 +1336,22 @@ export default function Chat() {
               )}
           </div>
         </div>
+
+        {/* Anonymous user banner - positioned in chat area */}
+        {isAuthenticated ? null : (
+          <div className="bg-secondary/90 backdrop-blur-sm border-b border-border/40 px-4 py-2.5 shrink-0">
+            <div className="max-w-3xl mx-auto text-foreground/90 text-sm font-mono flex items-center justify-center gap-2 flex-wrap">
+              <Lock className="w-4 h-4 shrink-0 text-primary" />
+              <span className="font-medium whitespace-nowrap">
+                Conversations aren't saved
+              </span>
+              <Link to="/sign-in" className="text-primary hover:text-primary/80 font-semibold underline decoration-primary/50 hover:decoration-primary transition-all whitespace-nowrap">
+                Sign in
+              </Link>
+              <span className="whitespace-nowrap">to save history</span>
+            </div>
+          </div>
+        )}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6">
