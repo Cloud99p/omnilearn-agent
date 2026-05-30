@@ -11,6 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/react';
+import { RequireRole } from '../components/require-role';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -33,18 +34,13 @@ import {
 import {
   Shield,
   Search,
-  Filter,
+  RefreshCw,
   Download,
-  AlertTriangle,
+  Calendar,
   CheckCircle,
   XCircle,
-  RefreshCw,
-  Calendar,
+  AlertTriangle,
 } from 'lucide-react';
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Types
-// ──────────────────────────────────────────────────────────────────────────────
 
 interface AuditLog {
   id: number;
@@ -54,18 +50,9 @@ interface AuditLog {
   resourceId?: number;
   decision: 'ALLOW' | 'DENY';
   reason?: string;
-  context?: {
-    ip?: string;
-    userAgent?: string;
-    location?: string;
-  };
+  context?: { ip?: string; userAgent?: string; location?: string };
   createdAt: string;
-  location?: 'current' | 'archived';
 }
-
-// ──────────────────────────────────────────────────────────────────────────────
-// API Helpers
-// ──────────────────────────────────────────────────────────────────────────────
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -81,44 +68,29 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
   });
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Main Component
-// ──────────────────────────────────────────────────────────────────────────────
-
-export default function AuditLogsPage() {
+function AuditLogsContent() {
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [decisionFilter, setDecisionFilter] = useState<string>('all');
-  const [actionFilter, setActionFilter] = useState<string>('all');
-  const [resourceFilter, setResourceFilter] = useState<string>('all');
+  const [decisionFilter, setDecisionFilter] = useState('all');
+  const [actionFilter, setActionFilter] = useState('all');
+  const [resourceFilter, setResourceFilter] = useState('all');
   const [daysFilter, setDaysFilter] = useState('7');
   const [securityEventsOnly, setSecurityEventsOnly] = useState(false);
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Load Audit Logs
-  // ────────────────────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    loadLogs();
-  }, [daysFilter, securityEventsOnly]);
+  useEffect(() => { loadLogs(); }, [daysFilter, securityEventsOnly]);
 
   async function loadLogs() {
     try {
       setLoading(true);
-      
       const url = securityEventsOnly
         ? `${API_BASE}/access/audit-logs/security-events?daysBack=${daysFilter}`
         : `${API_BASE}/access/audit-logs?limit=100&offset=0`;
-
       const res = await fetchWithAuth(url);
-      
       if (res.ok) {
         const data = await res.json();
         setLogs(data.logs || []);
-        setFilteredLogs(data.logs || []);
       }
     } catch (err) {
       console.error('Failed to load audit logs:', err);
@@ -127,65 +99,27 @@ export default function AuditLogsPage() {
     }
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Filter Logs
-  // ────────────────────────────────────────────────────────────────────────────
-
   useEffect(() => {
     let filtered = [...logs];
-
-    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (log) =>
-          log.clerkId.toLowerCase().includes(query) ||
+        (log) => log.clerkId.toLowerCase().includes(query) ||
           log.action.toLowerCase().includes(query) ||
-          log.resourceType?.toLowerCase().includes(query) ||
-          log.reason?.toLowerCase().includes(query)
+          log.resourceType?.toLowerCase().includes(query)
       );
     }
-
-    // Decision filter
     if (decisionFilter !== 'all') {
       filtered = filtered.filter((log) => log.decision === decisionFilter);
     }
-
-    // Action filter
-    if (actionFilter !== 'all') {
-      filtered = filtered.filter((log) => log.action === actionFilter);
-    }
-
-    // Resource filter
-    if (resourceFilter !== 'all') {
-      filtered = filtered.filter((log) => log.resourceType === resourceFilter);
-    }
-
-    setFilteredLogs(filtered);
-  }, [searchQuery, decisionFilter, actionFilter, resourceFilter, logs]);
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // Export Logs
-  // ────────────────────────────────────────────────────────────────────────────
+    setLogs(filtered);
+  }, [searchQuery, decisionFilter, logs]);
 
   function exportLogs() {
     const csv = [
-      ['ID', 'User', 'Action', 'Resource', 'Resource ID', 'Decision', 'Reason', 'IP', 'Timestamp'].join(','),
-      ...filteredLogs.map((log) =>
-        [
-          log.id,
-          log.clerkId,
-          log.action,
-          log.resourceType || '',
-          log.resourceId || '',
-          log.decision,
-          log.reason || '',
-          log.context?.ip || '',
-          new Date(log.createdAt).toISOString(),
-        ].join(',')
-      ),
+      ['ID', 'User', 'Action', 'Resource', 'Decision', 'Reason', 'IP', 'Timestamp'].join(','),
+      ...logs.map((log) => [log.id, log.clerkId, log.action, log.resourceType || '', log.decision, log.reason || '', log.context?.ip || '', new Date(log.createdAt).toISOString()].join(',')),
     ].join('\n');
-
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -195,31 +129,26 @@ export default function AuditLogsPage() {
     URL.revokeObjectURL(url);
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Get unique actions and resources for filters
-  // ────────────────────────────────────────────────────────────────────────────
-
-  const uniqueActions = Array.from(new Set(logs.map((log) => log.action)));
-  const uniqueResources = Array.from(new Set(logs.map((log) => log.resourceType).filter(Boolean)));
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // Stats
-  // ────────────────────────────────────────────────────────────────────────────
-
   const stats = {
     total: logs.length,
     allowed: logs.filter((l) => l.decision === 'ALLOW').length,
     denied: logs.filter((l) => l.decision === 'DENY').length,
-    uniqueUsers: new Set(logs.map((l) => l.clerkId)).size,
   };
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Render
-  // ────────────────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <Shield className="w-8 h-8" />
+          <h1 className="text-2xl font-bold">Audit Logs</h1>
+        </div>
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Shield className="w-8 h-8" />
@@ -240,8 +169,7 @@ export default function AuditLogsPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
+      <div className="grid gap-4 md:grid-cols-3 mb-6">
         <Card className="p-4">
           <p className="text-sm text-muted-foreground mb-1">Total Events</p>
           <p className="text-2xl font-bold">{stats.total}</p>
@@ -260,13 +188,8 @@ export default function AuditLogsPage() {
           </div>
           <p className="text-2xl font-bold text-red-500">{stats.denied}</p>
         </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground mb-1">Unique Users</p>
-          <p className="text-2xl font-bold">{stats.uniqueUsers}</p>
-        </Card>
       </div>
 
-      {/* Security Events Alert */}
       {stats.denied > 0 && (
         <Card className="p-4 mb-6 bg-red-500/10 border-red-500/20">
           <div className="flex items-center gap-3">
@@ -277,89 +200,32 @@ export default function AuditLogsPage() {
                 {stats.denied} access denial{stats.denied > 1 ? 's' : ''} in the last {daysFilter} days
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto"
-              onClick={() => setSecurityEventsOnly(!securityEventsOnly)}
-            >
+            <Button variant="outline" size="sm" onClick={() => setSecurityEventsOnly(!securityEventsOnly)}>
               {securityEventsOnly ? 'Show All' : 'View Only'}
             </Button>
           </div>
         </Card>
       )}
 
-      {/* Filters */}
       <Card className="p-4 mb-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          {/* Search */}
-          <div className="lg:col-span-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by user, action, resource..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-
-          {/* Decision Filter */}
+        <div className="grid gap-4 md:grid-cols-3">
           <div>
-            <Select value={decisionFilter} onValueChange={setDecisionFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Decision" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Decisions</SelectItem>
-                <SelectItem value="ALLOW">Allowed</SelectItem>
-                <SelectItem value="DENY">Denied</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input
+              placeholder="Search by user, action..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-
-          {/* Action Filter */}
-          <div>
-            <Select value={actionFilter} onValueChange={setActionFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Action" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Actions</SelectItem>
-                {uniqueActions.map((action) => (
-                  <SelectItem key={action} value={action}>
-                    {action}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Resource Filter */}
-          <div>
-            <Select value={resourceFilter} onValueChange={setResourceFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Resource" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Resources</SelectItem>
-                {uniqueResources.map((resource) => (
-                  <SelectItem key={resource} value={resource}>
-                    {resource}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Time Range */}
-        <div className="flex items-center gap-4 mt-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Time range:</span>
-          </div>
+          <Select value={decisionFilter} onValueChange={setDecisionFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Decision" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Decisions</SelectItem>
+              <SelectItem value="ALLOW">Allowed</SelectItem>
+              <SelectItem value="DENY">Denied</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={daysFilter} onValueChange={setDaysFilter}>
             <SelectTrigger className="w-[150px]">
               <SelectValue />
@@ -371,18 +237,9 @@ export default function AuditLogsPage() {
               <SelectItem value="90">Last 90 days</SelectItem>
             </SelectContent>
           </Select>
-          <Button
-            variant={securityEventsOnly ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSecurityEventsOnly(!securityEventsOnly)}
-          >
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            Security Events Only
-          </Button>
         </div>
       </Card>
 
-      {/* Logs Table */}
       <Card>
         <Table>
           <TableHeader>
@@ -393,77 +250,51 @@ export default function AuditLogsPage() {
               <TableHead>Resource</TableHead>
               <TableHead>Decision</TableHead>
               <TableHead>Reason</TableHead>
-              <TableHead>IP Address</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLogs.map((log) => (
+            {logs.map((log) => (
               <TableRow key={log.id}>
-                <TableCell className="text-sm">
-                  {new Date(log.createdAt).toLocaleString()}
-                </TableCell>
+                <TableCell className="text-sm">{new Date(log.createdAt).toLocaleString()}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-xs font-medium">
-                        {log.clerkId[0]?.toUpperCase() || 'U'}
-                      </span>
+                      <span className="text-xs font-medium">{log.clerkId[0]?.toUpperCase() || 'U'}</span>
                     </div>
                     <code className="text-xs">{log.clerkId}</code>
                   </div>
                 </TableCell>
+                <TableCell><Badge variant="outline">{log.action}</Badge></TableCell>
+                <TableCell>{log.resourceType ? log.resourceType : '-'}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{log.action}</Badge>
-                </TableCell>
-                <TableCell>
-                  {log.resourceType ? (
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">{log.resourceType}</span>
-                      {log.resourceId && (
-                        <span className="text-xs text-muted-foreground">#{log.resourceId}</span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={log.decision === 'ALLOW' ? 'default' : 'destructive'}
-                    className="gap-1"
-                  >
-                    {log.decision === 'ALLOW' ? (
-                      <CheckCircle className="w-3 h-3" />
-                    ) : (
-                      <XCircle className="w-3 h-3" />
-                    )}
+                  <Badge variant={log.decision === 'ALLOW' ? 'default' : 'destructive'}>
                     {log.decision}
                   </Badge>
                 </TableCell>
                 <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
                   {log.reason || '-'}
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {log.context?.ip || '-'}
-                </TableCell>
               </TableRow>
             ))}
-            {filteredLogs.length === 0 && (
+            {logs.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  {loading ? 'Loading...' : 'No audit logs found'}
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  No audit logs found
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </Card>
-
-      {/* Results Summary */}
-      <div className="mt-4 text-sm text-muted-foreground text-center">
-        Showing {filteredLogs.length} of {logs.length} events
-        {searchQuery && ` (filtered from "${searchQuery}")`}
-      </div>
     </div>
+  );
+}
+
+// Export with role protection (org_admin or super_admin only)
+export default function AuditLogsPage() {
+  return (
+    <RequireRole allowedRoles={['org_admin', 'super_admin']}>
+      <AuditLogsContent />
+    </RequireRole>
   );
 }

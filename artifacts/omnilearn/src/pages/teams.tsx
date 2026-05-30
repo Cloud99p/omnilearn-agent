@@ -11,6 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser, useAuth } from '@clerk/react';
+import { RequireRole } from '../components/require-role';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -96,10 +97,11 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Main Component
+// Main Component (Protected)
 // ──────────────────────────────────────────────────────────────────────────────
 
-export default function TeamsPage() {
+function TeamsPageContent() {
+  const { user } = useUser();
   const { user } = useUser();
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -555,5 +557,14 @@ export default function TeamsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Export with role protection
+export default function TeamsPage() {
+  return (
+    <RequireRole allowedRoles={['team_lead', 'org_admin', 'super_admin']}>
+      <TeamsPageContent />
+    </RequireRole>
   );
 }
