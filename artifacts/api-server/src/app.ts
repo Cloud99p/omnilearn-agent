@@ -25,6 +25,7 @@ import {
   sentryRequestHandler,
   sentryErrorHandler,
 } from "./lib/sentry";
+import { rlsContextMiddleware } from "./middlewares/rlsContext";
 
 // Initialize Sentry (must be first, before any other imports)
 initSentry();
@@ -109,6 +110,11 @@ app.use(
 );
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+
+// RLS Context Middleware (must be after Clerk middleware)
+// Sets PostgreSQL session variables for row-level security
+app.use(rlsContextMiddleware);
+logger.info("RLS context middleware enabled");
 
 // Secure CORS configuration - restrict to specific origins
 // SECURITY FIX: Prevent CSRF attacks by not allowing all origins with credentials
