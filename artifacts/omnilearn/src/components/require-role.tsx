@@ -45,7 +45,7 @@ interface UserPermission {
   };
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://workspaceapi-server-production-29ee.up.railway.app/api';
 
 async function fetchUserPermissions(): Promise<UserPermission | null> {
   try {
