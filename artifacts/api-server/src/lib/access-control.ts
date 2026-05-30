@@ -6,27 +6,24 @@
  */
 
 import { db } from "@workspace/db";
-import * as schemaModule from "@workspace/db/schema";
+// Import directly from the access-control schema file
+import {
+  teamMembers,
+  roles,
+  rolePermissions,
+  organizations,
+  teams,
+  dataTypes,
+  userConsents,
+  auditLogs,
+} from "@workspace/db/schema/access-control";
+// Import from other schema files
+import { knowledgeNodes } from "@workspace/db/schema/knowledge-nodes";
+import { conversations } from "@workspace/db/schema/conversations";
 import { eq, and, or, sql, gte, lte, isNull } from "drizzle-orm";
 import { logger } from "./logger";
 
-// Debug: Log what we're actually getting from the schema module
-logger.info('Schema module keys:', Object.keys(schemaModule || {}));
-logger.info('Schema module type:', typeof schemaModule);
-logger.info('Schema module:', JSON.stringify(schemaModule, null, 2).slice(0, 500));
-
-// Destructure with defaults
-const teamMembers = (schemaModule as any)?.teamMembers;
-const roles = (schemaModule as any)?.roles;
-const rolePermissions = (schemaModule as any)?.rolePermissions;
-const organizations = (schemaModule as any)?.organizations;
-const teams = (schemaModule as any)?.teams;
-const dataTypes = (schemaModule as any)?.dataTypes;
-const userConsents = (schemaModule as any)?.userConsents;
-const auditLogs = (schemaModule as any)?.auditLogs;
-const knowledgeNodes = (schemaModule as any)?.knowledgeNodes;
-const conversations = (schemaModule as any)?.conversations;
-
+// Debug: Log schema imports
 logger.info('Schema tables loaded:', {
   teamMembers: !!teamMembers,
   roles: !!roles,
