@@ -6,18 +6,8 @@
  */
 
 import { db } from "@workspace/db";
-// Import directly from the access-control schema file
-import {
-  teamMembers,
-  roles,
-  rolePermissions,
-  organizations,
-  teams,
-  dataTypes,
-  userConsents,
-  auditLogs,
-} from "@workspace/db/schema/access-control";
-// Import from other schema files
+// Import directly from individual schema files (bypass broken barrel export)
+import { teamMembers, roles, rolePermissions, organizations, teams, dataTypes, userConsents, auditLogs } from "@workspace/db/schema/access-control";
 import { knowledgeNodes } from "@workspace/db/schema/knowledge-nodes";
 import { conversations } from "@workspace/db/schema/conversations";
 import { eq, and, or, sql, gte, lte, isNull } from "drizzle-orm";
