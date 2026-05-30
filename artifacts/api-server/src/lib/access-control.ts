@@ -21,6 +21,17 @@ import {
 import { eq, and, or, sql, gte, lte, isNull } from "drizzle-orm";
 import { logger } from "./logger";
 
+// Debug: Log schema imports at module load time
+logger.info('Schema imports:', {
+  teamMembers: !!teamMembers,
+  roles: !!roles,
+  teams: !!teams,
+  rolePermissions: !!rolePermissions,
+  dataTypes: !!dataTypes,
+  userConsents: !!userConsents,
+  auditLogs: !!auditLogs,
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────────────────────────────────────
