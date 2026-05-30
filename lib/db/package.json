@@ -15,9 +15,17 @@
       "import": "./dist/schema/index.js",
       "types": "./dist/schema/index.d.ts"
     },
-    "./schema/*": {
-      "import": "./dist/schema/*.js",
-      "types": "./dist/schema/*.d.ts"
+    "./schema/access-control": {
+      "import": "./dist/schema/access-control.js",
+      "types": "./dist/schema/access-control.d.ts"
+    },
+    "./schema/knowledge-nodes": {
+      "import": "./dist/schema/knowledge-nodes.js",
+      "types": "./dist/schema/knowledge-nodes.d.ts"
+    },
+    "./schema/conversations": {
+      "import": "./dist/schema/conversations.js",
+      "types": "./dist/schema/conversations.d.ts"
     }
   },
   "scripts": {
