@@ -12,6 +12,7 @@ import {
   jsonb,
   bigint,
   serial,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { ghostNodes } from "./ghost-nodes.js";
@@ -24,7 +25,7 @@ export const networkClusters = pgTable("network_clusters", {
   locationLat: doublePrecision("location_lat").notNull(),
   locationLng: doublePrecision("location_lng").notNull(),
   radiusKm: doublePrecision("radius_km").notNull(),
-  parentId: text("parent_id").references((): any => networkClusters.id),
+  parentId: text("parent_id").references((): AnyPgColumn => networkClusters.id),
   childIds: text("child_ids").array().default([]),
   nodeIds: text("node_ids").array().default([]),
   totalNodes: integer("total_nodes").default(0),
