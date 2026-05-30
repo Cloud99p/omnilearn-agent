@@ -3,10 +3,11 @@
   "compilerOptions": {
     "composite": true,
     "declarationMap": true,
-    "emitDeclarationOnly": true,
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node"],
+    "module": "ESNext",
+    "moduleResolution": "bundler"
   },
   "include": ["src"]
 }
