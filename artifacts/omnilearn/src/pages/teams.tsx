@@ -82,7 +82,7 @@ interface Role {
 // API Helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://workspaceapi-server-production-29ee.up.railway.app/api';
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const token = await window.Clerk?.session?.getToken();
