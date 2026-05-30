@@ -26,6 +26,7 @@ import {
   Github,
   LogIn,
   User,
+  Users,
   Zap,
   TrendingUp,
 } from "lucide-react";
