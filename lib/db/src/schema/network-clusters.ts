@@ -16,7 +16,7 @@ import {
 import { relations } from "drizzle-orm";
 import { ghostNodes } from "./ghost-nodes.js";
 
-// Type annotation to break circular reference
+// Self-referencing table - parentId references same table
 export const networkClusters = pgTable("network_clusters", {
   id: text("id").primaryKey(),
   tier: integer("tier").notNull(),
@@ -24,7 +24,7 @@ export const networkClusters = pgTable("network_clusters", {
   locationLat: doublePrecision("location_lat").notNull(),
   locationLng: doublePrecision("location_lng").notNull(),
   radiusKm: doublePrecision("radius_km").notNull(),
-  parentId: text("parent_id").references(() => networkClusters.id),
+  parentId: text("parent_id").references((): any => networkClusters.id),
   childIds: text("child_ids").array().default([]),
   nodeIds: text("node_ids").array().default([]),
   totalNodes: integer("total_nodes").default(0),
@@ -37,7 +37,6 @@ export const networkClusters = pgTable("network_clusters", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
-// Explicit type annotation to avoid circular reference issues
 export const networkClustersRelations = relations(
   networkClusters,
   ({ many, one }) => ({
