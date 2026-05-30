@@ -51,6 +51,8 @@ import IntelligencePage from "@/pages/intelligence";
 import GhostNetworkPage from "@/pages/ghost-network";
 import WorkerPage from "@/pages/worker";
 import SmarterPage from "@/pages/smarter";
+import TeamsPage from "@/pages/teams";
+import AuditLogsPage from "@/pages/audit-logs";
 
 const queryClient = new QueryClient();
 
@@ -258,6 +260,8 @@ function Router() {
           <Route path="/intelligence" component={IntelligencePage} />
           <Route path="/ghost-network" component={GhostNetworkPage} />
           <Route path="/smarter" component={SmarterPage} />
+          <Route path="/teams" component={TeamsPage} />
+          <Route path="/audit-logs" component={AuditLogsPage} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>

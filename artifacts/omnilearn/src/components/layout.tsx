@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useUser, useClerk, Show } from "@clerk/react";
+import { useHasRole } from "@/hooks/use-permissions";
 import {
   Cpu,
   Terminal,
@@ -38,6 +39,12 @@ const TOP_LINKS = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/intelligence", label: "Intelligence", icon: Brain },
   { href: "/personality", label: "Personality", icon: Activity },
+];
+
+// Admin-only links (role-based visibility)
+const ADMIN_LINKS = [
+  { href: "/teams", label: "Teams", icon: Users, requiredRoles: ['team_lead', 'org_admin', 'super_admin'] as const },
+  { href: "/audit-logs", label: "Audit Logs", icon: Shield, requiredRoles: ['org_admin', 'super_admin'] as const },
 ];
 
 const GROUPS = [
@@ -212,6 +219,10 @@ function Sidebar({
 }) {
   const topLinks = TOP_LINKS;
   const groups = GROUPS;
+  
+  // Check roles for admin links
+  const { hasRole: isTeamLead } = useHasRole(['team_lead', 'org_admin', 'super_admin']);
+  const { hasRole: isOrgAdmin } = useHasRole(['org_admin', 'super_admin']);
 
   return (
     <div className="flex flex-col h-full">
@@ -249,7 +260,37 @@ function Sidebar({
             />
           ))}
         </div>
-        <div className="border-t border-border/30" />
+        
+        {/* Admin links (role-based) */}
+        {(isTeamLead || isOrgAdmin) && (
+          <>
+            <div className="border-t border-border/30" />
+            <div className="space-y-0.5">
+              {ADMIN_LINKS.map((item) => {
+                // Check if user has required role
+                const hasRequiredRole = item.requiredRoles.some(role => {
+                  if (role === 'team_lead') return isTeamLead;
+                  if (role === 'org_admin') return isOrgAdmin;
+                  if (role === 'super_admin') return isOrgAdmin; // super_admin implies org_admin
+                  return false;
+                });
+                
+                if (!hasRequiredRole) return null;
+                
+                return (
+                  <NavLink
+                    key={item.href}
+                    href={item.href}
+                    label={item.label}
+                    icon={item.icon}
+                    location={location}
+                    onClick={onNavClick}
+                  />
+                );
+              })}
+            </div>
+          </>
+        )}
         <div className="space-y-4">
           {groups.map((group) => (
             <CollapsibleGroup
