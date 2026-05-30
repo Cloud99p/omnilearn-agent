@@ -6,10 +6,7 @@
  */
 
 import { db } from "@workspace/db";
-import * as schema from "@workspace/db/schema";
-
-// Destructure schema tables with fallback to ensure they're defined
-const {
+import {
   teamMembers,
   roles,
   rolePermissions,
@@ -20,12 +17,12 @@ const {
   auditLogs,
   knowledgeNodes,
   conversations,
-} = schema;
+} from "@workspace/db/schema";
 import { eq, and, or, sql, gte, lte, isNull } from "drizzle-orm";
 import { logger } from "./logger";
 
 // Debug: Log schema imports at module load time
-logger.info('Schema imports:', {
+logger.info('Schema tables loaded:', {
   teamMembers: !!teamMembers,
   roles: !!roles,
   teams: !!teams,
@@ -33,6 +30,9 @@ logger.info('Schema imports:', {
   dataTypes: !!dataTypes,
   userConsents: !!userConsents,
   auditLogs: !!auditLogs,
+  knowledgeNodes: !!knowledgeNodes,
+  conversations: !!conversations,
+  organizations: !!organizations,
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
