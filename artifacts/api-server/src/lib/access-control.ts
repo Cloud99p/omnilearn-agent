@@ -221,22 +221,22 @@ async function loadUserPermissions(clerkId: string): Promise<{
       )
     );
 
-  const roles = [...new Set(memberships.map(m => m.roleName).filter((r): r is string => !!r))];
-  const teams = [...new Set(memberships.map(m => m.teamId))];
+  const userRoles = [...new Set(memberships.map(m => m.roleName).filter((r): r is string => !!r))];
+  const userTeams = [...new Set(memberships.map(m => m.teamId))];
   const organizationId = memberships[0]?.organizationId;
 
   // Cache results
   const cache: PermissionCache = {
     userId: clerkId,
-    roles,
-    teams,
+    roles: userRoles,
+    teams: userTeams,
     organizationId,
     permissions: new Map(),
     expiresAt: Date.now() + CACHE_TTL_MS,
   };
   setCachedPermissions(clerkId, cache);
 
-  return { roles, teams, organizationId };
+  return { roles: userRoles, teams: userTeams, organizationId };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
