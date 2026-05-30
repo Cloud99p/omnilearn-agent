@@ -6,7 +6,10 @@
  */
 
 import { db } from "@workspace/db";
-import {
+import * as schema from "@workspace/db/schema";
+
+// Destructure schema tables with fallback to ensure they're defined
+const {
   teamMembers,
   roles,
   rolePermissions,
@@ -17,7 +20,7 @@ import {
   auditLogs,
   knowledgeNodes,
   conversations,
-} from "@workspace/db/schema";
+} = schema;
 import { eq, and, or, sql, gte, lte, isNull } from "drizzle-orm";
 import { logger } from "./logger";
 
