@@ -23,6 +23,7 @@ import configRouter from "./config.js";
 import storageRouter from "./storage.js";
 import repositoriesRouter from "./repositories.js";
 import documentsRouter from "./documents.js";
+import accessControlRouter from "./access-control.js";
 import { logger } from "../lib/logger.js";
 import {
   defaultLimiter,
@@ -69,5 +70,6 @@ router.use("/config", defaultLimiter, configRouter); // Configuration
 router.use("/storage", defaultLimiter, storageRouter); // Storage stats
 router.use("/repositories", defaultLimiter, repositoriesRouter); // Repositories
 router.use("/documents", defaultLimiter, documentsRouter); // Document ingestion
+router.use("/access", defaultLimiter, accessControlRouter); // Access control (RBAC, teams, permissions)
 
 export default router;
