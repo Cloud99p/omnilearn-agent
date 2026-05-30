@@ -102,7 +102,6 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 
 function TeamsPageContent() {
   const { user } = useUser();
-  const { user } = useUser();
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
