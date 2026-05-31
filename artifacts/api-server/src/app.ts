@@ -73,7 +73,8 @@ try {
 const app: Express = express();
 
 // Trust Railway's proxy (fixes X-Forwarded-For errors)
-app.set("trust proxy", true);
+// Use 'loopback' to satisfy express-rate-limit validation while still working with Railway
+app.set("trust proxy", "loopback");
 
 // ── Background ontology reflection ────
 const ONTOLOGY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
