@@ -491,22 +491,27 @@ export async function getUserPermissionsSummary(clerkId: string): Promise<{
   let organization;
   if (organizationId) {
     logger.info({ clerkId, organizationId }, 'Fetching organization');
-    const org = await db
-      .select()
-      .from(organizations)
-      .where(eq(organizations.id, organizationId))
-      .limit(1);
-    organization = org[0] ? { id: org[0].id, name: org[0].name } : undefined;
-    logger.info({ clerkId, organization }, 'Organization fetched');
+    try {
+      const org = await db
+        .select()
+        .from(organizations)
+        .where(eq(organizations.id, organizationId))
+        .limit(1);
+      organization = org[0] ? { id: org[0].id, name: org[0].name } : undefined;
+      logger.info({ clerkId, organization }, 'Organization fetched');
+    } catch (orgErr) {
+      logger.warn({ clerkId, organizationId, err: orgErr }, 'Organization query failed - continuing without org');
+      organization = undefined;
+    }
   }
 
   const result = {
-    roles,
+    roles: userRoles || [],
     teams: teamDetails.map(t => ({ id: t.id, name: t.name, role: t.roleName || 'member' })),
     organization,
   };
   
-  logger.info({ clerkId, result }, 'Permissions summary complete');
+  logger.info({ clerkId, resultKeys: Object.keys(result), teamsCount: result.teams.length, hasOrg: !!organization }, 'Permissions summary complete');
   return result;
 }
 
