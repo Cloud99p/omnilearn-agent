@@ -94,8 +94,8 @@ router.get('/permissions', requireAuth, async (req, res) => {
     const summary = await getUserPermissionsSummary(authReq.clerkId);
     res.json(summary);
   } catch (err) {
-    logger.error({ err }, 'Failed to get permissions summary');
-    res.status(500).json({ error: 'Failed to get permissions' });
+    logger.error({ err, clerkId: authReq.clerkId, stack: err instanceof Error ? err.stack : 'no stack' }, 'Failed to get permissions summary');
+    res.status(500).json({ error: 'Failed to get permissions', details: err instanceof Error ? err.message : String(err) });
   }
 });
 
