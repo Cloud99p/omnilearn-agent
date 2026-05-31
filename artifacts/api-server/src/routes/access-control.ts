@@ -13,6 +13,11 @@
 import { Router } from 'express';
 import { db } from '@workspace/db';
 import type { RLSRequest } from '../middlewares/rlsContext';
+
+// Helper to get RLS-enabled db client
+function getDb(req: RLSRequest) {
+  return req.db || db;
+}
 import {
   organizations,
   teams,
@@ -90,9 +95,12 @@ router.post('/check', requireAuth, async (req, res) => {
  */
 router.get('/permissions', requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
+  const rlsReq = req as RLSRequest;
+  const queryDb = getDb(rlsReq);
   
   try {
-    const summary = await getUserPermissionsSummary(authReq.clerkId);
+    // Use RLS-enabled db for permissions lookup
+    const summary = await getUserPermissionsSummary(authReq.clerkId, queryDb);
     res.json(summary);
   } catch (err) {
     logger.error({ err, clerkId: authReq.clerkId, stack: err instanceof Error ? err.stack : 'no stack' }, 'Failed to get permissions summary');
@@ -110,6 +118,8 @@ router.get('/permissions', requireAuth, async (req, res) => {
  */
 router.post('/organizations', requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
+  const rlsReq = req as RLSRequest;
+  const queryDb = getDb(rlsReq);
   const { name, slug, description, logo } = req.body;
 
   if (!name || !slug) {
@@ -117,7 +127,7 @@ router.post('/organizations', requireAuth, async (req, res) => {
   }
 
   try {
-    const [org] = await db
+    const [org] = await queryDb
       .insert(organizations)
       .values({
         name,
@@ -128,7 +138,7 @@ router.post('/organizations', requireAuth, async (req, res) => {
       .returning();
 
     // Automatically add creator as org admin
-    const adminRole = await db
+    const adminRole = await queryDb
       .select()
       .from(roles)
       .where(eq(roles.name, 'org_admin'))
@@ -136,7 +146,7 @@ router.post('/organizations', requireAuth, async (req, res) => {
 
     if (adminRole[0]) {
       // Create a default team for the organization
-      const [defaultTeam] = await db
+      const [defaultTeam] = await queryDb
         .insert(teams)
         .values({
           organizationId: org.id,
@@ -170,8 +180,10 @@ router.post('/organizations', requireAuth, async (req, res) => {
  * List all available roles
  */
 router.get('/roles', requireAuth, async (req, res) => {
+  const rlsReq = req as RLSRequest;
+  const queryDb = getDb(rlsReq);
   try {
-    const allRoles = await db.select().from(roles);
+    const allRoles = await queryDb.select().from(roles);
     res.json(allRoles);
   } catch (err) {
     logger.error({ err }, 'Failed to fetch roles');
@@ -185,10 +197,12 @@ router.get('/roles', requireAuth, async (req, res) => {
  */
 router.get('/organizations', requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
+  const rlsReq = req as RLSRequest;
+  const queryDb = getDb(rlsReq);
 
   try {
     // Get user's teams and their organizations
-    const userTeams = await db
+    const userTeams = await queryDb
       .select({
         organizationId: teams.organizationId,
         organizationName: organizations.name,
@@ -233,6 +247,8 @@ router.get('/organizations', requireAuth, async (req, res) => {
  */
 router.post('/teams', requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
+  const rlsReq = req as RLSRequest;
+  const queryDb = getDb(rlsReq);
   const { organizationId, name, slug, description } = req.body;
 
   if (!organizationId || !name || !slug) {
@@ -254,7 +270,7 @@ router.post('/teams', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden', reason: accessResult.reason });
     }
 
-    const [team] = await db
+    const [team] = await queryDb
       .insert(teams)
       .values({
         organizationId,
@@ -279,9 +295,11 @@ router.post('/teams', requireAuth, async (req, res) => {
  */
 router.get('/teams', requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
+  const rlsReq = req as RLSRequest;
+  const queryDb = getDb(rlsReq);
 
   try {
-    const userTeams = await db
+    const userTeams = await queryDb
       .select({
         id: teams.id,
         name: teams.name,
@@ -591,11 +609,13 @@ router.post('/consents', requireAuth, async (req, res) => {
  */
 router.get('/audit-logs', requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
+  const rlsReq = req as RLSRequest;
+  const queryDb = getDb(rlsReq);
   const { limit = 100, offset = 0, action, resourceType } = req.query;
 
   try {
     // Get user's roles to check for super_admin
-    const userTeams = await db
+    const userTeams = await queryDb
       .select({ roleName: roles.name })
       .from(teamMembers)
       .leftJoin(roles, eq(teamMembers.roleId, roles.id))
@@ -625,7 +645,7 @@ router.get('/audit-logs', requireAuth, async (req, res) => {
     }
 
     // Build query
-    let query = db.select().from(auditLogs);
+    let query = queryDb.select().from(auditLogs);
     
     if (action) {
       query = query.where(eq(auditLogs.action, action as string));

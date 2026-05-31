@@ -456,7 +456,10 @@ export function requirePermission(resourceType: ResourceType, action: AccessActi
 /**
  * Get user's effective permissions summary
  */
-export async function getUserPermissionsSummary(clerkId: string): Promise<{
+export async function getUserPermissionsSummary(
+  clerkId: string,
+  queryDb: typeof db = db
+): Promise<{
   roles: string[];
   teams: { id: number; name: string; role: string }[];
   organization?: { id: number; name: string };
@@ -470,7 +473,7 @@ export async function getUserPermissionsSummary(clerkId: string): Promise<{
 
   logger.info({ clerkId, teamCount: userTeamIds.length }, 'Fetching team details');
   
-  const teamDetails = await db
+  const teamDetails = await queryDb
     .select({
       id: teams.id,
       name: teams.name,
@@ -492,7 +495,7 @@ export async function getUserPermissionsSummary(clerkId: string): Promise<{
   if (organizationId) {
     logger.info({ clerkId, organizationId }, 'Fetching organization');
     try {
-      const org = await db
+      const org = await queryDb
         .select()
         .from(organizations)
         .where(eq(organizations.id, organizationId))
