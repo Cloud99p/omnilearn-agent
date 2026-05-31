@@ -1,6 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/react";
+
+// Auth fetch helper
+async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  const token = await window.Clerk?.session?.getToken();
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+}
 import {
   LineChart,
   Line,
@@ -873,8 +886,8 @@ export default function Personality() {
     try {
       // Use Clerk userId from auth context
       const [charRes, eventsRes] = await Promise.all([
-        fetch(`${BASE}/api/omni/character${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
-        fetch(`${BASE}/api/omni/character/events${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
+        fetchWithAuth(`${BASE}/api/omni/character${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
+        fetchWithAuth(`${BASE}/api/omni/character/events${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
       ]);
       if (charRes.ok) setCharacter(await charRes.json());
       if (eventsRes.ok) setEvents(await eventsRes.json());
