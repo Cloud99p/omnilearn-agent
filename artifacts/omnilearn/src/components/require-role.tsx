@@ -74,8 +74,15 @@ export function RequireRole({ allowedRoles, children, fallback }: RequireRolePro
   const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
-    if (!isLoaded || !user) {
+    // Still loading Clerk
+    if (!isLoaded) {
+      return;
+    }
+    
+    // Not authenticated
+    if (!user) {
       setLoading(false);
+      setHasAccess(false);
       return;
     }
 
