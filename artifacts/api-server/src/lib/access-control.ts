@@ -461,8 +461,15 @@ export async function getUserPermissionsSummary(clerkId: string): Promise<{
   teams: { id: number; name: string; role: string }[];
   organization?: { id: number; name: string };
 }> {
-  const { roles, teams, organizationId } = await loadUserPermissions(clerkId);
+  logger.info({ clerkId }, 'Loading permissions summary');
+  
+  const permData = await loadUserPermissions(clerkId);
+  logger.info({ clerkId, permData }, 'Permission data loaded');
+  
+  const { roles, teams, organizationId } = permData;
 
+  logger.info({ clerkId, teamCount: teams.length }, 'Fetching team details');
+  
   const teamDetails = await db
     .select({
       id: teams.id,
@@ -479,21 +486,28 @@ export async function getUserPermissionsSummary(clerkId: string): Promise<{
       )
     );
 
+  logger.info({ clerkId, teamDetailsCount: teamDetails.length }, 'Team details fetched');
+
   let organization;
   if (organizationId) {
+    logger.info({ clerkId, organizationId }, 'Fetching organization');
     const org = await db
       .select()
       .from(organizations)
       .where(eq(organizations.id, organizationId))
       .limit(1);
     organization = org[0] ? { id: org[0].id, name: org[0].name } : undefined;
+    logger.info({ clerkId, organization }, 'Organization fetched');
   }
 
-  return {
+  const result = {
     roles,
     teams: teamDetails.map(t => ({ id: t.id, name: t.name, role: t.roleName || 'member' })),
     organization,
   };
+  
+  logger.info({ clerkId, result }, 'Permissions summary complete');
+  return result;
 }
 
 /**
