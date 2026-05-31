@@ -10,8 +10,9 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@clerk/react';
-import { RequireRole } from '../components/require-role';
+import { useAuth, useUser } from '@clerk/react';
+// Temporarily disabled RequireRole to debug React error #185
+// import { RequireRole } from '../components/require-role';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -291,10 +292,7 @@ function AuditLogsContent() {
 }
 
 // Export with role protection (org_admin or super_admin only)
+// Temporarily disabled RequireRole wrapper - checking if page loads
 export default function AuditLogsPage() {
-  return (
-    <RequireRole allowedRoles={['org_admin', 'super_admin']}>
-      <AuditLogsContent />
-    </RequireRole>
-  );
+  return <AuditLogsContent />;
 }
