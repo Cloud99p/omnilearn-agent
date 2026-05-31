@@ -1,0 +1,122 @@
+import { z } from "zod/v4";
+export declare const knowledgeEdges: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "knowledge_edges";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "knowledge_edges";
+            dataType: "number";
+            columnType: "PgSerial";
+            data: number;
+            driverParam: number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        fromId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "from_id";
+            tableName: "knowledge_edges";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        toId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "to_id";
+            tableName: "knowledge_edges";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        relationship: import("drizzle-orm/pg-core").PgColumn<{
+            name: "relationship";
+            tableName: "knowledge_edges";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        weight: import("drizzle-orm/pg-core").PgColumn<{
+            name: "weight";
+            tableName: "knowledge_edges";
+            dataType: "number";
+            columnType: "PgReal";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "created_at";
+            tableName: "knowledge_edges";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+export declare const insertKnowledgeEdgeSchema: z.ZodObject<{
+    fromId: z.ZodInt;
+    toId: z.ZodInt;
+    relationship: z.ZodString;
+    weight: z.ZodOptional<z.ZodNumber>;
+}, {
+    out: {};
+    in: {};
+}>;
+export type KnowledgeEdge = typeof knowledgeEdges.$inferSelect;
+export type InsertKnowledgeEdge = z.infer<typeof insertKnowledgeEdgeSchema>;
+//# sourceMappingURL=knowledge-edges.d.ts.map

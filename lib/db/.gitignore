@@ -1,3 +1,10 @@
 # Allow dist/ to be committed (required for package.json exports)
 # Root .gitignore has "dist" but we need to override it for this package
 !dist/
+
+# Also commit the built files explicitly
+!dist/index.js
+!dist/index.d.ts
+!dist/schema/
+!*.js
+!*.d.ts

@@ -1,0 +1,366 @@
+import { z } from "zod/v4";
+export declare const trainingLogs: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "training_logs";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "training_logs";
+            dataType: "number";
+            columnType: "PgSerial";
+            data: number;
+            driverParam: number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        query: import("drizzle-orm/pg-core").PgColumn<{
+            name: "query";
+            tableName: "training_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        retrievedNodes: import("drizzle-orm/pg-core").PgColumn<{
+            name: "retrieved_nodes";
+            tableName: "training_logs";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: {
+                content: string;
+                similarity: number;
+            }[];
+            driverParam: unknown;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            $type: {
+                content: string;
+                similarity: number;
+            }[];
+        }>;
+        responseType: import("drizzle-orm/pg-core").PgColumn<{
+            name: "response_type";
+            tableName: "training_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        nativeResponse: import("drizzle-orm/pg-core").PgColumn<{
+            name: "native_response";
+            tableName: "training_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        llmResponse: import("drizzle-orm/pg-core").PgColumn<{
+            name: "llm_response";
+            tableName: "training_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        finalResponse: import("drizzle-orm/pg-core").PgColumn<{
+            name: "final_response";
+            tableName: "training_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        nodesUsed: import("drizzle-orm/pg-core").PgColumn<{
+            name: "nodes_used";
+            tableName: "training_logs";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        avgSimilarity: import("drizzle-orm/pg-core").PgColumn<{
+            name: "avg_similarity";
+            tableName: "training_logs";
+            dataType: "number";
+            columnType: "PgReal";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        characterState: import("drizzle-orm/pg-core").PgColumn<{
+            name: "character_state";
+            tableName: "training_logs";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: {
+                curiosity: number;
+                confidence: number;
+                technical: number;
+                empathy: number;
+                creativity: number;
+                verbosity: number;
+            };
+            driverParam: unknown;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            $type: {
+                curiosity: number;
+                confidence: number;
+                technical: number;
+                empathy: number;
+                creativity: number;
+                verbosity: number;
+            };
+        }>;
+        conversationId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "conversation_id";
+            tableName: "training_logs";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userReplied: import("drizzle-orm/pg-core").PgColumn<{
+            name: "user_replied";
+            tableName: "training_logs";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: false;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        followUpQuery: import("drizzle-orm/pg-core").PgColumn<{
+            name: "follow_up_query";
+            tableName: "training_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        conversationTurns: import("drizzle-orm/pg-core").PgColumn<{
+            name: "conversation_turns";
+            tableName: "training_logs";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        llmScore: import("drizzle-orm/pg-core").PgColumn<{
+            name: "llm_score";
+            tableName: "training_logs";
+            dataType: "number";
+            columnType: "PgReal";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "created_at";
+            tableName: "training_logs";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+export declare const insertTrainingLogSchema: z.ZodObject<{
+    query: z.ZodString;
+    conversationId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    retrievedNodes: z.ZodOptional<z.ZodNullable<z.ZodType<{
+        content: string;
+        similarity: number;
+    }[], {
+        content: string;
+        similarity: number;
+    }[], z.core.$ZodTypeInternals<{
+        content: string;
+        similarity: number;
+    }[], {
+        content: string;
+        similarity: number;
+    }[]>>>>;
+    responseType: z.ZodString;
+    nativeResponse: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    llmResponse: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    finalResponse: z.ZodString;
+    nodesUsed: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    avgSimilarity: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    characterState: z.ZodOptional<z.ZodNullable<z.ZodType<{
+        curiosity: number;
+        confidence: number;
+        technical: number;
+        empathy: number;
+        creativity: number;
+        verbosity: number;
+    }, {
+        curiosity: number;
+        confidence: number;
+        technical: number;
+        empathy: number;
+        creativity: number;
+        verbosity: number;
+    }, z.core.$ZodTypeInternals<{
+        curiosity: number;
+        confidence: number;
+        technical: number;
+        empathy: number;
+        creativity: number;
+        verbosity: number;
+    }, {
+        curiosity: number;
+        confidence: number;
+        technical: number;
+        empathy: number;
+        creativity: number;
+        verbosity: number;
+    }>>>>;
+    userReplied: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+    followUpQuery: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    conversationTurns: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    llmScore: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+}, {
+    out: {};
+    in: {};
+}>;
+export type TrainingLog = typeof trainingLogs.$inferSelect;
+export type InsertTrainingLog = z.infer<typeof insertTrainingLogSchema>;
+//# sourceMappingURL=training-logs.d.ts.map
