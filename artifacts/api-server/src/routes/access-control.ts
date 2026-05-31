@@ -496,8 +496,8 @@ router.get('/consents', requireAuth, async (req, res) => {
     const consents = await db
       .select({
         dataType: dataTypes.name,
-        displayName: dataTypes.display_name,
-        sensitivityLevel: dataTypes.sensitivity_level,
+        displayName: dataTypes.displayName,
+        sensitivityLevel: dataTypes.sensitivityLevel,
         granted: userConsents.granted,
         grantedAt: userConsents.grantedAt,
         revokedAt: userConsents.revokedAt,

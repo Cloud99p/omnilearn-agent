@@ -264,7 +264,7 @@ async function checkRolePermission(
 
   // Check for wildcard permissions (super admin)
   const wildcardPermission = permissions.find(
-    p => p.role_permissions.resource_type === '*' && p.role_permissions.action === '*'
+    p => p.role_permissions?.resourceType === '*' && p.role_permissions?.action === '*'
   );
   if (wildcardPermission) {
     return true;
@@ -272,9 +272,9 @@ async function checkRolePermission(
 
   // Check for specific permission
   const hasPermission = permissions.some(p => {
-    const matchesResource = p.role_permissions.resource_type === resourceType || p.role_permissions.resource_type === '*';
-    const matchesAction = p.role_permissions.action === action || p.role_permissions.action === '*';
-    const matchesScope = p.role_permissions.scope === scope || p.role_permissions.scope === 'all';
+    const matchesResource = p.role_permissions?.resourceType === resourceType || p.role_permissions?.resourceType === '*';
+    const matchesAction = p.role_permissions?.action === action || p.role_permissions?.action === '*';
+    const matchesScope = p.role_permissions?.scope === scope || p.role_permissions?.scope === 'all';
     return matchesResource && matchesAction && matchesScope;
   });
 
@@ -336,8 +336,8 @@ async function getDataTypeConfig(dataTypeName: string): Promise<{
   if (!dataType[0]) return null;
 
   return {
-    sensitivityLevel: dataType[0].sensitivity_level,
-    requiresExplicitConsent: dataType[0].requires_explicit_consent,
+    sensitivityLevel: dataType[0].sensitivityLevel,
+    requiresExplicitConsent: dataType[0].requiresExplicitConsent,
   };
 }
 
