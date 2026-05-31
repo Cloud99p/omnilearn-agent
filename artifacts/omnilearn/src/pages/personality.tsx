@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/react";
 
-// Auth fetch helper
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = await window.Clerk?.session?.getToken();
+// Auth fetch helper - uses getToken from useAuth hook
+async function fetchWithAuth(url: string, getToken: () => Promise<string>, options: RequestInit = {}) {
+  const token = await getToken();
   return fetch(url, {
     ...options,
     headers: {
@@ -880,14 +880,14 @@ export default function Personality() {
   const [activeTraits, setActiveTraits] = useState<Set<Trait>>(
     new Set(ALL_TRAITS),
   );
-  const { userId } = useAuth();
+  const { userId, getToken } = useAuth();
 
   const fetchData = useCallback(async () => {
     try {
       // Use Clerk userId from auth context
       const [charRes, eventsRes] = await Promise.all([
-        fetchWithAuth(`${BASE}/api/omni/character${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
-        fetchWithAuth(`${BASE}/api/omni/character/events${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
+        fetchWithAuth(`${BASE}/api/omni/character${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`, getToken),
+        fetchWithAuth(`${BASE}/api/omni/character/events${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`, getToken),
       ]);
       if (charRes.ok) setCharacter(await charRes.json());
       if (eventsRes.ok) setEvents(await eventsRes.json());
@@ -897,7 +897,7 @@ export default function Personality() {
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, getToken]);
 
   useEffect(() => {
     fetchData();

@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/react";
 
-// Auth fetch helper
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = await window.Clerk?.session?.getToken();
+// Auth fetch helper - uses getToken from useAuth hook for proper token handling
+async function fetchWithAuth(url: string, getToken: () => Promise<string>, options: RequestInit = {}) {
+  const token = await getToken();
   return fetch(url, {
     ...options,
     headers: {
@@ -746,25 +746,25 @@ export default function IntelligencePage() {
   const [decaying, setDecaying] = useState(false);
 
   // ── Fetchers ─────────────────────────────────────────────────────────────
-  const { userId } = useAuth();
+  const { userId, getToken } = useAuth();
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetchWithAuth(`${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`);
+      const res = await fetchWithAuth(`${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`, getToken);
       if (res.ok) setStats(await res.json());
     } catch {
       /* ignore */
     }
-  }, [userId]);
+  }, [userId, getToken]);
 
   const fetchCharacter = useCallback(async () => {
     try {
-      const res = await fetchWithAuth(`${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`);
+      const res = await fetchWithAuth(`${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`, getToken);
       if (res.ok) setCharacter(await res.json());
     } catch {
       /* ignore */
     }
-  }, [userId]);
+  }, [userId, getToken]);
 
   const fetchNodes = useCallback(async (q?: string) => {
     setSearching(true);
@@ -772,14 +772,14 @@ export default function IntelligencePage() {
       const url = q
         ? `${BASE}/api/omni/knowledge?search=${encodeURIComponent(q)}`
         : `${BASE}/api/omni/knowledge?limit=40`;
-      const res = await fetchWithAuth(url);
+      const res = await fetchWithAuth(url, getToken);
       if (res.ok) setNodes(await res.json());
     } catch {
       /* ignore */
     } finally {
       setSearching(false);
     }
-  }, []);
+  }, [getToken]);
 
   const fetchOntology = useCallback(async (filter?: string) => {
     setOntologyLoading(true);
