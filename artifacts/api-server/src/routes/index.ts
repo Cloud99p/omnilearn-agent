@@ -50,7 +50,7 @@ router.use("/local", chatLimiter, localChatRouter); // Local chat (30 req/hour)
 router.use("/skills", defaultLimiter, skillsRouter); // Default limit (100 req/15min)
 router.use(meRouter); // Default limit
 router.use(githubLimiter, githubRouter); // GitHub API (10 req/hour)
-router.use(defaultLimiter, omniRouter); // Default limit (routes use /omni/ prefix internally)
+router.use("/omni", omniRouter); // Mount at /api/omni/*
 router.use(defaultLimiter, ghostRouter); // Default limit
 router.use(defaultLimiter, networkRouter); // Default limit
 router.use(defaultLimiter, networkStatsRouter); // Network stats endpoints
