@@ -165,6 +165,20 @@ router.post('/organizations', requireAuth, async (req, res) => {
 });
 
 /**
+ * GET /api/access/roles
+ * List all available roles
+ */
+router.get('/roles', requireAuth, async (req, res) => {
+  try {
+    const allRoles = await db.select().from(roles);
+    res.json(allRoles);
+  } catch (err) {
+    logger.error({ err }, 'Failed to fetch roles');
+    res.status(500).json({ error: 'Failed to fetch roles' });
+  }
+});
+
+/**
  * GET /api/access/organizations
  * List organizations user belongs to
  */
