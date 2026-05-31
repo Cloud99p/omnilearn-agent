@@ -10,9 +10,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useAuth, useUser } from '@clerk/react';
-// Temporarily disabled RequireRole to debug React error #185
-// import { RequireRole } from '../components/require-role';
+import { useAuth } from '@clerk/react';
+import { RequireRole } from '../components/require-role';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -100,21 +99,21 @@ function AuditLogsContent() {
     }
   }
 
-  useEffect(() => {
-    let filtered = [...logs];
+  // Compute filtered logs inline (no state update to avoid infinite loop)
+  const filteredLogs = logs.filter((log) => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (log) => log.clerkId.toLowerCase().includes(query) ||
-          log.action.toLowerCase().includes(query) ||
-          log.resourceType?.toLowerCase().includes(query)
-      );
+      if (!log.clerkId.toLowerCase().includes(query) &&
+          !log.action.toLowerCase().includes(query) &&
+          !log.resourceType?.toLowerCase().includes(query)) {
+        return false;
+      }
     }
-    if (decisionFilter !== 'all') {
-      filtered = filtered.filter((log) => log.decision === decisionFilter);
+    if (decisionFilter !== 'all' && log.decision !== decisionFilter) {
+      return false;
     }
-    setLogs(filtered);
-  }, [searchQuery, decisionFilter, logs]);
+    return true;
+  });
 
   function exportLogs() {
     const csv = [
@@ -254,7 +253,7 @@ function AuditLogsContent() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {logs.map((log) => (
+            {filteredLogs.map((log) => (
               <TableRow key={log.id}>
                 <TableCell className="text-sm">{new Date(log.createdAt).toLocaleString()}</TableCell>
                 <TableCell>
@@ -277,7 +276,7 @@ function AuditLogsContent() {
                 </TableCell>
               </TableRow>
             ))}
-            {logs.length === 0 && (
+            {filteredLogs.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   No audit logs found
@@ -292,7 +291,10 @@ function AuditLogsContent() {
 }
 
 // Export with role protection (org_admin or super_admin only)
-// Temporarily disabled RequireRole wrapper - checking if page loads
 export default function AuditLogsPage() {
-  return <AuditLogsContent />;
+  return (
+    <RequireRole allowedRoles={['org_admin', 'super_admin']}>
+      <AuditLogsContent />
+    </RequireRole>
+  );
 }
