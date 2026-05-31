@@ -491,16 +491,29 @@ export async function getUserPermissionsSummary(
 
   logger.info({ clerkId, teamDetailsCount: teamDetails.length }, 'Team details fetched');
 
+  // Fetch organization through RLS-compliant path (via team_members -> teams -> organizations)
   let organization;
   if (organizationId) {
-    logger.info({ clerkId, organizationId }, 'Fetching organization');
+    logger.info({ clerkId, organizationId }, 'Fetching organization via RLS-compliant path');
     try {
-      const org = await queryDb
-        .select()
-        .from(organizations)
-        .where(eq(organizations.id, organizationId))
+      const orgResult = await queryDb
+        .select({
+          id: organizations.id,
+          name: organizations.name,
+        })
+        .from(teamMembers)
+        .leftJoin(teams, eq(teamMembers.teamId, teams.id))
+        .leftJoin(organizations, eq(teams.organizationId, organizations.id))
+        .where(
+          and(
+            eq(teamMembers.clerkId, clerkId),
+            eq(organizations.id, organizationId),
+            eq(teamMembers.status, 'active')
+          )
+        )
         .limit(1);
-      organization = org[0] ? { id: org[0].id, name: org[0].name } : undefined;
+      
+      organization = orgResult[0] ? { id: orgResult[0].id, name: orgResult[0].name } : undefined;
       logger.info({ clerkId, organization }, 'Organization fetched');
     } catch (orgErr) {
       logger.warn({ clerkId, organizationId, err: orgErr }, 'Organization query failed - continuing without org');
