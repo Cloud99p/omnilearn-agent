@@ -466,9 +466,9 @@ export async function getUserPermissionsSummary(clerkId: string): Promise<{
   const permData = await loadUserPermissions(clerkId);
   logger.info({ clerkId, permData }, 'Permission data loaded');
   
-  const { roles, teams, organizationId } = permData;
+  const { roles: userRoles, teams: userTeamIds, organizationId } = permData;
 
-  logger.info({ clerkId, teamCount: teams.length }, 'Fetching team details');
+  logger.info({ clerkId, teamCount: userTeamIds.length }, 'Fetching team details');
   
   const teamDetails = await db
     .select({
