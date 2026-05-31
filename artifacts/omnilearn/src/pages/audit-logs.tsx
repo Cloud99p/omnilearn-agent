@@ -11,7 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/react';
-import RequireRole from '../components/require-role';
+import { RequireRole } from '../components/require-role';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
