@@ -52,7 +52,9 @@ import GhostNetworkPage from "@/pages/ghost-network";
 import WorkerPage from "@/pages/worker";
 import SmarterPage from "@/pages/smarter";
 import TeamsPage from "@/pages/teams";
-import AuditLogsPage from "@/pages/audit-logs";
+
+// Lazy load AuditLogs to match other pages and avoid RequireRole issues
+const AuditLogsPage = lazy(() => import("@/pages/audit-logs"));
 
 const queryClient = new QueryClient();
 
