@@ -8,14 +8,14 @@ import growthHistoryRouter from "./growth-history.js";
 
 const router = Router();
 
-// SPECIFIC routes first (before catch-all /omni)
-router.use("/omni/train", trainRouter);
-router.use("/omni/knowledge", knowledgeRouter);
-router.use("/omni/character", characterRouter);
-router.use("/omni/smarter-proof", smarterProofRouter);
-router.use("/omni/growth-history", growthHistoryRouter);
+// SPECIFIC routes first (before catch-all)
+router.use("/train", trainRouter);
+router.use("/knowledge", knowledgeRouter);
+router.use("/character", characterRouter);
+router.use("/smarter-proof", smarterProofRouter);
+router.use("/growth-history", growthHistoryRouter);
 
 // CATCH-ALL route last
-router.use("/omni", chatRouter);
+router.use("/chat", chatRouter);
 
 export default router;

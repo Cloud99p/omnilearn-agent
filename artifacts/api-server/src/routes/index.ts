@@ -57,10 +57,7 @@ router.use(defaultLimiter, networkStatsRouter); // Network stats endpoints
 router.use("/brain", defaultLimiter, brainProposalsRouter); // Default limit
 router.use("/brain", defaultLimiter, brainOntologyRouter); // Default limit
 router.use("/moderation", defaultLimiter, moderationRouter); // Default limit
-router.use("/omni/character", defaultLimiter, characterRouter); // Character stats
-
-// New routes for complete frontend-backend parity
-router.use("/omni/knowledge", defaultLimiter, knowledgeRouter); // Knowledge graph
+// character & knowledge routes handled by omniRouter
 router.use("/dna", defaultLimiter, dnaRouter); // Instance DNA
 router.use("/modes", defaultLimiter, modesRouter); // Operating modes
 router.use("/intelligence", defaultLimiter, intelligenceRouter); // Intelligence stats
