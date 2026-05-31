@@ -12,6 +12,7 @@
 
 import { Router } from 'express';
 import { db } from '@workspace/db';
+import type { RLSRequest } from '../middlewares/rlsContext';
 import {
   organizations,
   teams,
@@ -593,17 +594,34 @@ router.get('/audit-logs', requireAuth, async (req, res) => {
   const { limit = 100, offset = 0, action, resourceType } = req.query;
 
   try {
-    // Check if user has admin permission
-    const accessResult = await checkAccess({
-      user: { clerkId: authReq.clerkId },
-      action: 'admin',
-      resource: {
-        type: 'organization',
-      },
-    });
+    // Get user's roles to check for super_admin
+    const userTeams = await db
+      .select({ roleName: roles.name })
+      .from(teamMembers)
+      .leftJoin(roles, eq(teamMembers.roleId, roles.id))
+      .where(
+        and(
+          eq(teamMembers.clerkId, authReq.clerkId),
+          eq(teamMembers.status, 'active')
+        )
+      );
+    
+    const hasSuperAdmin = userTeams.some(t => t.roleName === 'super_admin');
+    
+    // Super admin has access to everything
+    if (!hasSuperAdmin) {
+      // Check if user has admin permission
+      const accessResult = await checkAccess({
+        user: { clerkId: authReq.clerkId },
+        action: 'admin',
+        resource: {
+          type: 'organization',
+        },
+      });
 
-    if (!accessResult.allowed) {
-      return res.status(403).json({ error: 'Forbidden', reason: accessResult.reason });
+      if (!accessResult.allowed) {
+        return res.status(403).json({ error: 'Forbidden', reason: accessResult.reason });
+      }
     }
 
     // Build query
