@@ -74,42 +74,43 @@ export function RequireRole({ allowedRoles, children, fallback }: RequireRolePro
   const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
-    // Still loading Clerk
+    async function loadPermissions() {
+      try {
+        const perms = await fetchUserPermissions();
+        setPermissions(perms);
+
+        if (perms && perms.roles) {
+          const userHasRole = allowedRoles.some(role => 
+            perms.roles.includes(role)
+          );
+          setHasAccess(userHasRole);
+        } else {
+          setHasAccess(false);
+        }
+      } catch (err) {
+        console.error('Failed to load permissions:', err);
+        setHasAccess(false);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Still loading Clerk - show loading state
     if (!isLoaded) {
+      setLoading(true);
       return;
     }
     
-    // Not authenticated
+    // Not authenticated - deny access
     if (!user) {
       setLoading(false);
       setHasAccess(false);
       return;
     }
 
+    // User is loaded and authenticated - fetch permissions
     loadPermissions();
   }, [isLoaded, user]);
-
-  async function loadPermissions() {
-    try {
-      setLoading(true);
-      const perms = await fetchUserPermissions();
-      setPermissions(perms);
-
-      if (perms && perms.roles) {
-        const userHasRole = allowedRoles.some(role => 
-          perms.roles.includes(role)
-        );
-        setHasAccess(userHasRole);
-      } else {
-        setHasAccess(false);
-      }
-    } catch (err) {
-      console.error('Failed to load permissions:', err);
-      setHasAccess(false);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   if (loading) {
     return (
