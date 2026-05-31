@@ -1,0 +1,3 @@
+# Allow dist/ to be committed (required for package.json exports)
+# Root .gitignore has "dist" but we need to override it for this package
+!dist/

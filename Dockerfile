@@ -23,13 +23,14 @@ RUN pnpm --filter @workspace/db build
 # Build network-hierarchy
 RUN cd packages/network-hierarchy && pnpm build
 
-# Set working directory
+# Build api-server (compile TypeScript to JavaScript)
 WORKDIR /app/artifacts/api-server
+RUN pnpm build
 
 # Expose port
 EXPOSE 3000
 
-# Start server
+# Start server (use compiled JavaScript, not tsx)
 CMD ["pnpm", "start"]
 
 # Health check
