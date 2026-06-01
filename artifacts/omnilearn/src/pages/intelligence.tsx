@@ -4,15 +4,49 @@ import { useAuth } from "@clerk/react";
 
 // Auth fetch helper - uses Clerk session directly (same as teams.tsx)
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = await window.Clerk?.session?.getToken();
-  return fetch(url, {
+  const clerkSession = window.Clerk?.session;
+  console.log('[fetchWithAuth] Checking Clerk session...');
+  console.log('[fetchWithAuth] window.Clerk:', !!window.Clerk);
+  console.log('[fetchWithAuth] window.Clerk.session:', !!clerkSession);
+  
+  let token: string | null = null;
+  if (clerkSession) {
+    try {
+      token = await clerkSession.getToken();
+      console.log('[fetchWithAuth] Token obtained:', token ? '✅' : '❌ null');
+      console.log('[fetchWithAuth] Token length:', token?.length);
+    } catch (err) {
+      console.error('[fetchWithAuth] getToken() failed:', err);
+    }
+  } else {
+    console.error('[fetchWithAuth] No Clerk session available!');
+  }
+  
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+    console.log('[fetchWithAuth] Adding Authorization header');
+  } else {
+    console.warn('[fetchWithAuth] NO Authorization header - token is null/undefined');
+  }
+  
+  console.log('[fetchWithAuth] Fetching:', url);
+  
+  const response = await fetch(url, {
     ...options,
     headers: {
       ...options.headers,
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      ...headers,
     },
   });
+  
+  console.log('[fetchWithAuth] Response status:', response.status);
+  console.log('[fetchWithAuth] Response ok:', response.ok);
+  
+  return response;
 }
 import {
   Brain,
@@ -749,22 +783,44 @@ export default function IntelligencePage() {
   const { userId, getToken } = useAuth();
 
   const fetchStats = useCallback(async () => {
+    console.log('[fetchStats] Starting...');
+    console.log('[fetchStats] userId:', userId);
+    console.log('[fetchStats] BASE:', BASE);
+    console.log('[fetchStats] URL:', `${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`);
     try {
       const res = await fetchWithAuth(`${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`);
-      if (res.ok) setStats(await res.json());
-    } catch {
-      /* ignore */
+      console.log('[fetchStats] Response:', res.status, res.ok);
+      if (res.ok) {
+        const data = await res.json();
+        console.log('[fetchStats] Data:', data);
+        setStats(data);
+      } else {
+        const errorText = await res.text();
+        console.error('[fetchStats] Error response:', errorText);
+      }
+    } catch (err) {
+      console.error('[fetchStats] Fetch failed:', err);
     }
-  }, [userId, getToken]);
+  }, [userId, BASE]);
 
   const fetchCharacter = useCallback(async () => {
+    console.log('[fetchCharacter] Starting...');
+    console.log('[fetchCharacter] URL:', `${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`);
     try {
       const res = await fetchWithAuth(`${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`);
-      if (res.ok) setCharacter(await res.json());
-    } catch {
-      /* ignore */
+      console.log('[fetchCharacter] Response:', res.status, res.ok);
+      if (res.ok) {
+        const data = await res.json();
+        console.log('[fetchCharacter] Data:', data);
+        setCharacter(data);
+      } else {
+        const errorText = await res.text();
+        console.error('[fetchCharacter] Error response:', errorText);
+      }
+    } catch (err) {
+      console.error('[fetchCharacter] Fetch failed:', err);
     }
-  }, [userId, getToken]);
+  }, [userId, BASE]);
 
   const fetchNodes = useCallback(async (q?: string) => {
     setSearching(true);
@@ -931,9 +987,13 @@ export default function IntelligencePage() {
   }, []);
 
   useEffect(() => {
-    Promise.all([fetchStats(), fetchCharacter(), fetchNodes()]).finally(() =>
-      setLoading(false),
-    );
+    console.log('[useEffect] Intelligence page mounted');
+    console.log('[useEffect] userId:', userId);
+    console.log('[useEffect] Loading stats, character, nodes...');
+    Promise.all([fetchStats(), fetchCharacter(), fetchNodes()]).finally(() => {
+      console.log('[useEffect] Loading complete');
+      setLoading(false);
+    });
   }, [fetchStats, fetchCharacter, fetchNodes]);
 
   useEffect(() => {
