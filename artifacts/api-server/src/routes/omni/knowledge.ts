@@ -13,12 +13,12 @@ import {
 } from "../../brain/index.js";
 import { tokenize } from "../../brain/tfidf.js";
 import { contributeNeurons } from "../../brain/network.js";
-import { requireAuth, AuthenticatedRequest } from "../../middlewares/requireAuth.js";
+import { optionalAuth, AuthenticatedRequest } from "../../middlewares/optionalAuth.js";
 
 const router = Router();
 
 // GET /api/omni/knowledge — list knowledge nodes with optional search (user-specific)
-router.get("/", requireAuth, async (req, res) => {
+router.get("/", optionalAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   const clerkId = authReq.clerkId;
   
@@ -37,11 +37,12 @@ router.get("/", requireAuth, async (req, res) => {
     return;
   }
 
-  // Filter by user's clerkId
+  // Filter by user's clerkId (or global nodes for anonymous users)
+  const nodeWhere = clerkId ? eq(knowledgeNodes.clerkId, clerkId) : sql`${knowledgeNodes.clerkId} IS NULL`;
   const rows = await db
     .select()
     .from(knowledgeNodes)
-    .where(eq(knowledgeNodes.clerkId, clerkId))
+    .where(nodeWhere)
     .orderBy(desc(knowledgeNodes.updatedAt))
     .limit(Number(limit))
     .offset(Number(offset));
@@ -54,34 +55,39 @@ router.get("/", requireAuth, async (req, res) => {
   res.json(result);
 });
 
-// GET /api/omni/knowledge/stats — user-specific stats
-router.get("/stats", requireAuth, async (req, res) => {
+// GET /api/omni/knowledge/stats — user-specific stats (or global for anonymous)
+router.get("/stats", optionalAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   const clerkId = authReq.clerkId;
+  
+  // For anonymous users, return global stats (clerkId IS NULL)
+  const nodeWhere = clerkId ? eq(knowledgeNodes.clerkId, clerkId) : sql`${knowledgeNodes.clerkId} IS NULL`;
+  const edgeWhere = clerkId ? eq(knowledgeEdges.clerkId, clerkId) : sql`${knowledgeEdges.clerkId} IS NULL`;
+  const logWhere = clerkId ? eq(learningLog.agentId, clerkId) : sql`${learningLog.agentId} IS NULL`;
   
   const [{ nodeCount }] = await db
     .select({ nodeCount: sql<number>`count(*)` })
     .from(knowledgeNodes)
-    .where(eq(knowledgeNodes.clerkId, clerkId));
+    .where(nodeWhere);
   const [{ edgeCount }] = await db
     .select({ edgeCount: sql<number>`count(*)` })
     .from(knowledgeEdges)
-    .where(eq(knowledgeEdges.clerkId, clerkId));
+    .where(edgeWhere);
   const [{ logCount }] = await db
     .select({ logCount: sql<number>`count(*)` })
     .from(learningLog)
-    .where(eq(learningLog.agentId, clerkId));
+    .where(logWhere);
 
   const typeCounts = await db
     .select({ type: knowledgeNodes.type, count: sql<number>`count(*)` })
     .from(knowledgeNodes)
-    .where(eq(knowledgeNodes.clerkId, clerkId))
+    .where(nodeWhere)
     .groupBy(knowledgeNodes.type);
 
   const recentLog = await db
     .select()
     .from(learningLog)
-    .where(eq(learningLog.agentId, clerkId))
+    .where(logWhere)
     .orderBy(desc(learningLog.createdAt))
     .limit(10);
 
