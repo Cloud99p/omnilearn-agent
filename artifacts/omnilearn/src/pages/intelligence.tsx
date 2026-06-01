@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/react";
 
-// Auth fetch helper - uses getToken from useAuth hook for proper token handling
-async function fetchWithAuth(url: string, getToken: () => Promise<string>, options: RequestInit = {}) {
-  const token = await getToken();
+// Auth fetch helper - uses Clerk session directly (same as teams.tsx)
+async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  const token = await window.Clerk?.session?.getToken();
   return fetch(url, {
     ...options,
     headers: {
@@ -750,7 +750,7 @@ export default function IntelligencePage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetchWithAuth(`${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`, getToken);
+      const res = await fetchWithAuth(`${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`);
       if (res.ok) setStats(await res.json());
     } catch {
       /* ignore */
@@ -759,7 +759,7 @@ export default function IntelligencePage() {
 
   const fetchCharacter = useCallback(async () => {
     try {
-      const res = await fetchWithAuth(`${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`, getToken);
+      const res = await fetchWithAuth(`${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`);
       if (res.ok) setCharacter(await res.json());
     } catch {
       /* ignore */
@@ -772,7 +772,7 @@ export default function IntelligencePage() {
       const url = q
         ? `${BASE}/api/omni/knowledge?search=${encodeURIComponent(q)}`
         : `${BASE}/api/omni/knowledge?limit=40`;
-      const res = await fetchWithAuth(url, getToken);
+      const res = await fetchWithAuth(url);
       if (res.ok) setNodes(await res.json());
     } catch {
       /* ignore */
