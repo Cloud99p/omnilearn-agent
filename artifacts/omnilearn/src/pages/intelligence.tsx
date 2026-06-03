@@ -212,7 +212,6 @@ interface ReflectionResult {
 }
 
 type Tab =
-  | "overview"
   | "network"
   | "knowledge"
   | "train"
@@ -670,7 +669,7 @@ function NodeCard({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function IntelligencePage() {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("knowledge");
 
   // Local intelligence state
   const [stats, setStats] = useState<Stats | null>(null);
@@ -1203,7 +1202,6 @@ export default function IntelligencePage() {
   // ── Tabs ─────────────────────────────────────────────────────────────────
 
   const TABS: Array<{ id: Tab; label: string; icon: React.ElementType }> = [
-    { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "network", label: "Network Brain", icon: Network },
     { id: "knowledge", label: "Knowledge", icon: Database },
     { id: "train", label: "Training", icon: Zap },
@@ -1753,20 +1751,19 @@ export default function IntelligencePage() {
         </div>
       )}
 
-      {/* ── OVERVIEW TAB ─────────────────────────────────────────────────────── */}
-      {tab === "overview" && stats && (
+
+
+      {/* ── KNOWLEDGE TAB ─────────────────────────────────────────────────────── */}
+      {tab === "knowledge" && (
         <div className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
+          {/* Knowledge by Type breakdown (moved from Overview) */}
+          {stats && stats.typeCounts.length > 0 && (
             <div className="p-5 rounded-xl border border-border/40 bg-card/40 space-y-3">
               <h3 className="font-mono text-sm font-bold text-foreground">
                 Knowledge by Type
               </h3>
-              {stats.typeCounts.length === 0 ? (
-                <p className="text-muted-foreground font-mono text-xs">
-                  No knowledge loaded yet.
-                </p>
-              ) : (
-                stats.typeCounts.map(({ type, count }) => {
+              <div className="grid md:grid-cols-2 gap-4">
+                {stats.typeCounts.map(({ type, count }) => {
                   const Icon = TYPE_ICONS[type] ?? BookOpen;
                   const colorClass = TYPE_COLORS[type] ?? TYPE_COLORS.fact;
                   const pct = Math.round(
@@ -1776,184 +1773,135 @@ export default function IntelligencePage() {
                     <div key={type} className="flex items-center gap-3">
                       <div
                         className={cn(
-                          "w-5 h-5 rounded border flex items-center justify-center shrink-0",
+                          "w-6 h-6 rounded border flex items-center justify-center shrink-0",
                           colorClass,
                         )}
                       >
-                        <Icon className="w-2.5 h-2.5" />
+                        <Icon className="w-3 h-3" />
                       </div>
-                      <span className="font-mono text-xs text-muted-foreground w-20 capitalize">
-                        {type}
-                      </span>
-                      <div className="flex-1 h-1.5 bg-secondary/40 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary/40 rounded-full"
-                          style={{ width: `${pct}%` }}
-                        />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-mono text-xs text-muted-foreground capitalize">
+                            {type}
+                          </span>
+                          <span className="font-mono text-xs text-foreground">
+                            {Number(count)} ({pct}%)
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-secondary/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary/40 rounded-full"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
-                      <span className="font-mono text-xs text-foreground w-8 text-right">
-                        {Number(count)}
-                      </span>
                     </div>
                   );
-                })
-              )}
+                })}
+              </div>
             </div>
+          )}
 
+          {/* Recent Learning Events (moved from Overview) */}
+          {stats && stats.recentLog.length > 0 && (
             <div className="p-5 rounded-xl border border-border/40 bg-card/40 space-y-3">
               <h3 className="font-mono text-sm font-bold text-foreground">
                 Recent Learning Events
               </h3>
-              {stats.recentLog.length === 0 ? (
-                <p className="text-muted-foreground font-mono text-xs">
-                  No learning events yet. Start a conversation in Native mode.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {stats.recentLog.slice(0, 8).map((log) => (
-                    <div key={log.id} className="flex items-start gap-2">
-                      <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        <p className="font-mono text-xs text-foreground truncate">
-                          {log.details}
-                        </p>
-                        <p className="font-mono text-[10px] text-muted-foreground/50">
-                          +{log.nodesAdded} node
-                          {log.nodesAdded !== 1 ? "s" : ""} · {log.event}
-                        </p>
-                      </div>
+              <div className="space-y-2">
+                {stats.recentLog.slice(0, 8).map((log) => (
+                  <div key={log.id} className="flex items-start gap-2">
+                    <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="font-mono text-xs text-foreground truncate">
+                        {log.details}
+                      </p>
+                      <p className="font-mono text-[10px] text-muted-foreground/50">
+                        +{log.nodesAdded} node
+                        {log.nodesAdded !== 1 ? "s" : ""} · {log.event}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="p-5 rounded-xl border border-border/40 bg-card/40">
-            <h3 className="font-mono text-sm font-bold text-foreground mb-4">
-              How the Intelligence Works
-            </h3>
-            <div className="grid md:grid-cols-3 gap-4 text-xs font-mono text-muted-foreground">
-              {[
-                {
-                  icon: Database,
-                  title: "Knowledge Graph",
-                  body: "Every fact, concept, rule, and opinion is stored as a node in a persistent graph. Nodes are connected by typed edges (causes, enables, is-a).",
-                },
-                {
-                  icon: Search,
-                  title: "TF-IDF Retrieval",
-                  body: "Queries are matched against all knowledge nodes using Term Frequency-Inverse Document Frequency cosine similarity — no embeddings API needed.",
-                },
-                {
-                  icon: Activity,
-                  title: "Character Evolution",
-                  body: "Traits like curiosity, caution, and technical depth shift gradually with every learning event, shaping how the model expresses its knowledge.",
-                },
-                {
-                  icon: Network,
-                  title: "Distributed Network",
-                  body: "A separate shared brain grows across all agents. Neurons reinforce each other via Hebbian learning — knowledge that's accessed together, wires together.",
-                },
-                {
-                  icon: Zap,
-                  title: "Response Synthesis",
-                  body: "Retrieved knowledge chunks are assembled into natural language responses using confidence-calibrated templates and character-voice modifiers.",
-                },
-                {
-                  icon: Shield,
-                  title: "Self-Contained Engine",
-                  body: "The knowledge graph, TF-IDF retrieval, character engine, and response synthesis all run on your own server. Omni is the agent — not a wrapper around a third-party chatbot.",
-                },
-              ].map(({ icon: Icon, title, body }) => (
-                <div key={title} className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Icon className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-foreground font-bold">{title}</span>
                   </div>
-                  <p>{body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── KNOWLEDGE TAB ─────────────────────────────────────────────────────── */}
-      {tab === "knowledge" && (
-        <div className="space-y-4">
-          <div className="flex gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search knowledge semantically…"
-                className="w-full bg-background border border-border/50 rounded-lg pl-9 pr-4 py-2.5 text-sm font-mono focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/40"
-              />
-              {searching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-primary/50" />
-              )}
-            </div>
-            <button
-              onClick={() => fetchNodes(search || undefined)}
-              className="px-3 py-2 rounded-lg border border-border/40 hover:border-primary/30 text-muted-foreground hover:text-primary transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="p-4 rounded-xl border border-border/40 bg-card/30 space-y-3">
-            <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">
-              Add Knowledge
-            </p>
-            <div className="flex gap-2">
-              <input
-                value={addContent}
-                onChange={(e) => setAddContent(e.target.value)}
-                placeholder="Enter a fact, concept, rule, or opinion…"
-                className="flex-1 bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/40"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAddFact();
-                }}
-              />
-              <select
-                value={addType}
-                onChange={(e) => setAddType(e.target.value)}
-                className="bg-background border border-border/50 rounded-lg px-2 py-2 text-xs font-mono focus:outline-none focus:border-primary/50 text-muted-foreground"
-              >
-                {["fact", "concept", "opinion", "rule"].map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
                 ))}
-              </select>
-              <button
-                onClick={handleAddFact}
-                disabled={adding || !addContent.trim()}
-                className="px-4 py-2 bg-primary text-background rounded-lg font-mono text-xs hover:bg-primary/80 disabled:opacity-40 transition-all flex items-center gap-1.5"
-              >
-                {adding ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Plus className="w-3 h-3" />
+              </div>
+            </div>
+          )}
+
+          {/* Knowledge list with search */}
+          <div className="space-y-4">
+            <div className="flex gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search knowledge semantically…"
+                  className="w-full bg-background border border-border/50 rounded-lg pl-9 pr-4 py-2.5 text-sm font-mono focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/40"
+                />
+                {searching && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-primary/50" />
                 )}
-                Add
+              </div>
+              <button
+                onClick={() => fetchNodes(search || undefined)}
+                className="px-3 py-2 rounded-lg border border-border/40 hover:border-primary/30 text-muted-foreground hover:text-primary transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
               </button>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            {nodes.length === 0 && !searching && (
-              <p className="text-center py-12 text-muted-foreground font-mono text-sm">
-                {search
-                  ? "No matching knowledge found."
-                  : "Knowledge base is loading…"}
+            <div className="p-4 rounded-xl border border-border/40 bg-card/30 space-y-3">
+              <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">
+                Add Knowledge
               </p>
-            )}
-            {nodes.map((node) => (
-              <NodeCard key={node.id} node={node} onDelete={deleteNode} />
-            ))}
+              <div className="flex gap-2">
+                <input
+                  value={addContent}
+                  onChange={(e) => setAddContent(e.target.value)}
+                  placeholder="Enter a fact, concept, rule, or opinion…"
+                  className="flex-1 bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary/50 placeholder:text-muted-foreground/40"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddFact();
+                  }}
+                />
+                <select
+                  value={addType}
+                  onChange={(e) => setAddType(e.target.value)}
+                  className="bg-background border border-border/50 rounded-lg px-2 py-2 text-xs font-mono focus:outline-none focus:border-primary/50 text-muted-foreground"
+                >
+                  {["fact", "concept", "opinion", "rule"].map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleAddFact}
+                  disabled={adding || !addContent.trim()}
+                  className="px-4 py-2 bg-primary text-background rounded-lg font-mono text-xs hover:bg-primary/80 disabled:opacity-40 transition-all flex items-center gap-1.5"
+                >
+                  {adding ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Plus className="w-3 h-3" />
+                  )}
+                  Add
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {nodes.length === 0 && !searching && (
+                <p className="text-center py-12 text-muted-foreground font-mono text-sm">
+                  {search
+                    ? "No matching knowledge found."
+                    : "Knowledge base is loading…"}
+                </p>
+              )}
+              {nodes.map((node) => (
+                <NodeCard key={node.id} node={node} onDelete={deleteNode} />
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -1961,6 +1909,31 @@ export default function IntelligencePage() {
       {/* ── TRAINING TAB ─────────────────────────────────────────────────────── */}
       {tab === "train" && (
         <div className="space-y-6">
+          {/* Recent Learning Events - moved from Overview */}
+          {stats && stats.recentLog.length > 0 && (
+            <div className="p-5 rounded-xl border border-border/40 bg-card/40 space-y-3">
+              <h3 className="font-mono text-sm font-bold text-foreground flex items-center gap-2">
+                <Clock className="w-4 h-4 text-emerald-400" />
+                Recent Learning Events
+              </h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {stats.recentLog.slice(0, 6).map((log) => (
+                  <div key={log.id} className="flex items-start gap-2">
+                    <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="font-mono text-xs text-foreground truncate">
+                        {log.details}
+                      </p>
+                      <p className="font-mono text-[10px] text-muted-foreground/50">
+                        +{log.nodesAdded} node{log.nodesAdded !== 1 ? "s" : ""} · {timeAgo(log.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="p-5 rounded-xl border border-border/40 bg-card/40 space-y-4">
             <div>
               <h3 className="font-mono text-sm font-bold text-foreground mb-1">
