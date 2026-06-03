@@ -90,19 +90,23 @@ async function getCachedPermissions(clerkId: string): Promise<PermissionCache | 
     try {
       const cached = await permissionCache.get<PermissionCache>(clerkId);
       if (cached && Date.now() < cached.expiresAt) {
+        logger.debug({ clerkId, source: 'redis' }, 'Permission cache hit');
         return cached;
       }
+      logger.debug({ clerkId, source: 'redis' }, 'Permission cache miss');
     } catch (err) {
-      logger.warn({ err }, 'Redis permission cache get failed, falling back to in-memory');
+      logger.debug({ err, clerkId }, 'Redis cache unavailable, using in-memory');
     }
   }
   
   // Fall back to in-memory
   const cached = PERMISSION_CACHE.get(clerkId);
   if (cached && Date.now() < cached.expiresAt) {
+    logger.debug({ clerkId, source: 'memory' }, 'Permission cache hit');
     return cached;
   }
   
+  logger.debug({ clerkId, source: 'memory' }, 'Permission cache miss');
   return null;
 }
 
@@ -486,14 +490,14 @@ export async function getUserPermissionsSummary(
   teams: { id: number; name: string; role: string }[];
   organization?: { id: number; name: string };
 }> {
-  logger.info({ clerkId }, 'Loading permissions summary');
+  logger.debug({ clerkId }, 'Loading permissions summary');
   
   const permData = await loadUserPermissions(clerkId);
-  logger.info({ clerkId, permData }, 'Permission data loaded');
+  logger.debug({ clerkId, permData }, 'Permission data loaded');
   
   const { roles: userRoles, teams: userTeamIds, organizationId } = permData;
 
-  logger.info({ clerkId, teamCount: userTeamIds.length }, 'Fetching team details');
+  logger.debug({ clerkId, teamCount: userTeamIds.length }, 'Fetching team details');
   
   const teamDetails = await queryDb
     .select({
