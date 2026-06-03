@@ -105,18 +105,8 @@ router.get('/permissions', requireAuth, async (req, res) => {
   }, '/api/access/permissions - Request started');
   
   try {
-    logger.debug({ clerkId: authReq.clerkId }, 'Calling getUserPermissionsSummary');
-    
     // Use RLS-enabled db for permissions lookup
     const summary = await getUserPermissionsSummary(authReq.clerkId, queryDb);
-    
-    logger.info({ 
-      clerkId: authReq.clerkId,
-      rolesCount: summary.roles.length,
-      teamsCount: summary.teams.length,
-      hasOrg: !!summary.organization
-    }, '/api/access/permissions - Success');
-    
     res.json(summary);
   } catch (err) {
     const isErrorObj = err instanceof Error;
