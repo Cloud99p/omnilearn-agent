@@ -884,10 +884,10 @@ export default function Personality() {
 
   const fetchData = useCallback(async () => {
     try {
-      // Use Clerk userId from auth context
+      // Backend gets clerkId from auth token (not query param)
       const [charRes, eventsRes] = await Promise.all([
-        fetchWithAuth(`${BASE}/api/omni/character${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`, getToken),
-        fetchWithAuth(`${BASE}/api/omni/character/events${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`, getToken),
+        fetchWithAuth(`${BASE}/api/omni/character`, getToken),
+        fetchWithAuth(`${BASE}/api/omni/character/events`, getToken),
       ]);
       if (charRes.ok) setCharacter(await charRes.json());
       if (eventsRes.ok) setEvents(await eventsRes.json());
@@ -897,12 +897,9 @@ export default function Personality() {
     } finally {
       setLoading(false);
     }
-  }, [userId, getToken]);
+  }, [getToken]);
 
   useEffect(() => {
-    // Don't fetch until Clerk has loaded userId
-    if (userId === undefined || userId === null) return;
-    
     fetchData();
     const t = setInterval(fetchData, 30_000);
     return () => clearInterval(t);
