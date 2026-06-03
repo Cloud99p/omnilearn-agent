@@ -560,6 +560,15 @@ export async function getUserPermissionsSummary(
   
   logger.info({ clerkId, resultKeys: Object.keys(result), teamsCount: result.teams.length, hasOrg: !!organization, result }, 'getUserPermissionsSummary - COMPLETE');
   return result;
+  } catch (err) {
+    logger.error({ 
+      clerkId, 
+      err, 
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : 'no stack'
+    }, 'getUserPermissionsSummary - FAILED');
+    throw err;
+  }
 }
 
 /**
