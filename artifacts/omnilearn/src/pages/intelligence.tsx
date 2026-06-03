@@ -1757,11 +1757,11 @@ export default function IntelligencePage() {
       {tab === "knowledge" && (
         <div className="space-y-6">
           {/* Knowledge by Type breakdown (moved from Overview) */}
-          {stats && stats.typeCounts.length > 0 && (
-            <div className="p-5 rounded-xl border border-border/40 bg-card/40 space-y-3">
-              <h3 className="font-mono text-sm font-bold text-foreground">
-                Knowledge by Type
-              </h3>
+          <div className="p-5 rounded-xl border border-border/40 bg-card/40 space-y-3">
+            <h3 className="font-mono text-sm font-bold text-foreground">
+              Knowledge by Type
+            </h3>
+            {stats && stats.typeCounts.length > 0 ? (
               <div className="grid md:grid-cols-2 gap-4">
                 {stats.typeCounts.map(({ type, count }) => {
                   const Icon = TYPE_ICONS[type] ?? BookOpen;
@@ -1799,15 +1799,19 @@ export default function IntelligencePage() {
                   );
                 })}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="font-mono text-xs text-muted-foreground">
+                No knowledge yet. Train the model or add facts to see breakdown.
+              </p>
+            )}
+          </div>
 
           {/* Recent Learning Events (moved from Overview) */}
-          {stats && stats.recentLog.length > 0 && (
-            <div className="p-5 rounded-xl border border-border/40 bg-card/40 space-y-3">
-              <h3 className="font-mono text-sm font-bold text-foreground">
-                Recent Learning Events
-              </h3>
+          <div className="p-5 rounded-xl border border-border/40 bg-card/40 space-y-3">
+            <h3 className="font-mono text-sm font-bold text-foreground">
+              Recent Learning Events
+            </h3>
+            {stats && stats.recentLog.length > 0 ? (
               <div className="space-y-2">
                 {stats.recentLog.slice(0, 8).map((log) => (
                   <div key={log.id} className="flex items-start gap-2">
@@ -1824,8 +1828,12 @@ export default function IntelligencePage() {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="font-mono text-xs text-muted-foreground">
+                No learning events yet. Start a conversation in Native mode.
+              </p>
+            )}
+          </div>
 
           {/* Knowledge list with search */}
           <div className="space-y-4">
