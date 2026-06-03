@@ -900,6 +900,9 @@ export default function Personality() {
   }, [userId, getToken]);
 
   useEffect(() => {
+    // Don't fetch until Clerk has loaded userId
+    if (userId === undefined || userId === null) return;
+    
     fetchData();
     const t = setInterval(fetchData, 30_000);
     return () => clearInterval(t);
