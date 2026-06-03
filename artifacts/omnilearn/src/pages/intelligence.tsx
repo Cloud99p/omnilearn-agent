@@ -939,6 +939,9 @@ export default function IntelligencePage() {
 
   // Initial load - only fetch what's needed for default tab (knowledge)
   useEffect(() => {
+    // Don't fetch until Clerk has loaded userId
+    if (userId === undefined || userId === null) return;
+    
     const initFetch = async () => {
       // Fetch stats + character for header (always visible)
       await Promise.all([fetchStats(), fetchCharacter()]);
@@ -947,7 +950,7 @@ export default function IntelligencePage() {
       setLoading(false);
     };
     initFetch();
-  }, []);
+  }, [userId, tab]);
 
   // Lazy load tab data when switching tabs
   useEffect(() => {
