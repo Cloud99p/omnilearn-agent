@@ -82,6 +82,7 @@ interface PermissionCache {
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const PERMISSION_CACHE = new Map<string, PermissionCache>();
 
 async function getCachedPermissions(clerkId: string): Promise<PermissionCache | null> {
   // Try Redis first
@@ -497,11 +498,10 @@ export async function getUserPermissionsSummary(
     const permData = await loadUserPermissions(clerkId);
     logger.info({ clerkId, permData }, 'Step 1 complete: Permission data loaded');
   
-  const { roles: userRoles, teams: userTeamIds, organizationId } = permData;
+    const { roles: userRoles, teams: userTeamIds, organizationId } = permData;
 
-  logger.info({ clerkId, teamCount: userTeamIds.length }, 'Step 2: Fetching team details from DB');
-  
-  try {
+    logger.info({ clerkId, teamCount: userTeamIds.length }, 'Step 2: Fetching team details from DB');
+    
     const teamDetails = await queryDb
       .select({
         id: teams.id,
@@ -520,46 +520,55 @@ export async function getUserPermissionsSummary(
 
     logger.info({ clerkId, teamDetailsCount: teamDetails.length, teamDetails }, 'Step 2 complete: Team details fetched');
 
-  // Fetch organization through RLS-compliant path (via team_members -> teams -> organizations)
-  let organization;
-  if (organizationId) {
-    logger.info({ clerkId, organizationId }, 'Step 3: Fetching organization via RLS-compliant path');
-    try {
-      const orgResult = await queryDb
-        .select({
-          id: organizations.id,
-          name: organizations.name,
-        })
-        .from(teamMembers)
-        .leftJoin(teams, eq(teamMembers.teamId, teams.id))
-        .leftJoin(organizations, eq(teams.organizationId, organizations.id))
-        .where(
-          and(
-            eq(teamMembers.clerkId, clerkId),
-            eq(organizations.id, organizationId),
-            eq(teamMembers.status, 'active')
+    // Fetch organization through RLS-compliant path (via team_members -> teams -> organizations)
+    let organization;
+    if (organizationId) {
+      logger.info({ clerkId, organizationId }, 'Step 3: Fetching organization via RLS-compliant path');
+      try {
+        const orgResult = await queryDb
+          .select({
+            id: organizations.id,
+            name: organizations.name,
+          })
+          .from(teamMembers)
+          .leftJoin(teams, eq(teamMembers.teamId, teams.id))
+          .leftJoin(organizations, eq(teams.organizationId, organizations.id))
+          .where(
+            and(
+              eq(teamMembers.clerkId, clerkId),
+              eq(organizations.id, organizationId),
+              eq(teamMembers.status, 'active')
+            )
           )
-        )
-        .limit(1);
-      
-      organization = orgResult[0] ? { id: orgResult[0].id, name: orgResult[0].name } : undefined;
-      logger.info({ clerkId, organization }, 'Step 3 complete: Organization fetched');
-    } catch (orgErr) {
-      logger.warn({ clerkId, organizationId, err: orgErr, stack: orgErr instanceof Error ? orgErr.stack : 'no stack' }, 'Step 3 FAILED: Organization query failed - continuing without org');
-      organization = undefined;
+          .limit(1);
+        
+        organization = orgResult[0] ? { id: orgResult[0].id, name: orgResult[0].name } : undefined;
+        logger.info({ clerkId, organization }, 'Step 3 complete: Organization fetched');
+      } catch (orgErr) {
+        logger.warn({ clerkId, organizationId, err: orgErr, stack: orgErr instanceof Error ? orgErr.stack : 'no stack' }, 'Step 3 FAILED: Organization query failed - continuing without org');
+        organization = undefined;
+      }
+    } else {
+      logger.debug({ clerkId }, 'Step 3 SKIPPED: No organizationId');
     }
-  } else {
-    logger.debug({ clerkId }, 'Step 3 SKIPPED: No organizationId');
-  }
 
-  const result = {
-    roles: userRoles || [],
-    teams: teamDetails.map(t => ({ id: t.id, name: t.name, role: t.roleName || 'member' })),
-    organization,
-  };
-  
-  logger.info({ clerkId, resultKeys: Object.keys(result), teamsCount: result.teams.length, hasOrg: !!organization, result }, 'getUserPermissionsSummary - COMPLETE');
-  return result;
+    const result = {
+      roles: userRoles || [],
+      teams: teamDetails.map(t => ({ id: t.id, name: t.name, role: t.roleName || 'member' })),
+      organization,
+    };
+    
+    logger.info({ clerkId, resultKeys: Object.keys(result), teamsCount: result.teams.length, hasOrg: !!organization, result }, 'getUserPermissionsSummary - COMPLETE');
+    return result;
+  } catch (err) {
+    logger.error({ 
+      clerkId, 
+      err, 
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : 'no stack'
+    }, 'getUserPermissionsSummary - FAILED');
+    throw err;
+  }
 }
 
 /**
@@ -575,3 +584,4 @@ export function invalidatePermissionCache(clerkId: string) {
 export function clearPermissionCache() {
   PERMISSION_CACHE.clear();
 }
+
