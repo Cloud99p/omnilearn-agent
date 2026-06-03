@@ -98,16 +98,44 @@ router.get('/permissions', requireAuth, async (req, res) => {
   const rlsReq = req as RLSRequest;
   const queryDb = getDb(rlsReq);
   
+  logger.info({ 
+    clerkId: authReq.clerkId, 
+    hasDb: !!queryDb,
+    isRlsEnabled: queryDb !== undefined 
+  }, '/api/access/permissions - Request started');
+  
   try {
+    logger.debug({ clerkId: authReq.clerkId }, 'Calling getUserPermissionsSummary');
+    
     // Use RLS-enabled db for permissions lookup
     const summary = await getUserPermissionsSummary(authReq.clerkId, queryDb);
+    
+    logger.info({ 
+      clerkId: authReq.clerkId,
+      rolesCount: summary.roles.length,
+      teamsCount: summary.teams.length,
+      hasOrg: !!summary.organization
+    }, '/api/access/permissions - Success');
+    
     res.json(summary);
   } catch (err) {
-    // Log as debug if it's just a cache miss, error for actual failures
-    const isCacheError = err instanceof Error && err.message.includes('Redis');
-    const logLevel = isCacheError ? 'debug' : 'error';
-    logger[logLevel]({ err, clerkId: authReq.clerkId, stack: err instanceof Error ? err.stack : 'no stack' }, 'Failed to get permissions summary');
-    res.status(500).json({ error: 'Failed to get permissions', details: err instanceof Error ? err.message : String(err) });
+    const isErrorObj = err instanceof Error;
+    const errorDetails = {
+      clerkId: authReq.clerkId,
+      message: isErrorObj ? err.message : String(err),
+      stack: isErrorObj ? err.stack : 'no stack',
+      name: isErrorObj ? err.name : 'Unknown',
+      cause: isErrorObj && err.cause ? String(err.cause) : undefined,
+      isRedisError: isErrorObj && (err.message.includes('Redis') || err.message.includes('redis')),
+      isDbError: isErrorObj && (err.message.includes('database') || err.message.includes('postgres') || err.message.includes('query')),
+    };
+    
+    logger.error(errorDetails, '/api/access/permissions - FAILED');
+    res.status(500).json({ 
+      error: 'Failed to get permissions', 
+      details: errorDetails.message,
+      debug: errorDetails
+    });
   }
 });
 

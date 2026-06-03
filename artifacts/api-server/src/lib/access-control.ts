@@ -490,37 +490,40 @@ export async function getUserPermissionsSummary(
   teams: { id: number; name: string; role: string }[];
   organization?: { id: number; name: string };
 }> {
-  logger.debug({ clerkId }, 'Loading permissions summary');
+  logger.info({ clerkId, hasQueryDb: !!queryDb }, 'getUserPermissionsSummary - START');
   
-  const permData = await loadUserPermissions(clerkId);
-  logger.debug({ clerkId, permData }, 'Permission data loaded');
+  try {
+    logger.debug({ clerkId }, 'Step 1: Loading user permissions from cache/DB');
+    const permData = await loadUserPermissions(clerkId);
+    logger.info({ clerkId, permData }, 'Step 1 complete: Permission data loaded');
   
   const { roles: userRoles, teams: userTeamIds, organizationId } = permData;
 
-  logger.debug({ clerkId, teamCount: userTeamIds.length }, 'Fetching team details');
+  logger.info({ clerkId, teamCount: userTeamIds.length }, 'Step 2: Fetching team details from DB');
   
-  const teamDetails = await queryDb
-    .select({
-      id: teams.id,
-      name: teams.name,
-      roleName: roles.name,
-    })
-    .from(teamMembers)
-    .leftJoin(teams, eq(teamMembers.teamId, teams.id))
-    .leftJoin(roles, eq(teamMembers.roleId, roles.id))
-    .where(
-      and(
-        eq(teamMembers.clerkId, clerkId),
-        eq(teamMembers.status, 'active')
-      )
-    );
+  try {
+    const teamDetails = await queryDb
+      .select({
+        id: teams.id,
+        name: teams.name,
+        roleName: roles.name,
+      })
+      .from(teamMembers)
+      .leftJoin(teams, eq(teamMembers.teamId, teams.id))
+      .leftJoin(roles, eq(teamMembers.roleId, roles.id))
+      .where(
+        and(
+          eq(teamMembers.clerkId, clerkId),
+          eq(teamMembers.status, 'active')
+        )
+      );
 
-  logger.info({ clerkId, teamDetailsCount: teamDetails.length }, 'Team details fetched');
+    logger.info({ clerkId, teamDetailsCount: teamDetails.length, teamDetails }, 'Step 2 complete: Team details fetched');
 
   // Fetch organization through RLS-compliant path (via team_members -> teams -> organizations)
   let organization;
   if (organizationId) {
-    logger.info({ clerkId, organizationId }, 'Fetching organization via RLS-compliant path');
+    logger.info({ clerkId, organizationId }, 'Step 3: Fetching organization via RLS-compliant path');
     try {
       const orgResult = await queryDb
         .select({
@@ -540,11 +543,13 @@ export async function getUserPermissionsSummary(
         .limit(1);
       
       organization = orgResult[0] ? { id: orgResult[0].id, name: orgResult[0].name } : undefined;
-      logger.info({ clerkId, organization }, 'Organization fetched');
+      logger.info({ clerkId, organization }, 'Step 3 complete: Organization fetched');
     } catch (orgErr) {
-      logger.warn({ clerkId, organizationId, err: orgErr }, 'Organization query failed - continuing without org');
+      logger.warn({ clerkId, organizationId, err: orgErr, stack: orgErr instanceof Error ? orgErr.stack : 'no stack' }, 'Step 3 FAILED: Organization query failed - continuing without org');
       organization = undefined;
     }
+  } else {
+    logger.debug({ clerkId }, 'Step 3 SKIPPED: No organizationId');
   }
 
   const result = {
@@ -553,8 +558,17 @@ export async function getUserPermissionsSummary(
     organization,
   };
   
-  logger.info({ clerkId, resultKeys: Object.keys(result), teamsCount: result.teams.length, hasOrg: !!organization }, 'Permissions summary complete');
+  logger.info({ clerkId, resultKeys: Object.keys(result), teamsCount: result.teams.length, hasOrg: !!organization, result }, 'getUserPermissionsSummary - COMPLETE');
   return result;
+  } catch (err) {
+    logger.error({ 
+      clerkId, 
+      err, 
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : 'no stack'
+    }, 'getUserPermissionsSummary - FAILED');
+    throw err;
+  }
 }
 
 /**
