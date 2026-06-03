@@ -12,6 +12,7 @@ import { knowledgeNodes } from "@workspace/db/schema/knowledge-nodes";
 import { conversations } from "@workspace/db/schema/conversations";
 import { eq, and, or, sql, gte, lte, isNull } from "drizzle-orm";
 import { logger } from "./logger";
+import { permissionCache, isRedisAvailable } from "./redis.js";
 
 // Debug: Log schema imports
 logger.info('Schema tables loaded:', {
@@ -80,20 +81,41 @@ interface PermissionCache {
   expiresAt: number;
 }
 
-const PERMISSION_CACHE = new Map<string, PermissionCache>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-function getCachedPermissions(clerkId: string): PermissionCache | null {
-  const cached = PERMISSION_CACHE.get(clerkId);
-  if (!cached) return null;
-  if (Date.now() > cached.expiresAt) {
-    PERMISSION_CACHE.delete(clerkId);
-    return null;
+async function getCachedPermissions(clerkId: string): Promise<PermissionCache | null> {
+  // Try Redis first
+  const redisAvailable = await isRedisAvailable();
+  if (redisAvailable) {
+    try {
+      const cached = await permissionCache.get<PermissionCache>(clerkId);
+      if (cached && Date.now() < cached.expiresAt) {
+        return cached;
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Redis permission cache get failed, falling back to in-memory');
+    }
   }
-  return cached;
+  
+  // Fall back to in-memory
+  const cached = PERMISSION_CACHE.get(clerkId);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached;
+  }
+  
+  return null;
 }
 
-function setCachedPermissions(clerkId: string, cache: PermissionCache) {
+async function setCachedPermissions(clerkId: string, cache: PermissionCache): Promise<void> {
+  // Store in Redis (async, fire-and-forget)
+  const redisAvailable = await isRedisAvailable();
+  if (redisAvailable) {
+    permissionCache.set(clerkId, cache).catch((err) => {
+      logger.warn({ err }, 'Redis permission cache set failed');
+    });
+  }
+  
+  // Always store in-memory as fallback
   PERMISSION_CACHE.set(clerkId, cache);
 }
 
@@ -196,8 +218,8 @@ async function loadUserPermissions(clerkId: string): Promise<{
   teams: number[];
   organizationId?: number;
 }> {
-  // Check cache first
-  const cached = getCachedPermissions(clerkId);
+  // Check cache first (Redis or in-memory)
+  const cached = await getCachedPermissions(clerkId);
   if (cached) {
     return {
       roles: cached.roles,
@@ -231,7 +253,7 @@ async function loadUserPermissions(clerkId: string): Promise<{
   const userTeams = [...new Set(memberships.map(m => m.teamId))];
   const organizationId = memberships[0]?.organizationId;
 
-  // Cache results
+  // Cache results (Redis + in-memory)
   const cache: PermissionCache = {
     userId: clerkId,
     roles: userRoles,
@@ -240,7 +262,7 @@ async function loadUserPermissions(clerkId: string): Promise<{
     permissions: new Map(),
     expiresAt: Date.now() + CACHE_TTL_MS,
   };
-  setCachedPermissions(clerkId, cache);
+  await setCachedPermissions(clerkId, cache);
 
   return { roles: userRoles, teams: userTeams, organizationId };
 }

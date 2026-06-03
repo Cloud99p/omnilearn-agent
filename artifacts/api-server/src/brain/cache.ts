@@ -1,15 +1,16 @@
 /**
  * Query Cache for OmniLearn Knowledge Retrieval
- * LRU cache to reduce redundant embedding computations
+ * Hybrid Redis + in-memory LRU cache
  * 
- * Based on OpenClaw's caching strategy:
- * - 1-hour TTL (3600 seconds)
- * - 1000 max entries
- * - LRU eviction policy
+ * Strategy:
+ * - Redis: Primary cache (shared across instances, survives restarts)
+ * - NodeCache: Fallback when Redis unavailable
+ * - 1-hour TTL, 1000 max entries for in-memory
  */
 
 import NodeCache from 'node-cache';
 import { logger } from '../lib/logger.js';
+import { queryCache as redisCache, isRedisAvailable } from '../lib/redis.js';
 
 export interface CachedQuery {
   query: string;
@@ -68,6 +69,7 @@ function generateCacheKey(
 
 /**
  * Retrieve from cache with statistics tracking
+ * Tries Redis first, falls back to in-memory cache
  */
 export async function retrieveFromCache<T>(
   query: string,
@@ -75,13 +77,32 @@ export async function retrieveFromCache<T>(
   topK: number
 ): Promise<T | null> {
   const cacheKey = generateCacheKey(query, clerkId, topK);
-  const cached = queryCache.get<T>(cacheKey);
   
+  // Try Redis first
+  const redisAvailable = await isRedisAvailable();
+  if (redisAvailable) {
+    try {
+      const cached = await redisCache.get<T>(query, clerkId, topK);
+      if (cached) {
+        cacheStats.hits++;
+        logger.debug(
+          { query: query.slice(0, 50), cacheKey, source: 'redis', hits: cacheStats.hits },
+          'Cache hit (Redis)'
+        );
+        return cached;
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Redis cache get failed, falling back to in-memory');
+    }
+  }
+  
+  // Fall back to in-memory
+  const cached = queryCache.get<T>(cacheKey);
   if (cached) {
     cacheStats.hits++;
     logger.debug(
-      { query: query.slice(0, 50), cacheKey, hits: cacheStats.hits },
-      'Cache hit'
+      { query: query.slice(0, 50), cacheKey, source: 'memory', hits: cacheStats.hits },
+      'Cache hit (memory)'
     );
     return cached;
   }
@@ -97,19 +118,30 @@ export async function retrieveFromCache<T>(
 
 /**
  * Store in cache with metadata
+ * Stores in both Redis and in-memory for redundancy
  */
-export function storeInCache<T>(
+export async function storeInCache<T>(
   query: string,
   clerkId: string | null,
   topK: number,
   data: T
-): void {
+): Promise<void> {
   const cacheKey = generateCacheKey(query, clerkId, topK);
+  
+  // Store in Redis (async, fire-and-forget)
+  const redisAvailable = await isRedisAvailable();
+  if (redisAvailable) {
+    redisCache.set(query, clerkId, topK, data).catch((err) => {
+      logger.warn({ err }, 'Redis cache set failed');
+    });
+  }
+  
+  // Always store in-memory as fallback
   const success = queryCache.set(cacheKey, data);
   
   if (success) {
     logger.debug(
-      { query: query.slice(0, 50), cacheKey, ttl: CACHE_TTL_SECONDS },
+      { query: query.slice(0, 50), cacheKey, ttl: CACHE_TTL_SECONDS, redis: redisAvailable },
       'Stored in cache'
     );
   } else {
@@ -191,8 +223,8 @@ export async function retrieveWithCache<T>(
   // Cache miss, perform retrieval
   const results = await retrievalFn();
   
-  // Store in cache
-  storeInCache(query, clerkId, topK, results);
+  // Store in cache (async, non-blocking)
+  await storeInCache(query, clerkId, topK, results);
   
   return results;
 }
