@@ -744,13 +744,31 @@ export default function IntelligencePage() {
   const [querying, setQuerying] = useState(false);
   const [decaying, setDecaying] = useState(false);
 
+  // ── Simple in-memory cache ────────────────────────────────────────────────
+  const cacheRef = useRef<Record<string, { data: any; timestamp: number }>>({});
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  const fetchCached = useCallback(async (key: string, fetchFn: () => Promise<any>) => {
+    const cached = cacheRef.current[key];
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data;
+    }
+    const data = await fetchFn();
+    cacheRef.current[key] = { data, timestamp: Date.now() };
+    return data;
+  }, []);
+
   // ── Fetchers ─────────────────────────────────────────────────────────────
   const { userId, getToken } = useAuth();
 
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetchWithAuth(`${BASE}/api/omni/knowledge/stats${userId ? `?userId=${userId}` : ''}`);
-      if (res.ok) setStats(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+        return data;
+      }
     } catch {
       /* ignore */
     }
@@ -759,7 +777,11 @@ export default function IntelligencePage() {
   const fetchCharacter = useCallback(async () => {
     try {
       const res = await fetchWithAuth(`${BASE}/api/omni/character${userId ? `?userId=${userId}` : ''}`);
-      if (res.ok) setCharacter(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setCharacter(data);
+        return data;
+      }
     } catch {
       /* ignore */
     }
@@ -770,7 +792,7 @@ export default function IntelligencePage() {
     try {
       const url = q
         ? `${BASE}/api/omni/knowledge?search=${encodeURIComponent(q)}`
-        : `${BASE}/api/omni/knowledge?limit=40`;
+        : `${BASE}/api/omni/knowledge?limit=20`; // Reduced from 40
       const res = await fetchWithAuth(url);
       if (res.ok) setNodes(await res.json());
     } catch {
@@ -894,28 +916,14 @@ export default function IntelligencePage() {
   const fetchNetwork = useCallback(async () => {
     setNetLoading(true);
     try {
-      // Stagger requests to avoid rate limiting - increased delays
-      const delayedFetch = async (url: string, delayMs: number) => {
-        if (delayMs > 0) {
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
-        const res = await fetch(url);
-        // NO automatic retry on 429 - let user manually refresh
-        // Retry storms make rate limiting worse
-        if (!res.ok && res.status === 429) {
-          console.warn('Rate limited. Please wait before refreshing.');
-          throw new Error('Rate limited');
-        }
-        return res;
-      };
-      
+      // Parallel fetch without artificial delays - backend handles rate limiting
       const [statsRes, neuronsRes, synapsesRes, agentsRes, pulsesRes] =
         await Promise.all([
-          delayedFetch(`${BASE}/api/network/stats`, 0),
-          delayedFetch(`${BASE}/api/network/neurons?limit=40`, 2000),
-          delayedFetch(`${BASE}/api/network/synapses?limit=100`, 4000),
-          delayedFetch(`${BASE}/api/network/agents`, 6000),
-          delayedFetch(`${BASE}/api/network/pulses?limit=30`, 8000),
+          fetch(`${BASE}/api/network/stats`),
+          fetch(`${BASE}/api/network/neurons?limit=20`), // Reduced from 40
+          fetch(`${BASE}/api/network/synapses?limit=50`), // Reduced from 100
+          fetch(`${BASE}/api/network/agents`),
+          fetch(`${BASE}/api/network/pulses?limit=20`), // Reduced from 30
         ]);
       if (statsRes.ok) setNetStats(await statsRes.json());
       if (neuronsRes.ok) setNetNeurons(await neuronsRes.json());
@@ -929,24 +937,38 @@ export default function IntelligencePage() {
     }
   }, []);
 
+  // Initial load - only fetch what's needed for default tab (knowledge)
   useEffect(() => {
-    Promise.all([fetchStats(), fetchCharacter(), fetchNodes()]).finally(() =>
-      setLoading(false),
-    );
-  }, [fetchStats, fetchCharacter, fetchNodes]);
+    const initFetch = async () => {
+      // Fetch stats + character for header (always visible)
+      await Promise.all([fetchStats(), fetchCharacter()]);
+      // Fetch nodes only for default tab
+      if (tab === 'knowledge') await fetchNodes();
+      setLoading(false);
+    };
+    initFetch();
+  }, []);
 
+  // Lazy load tab data when switching tabs
   useEffect(() => {
-    if (tab === "network") fetchNetwork();
-    if (tab === "proposals") fetchProposals(proposalFilter);
-    if (tab === "ontology") fetchOntology(ontologyFilter);
-  }, [
-    tab,
-    fetchNetwork,
-    fetchProposals,
-    fetchOntology,
-    proposalFilter,
-    ontologyFilter,
-  ]);
+    const loadTabData = async () => {
+      switch (tab) {
+        case 'network':
+          if (netNeurons.length === 0) await fetchNetwork();
+          break;
+        case 'proposals':
+          if (proposals.length === 0) await fetchProposals(proposalFilter);
+          break;
+        case 'ontology':
+          if (ontologyVocab.length === 0) await fetchOntology(ontologyFilter);
+          break;
+        case 'knowledge':
+          if (nodes.length === 0) await fetchNodes();
+          break;
+      }
+    };
+    loadTabData();
+  }, [tab]);
 
   // Auto-refresh network every 60s when on that tab AND tab is visible
   useEffect(() => {
@@ -983,12 +1005,13 @@ export default function IntelligencePage() {
     };
   }, [tab]);
 
+  // Debounced search - increased from 350ms to 500ms
   useEffect(() => {
     const t = setTimeout(() => {
       if (tab === "knowledge") fetchNodes(search || undefined);
-    }, 350);
+    }, 500);
     return () => clearTimeout(t);
-  }, [search, tab, fetchNodes]);
+  }, [search, tab]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
