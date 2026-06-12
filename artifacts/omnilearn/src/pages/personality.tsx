@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/react";
+import { RequireAuth } from "@/components/require-auth";
 
 // Auth fetch helper - uses getToken from useAuth hook
 async function fetchWithAuth(url: string, getToken: () => Promise<string>, options: RequestInit = {}) {
@@ -872,7 +873,7 @@ function RealEventFeed({ events }: { events: LearningEvent[] }) {
 // ── Main page ──────────────────────────────────────────────────────────────────
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-export default function Personality() {
+function PersonalityContent() {
   const [character, setCharacter] = useState<CharacterData | null>(null);
   const [events, setEvents] = useState<LearningEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1332,5 +1333,13 @@ export default function Personality() {
       <HomeostasisPanel currentTraits={liveTraits} />
       <RealEventFeed events={events} />
     </div>
+  );
+}
+
+export default function Personality() {
+  return (
+    <RequireAuth>
+      <PersonalityContent />
+    </RequireAuth>
   );
 }

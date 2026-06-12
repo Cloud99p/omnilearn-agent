@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { RequireAuth } from "@/components/require-auth";
 import {
   Ghost,
   Plus,
@@ -668,7 +669,7 @@ function GitHubRepoSection() {
   );
 }
 
-export default function GhostNetworkPage() {
+function GhostNetworkContent() {
   const [nodes, setNodes] = useState<GhostNode[]>([]);
   const [status, setStatus] = useState<NetworkStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1346,5 +1347,13 @@ export default function GhostNetworkPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function GhostNetworkPage() {
+  return (
+    <RequireAuth>
+      <GhostNetworkContent />
+    </RequireAuth>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@clerk/react";
+import { RequireAuth } from "@/components/require-auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -209,7 +210,7 @@ const ARCH_MODULES = [
   },
 ];
 
-export default function Architecture() {
+function ArchitectureContent() {
   return (
     <div className="p-6 md:p-12 max-w-6xl mx-auto min-h-screen">
       <motion.div
@@ -300,5 +301,13 @@ export default function Architecture() {
       <LiveSystemStats />
       <KnowledgeGraph />
     </div>
+  );
+}
+
+export default function Architecture() {
+  return (
+    <RequireAuth>
+      <ArchitectureContent />
+    </RequireAuth>
   );
 }

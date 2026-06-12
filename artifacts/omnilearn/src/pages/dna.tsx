@@ -135,7 +135,7 @@ function colorizeJson(raw: string): string {
   );
 }
 
-export default function DnaPage() {
+function DnaContent() {
   const [char, setChar] = useState<CharacterAPI | null>(null);
   const [knowledge, setKnowledge] = useState<KnowledgeStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -633,5 +633,13 @@ export default function DnaPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function DnaPage() {
+  return (
+    <RequireAuth>
+      <DnaContent />
+    </RequireAuth>
   );
 }

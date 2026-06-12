@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/react";
+import { RequireAuth } from "@/components/require-auth";
 import {
   Brain,
   TrendingUp,
@@ -337,7 +338,7 @@ function ScoreBar({
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-export default function MemoryPage() {
+function MemoryContent() {
   const [accessCount, setAccessCount] = useState(0);
   const [trustScore, setTrustScore] = useState(0.65);
   const [relevance, setRelevance] = useState(0.3);
@@ -1134,5 +1135,13 @@ export default function MemoryPage() {
         </div>
       </motion.section>
     </div>
+  );
+}
+
+export default function MemoryPage() {
+  return (
+    <RequireAuth>
+      <MemoryContent />
+    </RequireAuth>
   );
 }

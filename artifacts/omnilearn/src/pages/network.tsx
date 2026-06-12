@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/react";
+import { RequireAuth } from "@/components/require-auth";
 import {
   Globe,
   Zap,
@@ -201,7 +202,7 @@ interface GossipProbe {
   probeTime: string;
 }
 
-export default function Network() {
+function NetworkContent() {
   const [active, setActive] = useState<string | null>(null);
   const [packets, setPackets] = useState<Packet[]>([]);
   const [tick, setTick] = useState(0);
@@ -1959,5 +1960,13 @@ function CollectiveEvolution({
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+export default function Network() {
+  return (
+    <RequireAuth>
+      <NetworkContent />
+    </RequireAuth>
   );
 }
