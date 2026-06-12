@@ -81,6 +81,17 @@ async function storeExtractedFacts(
 // POST /api/omni/chat  — SSE streaming native intelligence chat with optional LLM fallback
 // Works for both authenticated users (saves history) and anonymous users (no persistence)
 router.post("/chat", optionalAuth, async (req, res) => {
+  // DEBUG: Log request details
+  req.log.info({
+    path: req.path,
+    url: req.url,
+    method: req.method,
+    baseUrl: (req as any).baseUrl,
+    originalUrl: req.originalUrl,
+    body: req.body,
+    clerkId: (req as any).clerkId,
+    isAuthenticated: !!(req as any).clerkId,
+  }, "CHAT ROUTE - Request received");
   const authReq = req as AuthenticatedRequest;
   const { content, conversationId, useLLM } = req.body as {
     content: string;
