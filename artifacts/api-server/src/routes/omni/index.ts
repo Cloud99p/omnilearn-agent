@@ -8,14 +8,14 @@ import growthHistoryRouter from "./growth-history.js";
 
 const router = Router();
 
-// SPECIFIC routes first (WITH /omni prefix - routes/index.ts mounts this router at /)
-router.use("/omni/train", trainRouter);
-router.use("/omni/knowledge", knowledgeRouter);
-router.use("/omni/character", characterRouter);
-router.use("/omni/smarter-proof", smarterProofRouter);
-router.use("/omni/growth-history", growthHistoryRouter);
+// SPECIFIC routes first (relative to /omni mount point in routes/index.ts)
+router.use("/train", trainRouter);
+router.use("/knowledge", knowledgeRouter);
+router.use("/character", characterRouter);
+router.use("/smarter-proof", smarterProofRouter);
+router.use("/growth-history", growthHistoryRouter);
 
 // CATCH-ALL route last
-router.use("/omni/chat", chatRouter);
+router.use("/chat", chatRouter);
 
 export default router;
