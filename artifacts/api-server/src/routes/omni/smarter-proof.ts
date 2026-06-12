@@ -16,7 +16,8 @@ const PROBES = [
 ];
 
 // ─── GET /api/omni/smarter-proof ─────────────────────────────────────────────
-router.get("/smarter-proof", async (req, res) => {
+// Route is mounted at /smarter-proof in omni/index.ts, so we use / here
+router.get("/", async (req, res) => {
   try {
     // ── 1. Load all nodes ──────────────────────────────────────────────────────
     const allNodes = await db

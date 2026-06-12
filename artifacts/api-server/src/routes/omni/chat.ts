@@ -80,7 +80,8 @@ async function storeExtractedFacts(
 
 // POST /api/omni/chat  — SSE streaming native intelligence chat with optional LLM fallback
 // Works for both authenticated users (saves history) and anonymous users (no persistence)
-router.post("/chat", optionalAuth, async (req, res) => {
+// NOTE: Route is mounted at /chat in omni/index.ts, so we use / here
+router.post("/", optionalAuth, async (req, res) => {
   // DEBUG: Log request details
   req.log.info({
     path: req.path,

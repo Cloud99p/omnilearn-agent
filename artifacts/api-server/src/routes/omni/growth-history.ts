@@ -9,7 +9,8 @@ const router = Router();
 // ─── GET /api/omni/growth-history ────────────────────────────────────────────
 // Returns actual cumulative knowledge growth bucketed by time period,
 // plus real learning-log entries to use as improvement milestones.
-router.get("/growth-history", requireAuth, async (req, res) => {
+// Route is mounted at /growth-history in omni/index.ts, so we use / here
+router.get("/", requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   const clerkId = authReq.clerkId;
   try {

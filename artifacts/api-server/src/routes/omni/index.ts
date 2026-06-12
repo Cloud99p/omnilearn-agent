@@ -39,12 +39,23 @@ router.use("/chat", chatRouter);
 
 // DEBUG: Catch-all for unmatched routes
 router.use((req, res) => {
-  logger.warn({
+  const debugInfo = {
     path: req.path,
+    pathType: typeof req.path,
     method: req.method,
     url: req.url,
-  }, "OMNI ROUTER - No route matched");
-  res.status(404).json({ error: "Route not found", path: req.path, method: req.method });
+    originalUrl: req.originalUrl,
+    baseUrl: (router as any).baseUrl,
+    pathEndsWithSlash: req.path.endsWith('/'),
+    pathTrimmed: req.path.trim(),
+    pathLowerCase: req.path.toLowerCase(),
+    allRoutes: ['/train', '/knowledge', '/character', '/smarter-proof', '/growth-history', '/chat'],
+  };
+  logger.error(debugInfo, "OMNI ROUTER - NO ROUTE MATCHED - DEBUG INFO");
+  res.status(404).json({ 
+    error: "Route not found in omni router", 
+    debug: debugInfo 
+  });
 });
 
 export default router;
