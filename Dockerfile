@@ -1,5 +1,6 @@
 FROM node:24-slim
 
+# Cache bust: 2026-06-12 route fix
 # Install pnpm
 RUN npm install -g pnpm
 
