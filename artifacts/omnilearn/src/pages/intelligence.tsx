@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/react";
 import { RequireAuth } from "@/components/require-auth";
-import { RequireAuth } from "@/components/require-auth";
 
 // Auth fetch helper - uses Clerk session directly (same as teams.tsx)
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
