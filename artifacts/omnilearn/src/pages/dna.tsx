@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/react";
+import { RequireAuth } from "@/components/require-auth";
 import {
   Download,
   Copy,
