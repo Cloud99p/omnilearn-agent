@@ -3091,11 +3091,3 @@ export default function IntelligencePage() {
     </RequireAuth>
   );
 }
-
-function IntelligenceContent() {
-  return (
-    <RequireAuth>
-      <IntelligenceContent />
-    </RequireAuth>
-  );
-}
