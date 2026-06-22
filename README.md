@@ -151,15 +151,26 @@ pnpm --filter @workspace/omnilearn run dev
 
 ## 📚 Documentation
 
+### Getting Started
 | Document | Purpose |
 |----------|---------|
-| [WHAT_WORKS_NOW.md](WHAT_WORKS_NOW.md) | What's actually shipped today (start here!) |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Complete deployment guide including network migrations |
+| [WHAT_WORKS_NOW.md](WHAT_WORKS_NOW.md) | **Start here!** What's actually shipped today |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Complete deployment guide |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture including 7-tier network |
-| [ROADMAP.md](ROADMAP.md) | Development timeline |
+
+### Development
+| Document | Purpose |
+|----------|---------|
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
-| [MIGRATIONS.md](MIGRATIONS.md) | Database migration guide |
-| [VERSIONING.md](VERSIONING.md) | Version history and changelog |
+| [ROADMAP.md](ROADMAP.md) | Development timeline & priorities |
+| [docs/LOCAL-DEV.md](docs/LOCAL-DEV.md) | Local development setup |
+
+### Reference
+| Document | Purpose |
+|----------|---------|
+| [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md) | Commercial licensing options |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Version history & changelog |
+| [docs/internal/](docs/internal/) | Internal docs (design, security, implementation) |
 
 ---
 
