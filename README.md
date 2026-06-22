@@ -169,7 +169,7 @@ pnpm --filter @workspace/omnilearn run dev
 | Document | Purpose |
 |----------|---------|
 | [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md) | Commercial licensing options |
-| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Version history & changelog |
+| [VERSIONING.md](VERSIONING.md) | Version history & changelog |
 | [docs/internal/](docs/internal/) | Internal docs (design, security, implementation) |
 
 ---

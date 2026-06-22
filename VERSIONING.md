@@ -1,4 +1,4 @@
-# OmniLearn Versioning
+# OmniLearn Versioning & Changelog
 
 ## Current Version: **v3.1.0** (Production)
 
