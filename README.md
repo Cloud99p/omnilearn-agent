@@ -325,10 +325,43 @@ git push origin feature/amazing-feature
 - ❌ You cannot use this code in closed-source commercial products
 
 ### Commercial Licensing
-For commercial licensing options (closed-source, white-label, enterprise), contact:
 
-**Emmanuel Nenpan Hosea**  
-📧 emmanuelhosea09@gmail.com
+Need to use Omnilearn in a **closed-source product** or **proprietary SaaS**?
+
+We offer commercial licenses for companies that need:
+- ✅ Closed-source usage (don't open-source your modifications)
+- ✅ White-label rights (rebrand as your own)
+- ✅ OEM licensing (embed in your product)
+- ✅ Enterprise support & SLA
+
+**License Tiers:**
+- **Startup License:** $7,500 one-time (teams <50, revenue <$1M)
+- **Enterprise License:** $35,000 + $2,500/month (unlimited deployments)
+- **OEM/White-Label:** $75,000 + revenue share (embed & resell)
+- **Unlimited/Perpetual:** Custom pricing (starting at $250K)
+
+**Includes:**
+- Legal compliance (bypass AGPL requirements)
+- Modification rights
+- Priority support
+- Updates & bug fixes
+- Deployment assistance
+
+📧 **Contact:** emmanuelhosea09@gmail.com  
+📄 **Full Details:** [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md)
+
+---
+
+### Free for Everyone Who Needs It
+
+Omnilearn is **open source (AGPL v3)** and free forever for:
+- ✅ Individuals
+- ✅ Students & researchers
+- ✅ Non-profits
+- ✅ Open-source projects
+- ✅ Companies using it internally
+
+**Learn more:** [Licensing Options](LICENSE-COMMERCIAL.md)
 
 ---
 

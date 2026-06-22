@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omnilearn - Licensing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #1a1a2e;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            color: white;
+        }
+        
+        header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .intro {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 40px;
+        }
+        
+        .intro h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        .card.free {
+            border-top: 4px solid #10b981;
+        }
+        
+        .card.commercial {
+            border-top: 4px solid #667eea;
+        }
+        
+        .card h3 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        
+        .card .price {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+        }
+        
+        .card.free .price {
+            color: #10b981;
+        }
+        
+        .card ul {
+            list-style: none;
+            margin: 20px 0;
+        }
+        
+        .card li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .card li:last-child {
+            border-bottom: none;
+        }
+        
+        .card li::before {
+            content: "✓ ";
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .tiers {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .tier-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            transition: transform 0.2s;
+        }
+        
+        .tier-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .tier-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .tier-card .price {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1a1a2e;
+            margin: 15px 0;
+        }
+        
+        .tier-card.popular {
+            border: 2px solid #667eea;
+            position: relative;
+        }
+        
+        .tier-card.popular::before {
+            content: "MOST POPULAR";
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #667eea;
+            color: white;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .cta {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        
+        .cta h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin: 10px;
+            transition: transform 0.2s;
+        }
+        
+        .cta-button:hover {
+            transform: scale(1.05);
+        }
+        
+        .cta-button.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .faq {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-top: 40px;
+        }
+        
+        .faq h2 {
+            color: #667eea;
+            margin-bottom: 30px;
+        }
+        
+        .faq-item {
+            margin-bottom: 20px;
+        }
+        
+        .faq-item h3 {
+            color: #1a1a2e;
+            margin-bottom: 10px;
+        }
+        
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 60px;
+            padding: 20px;
+            opacity: 0.9;
+        }
+        
+        footer a {
+            color: white;
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📜 Omnilearn Licensing</h1>
+            <p>Free for everyone who needs it. Commercial options for businesses.</p>
+        </header>
+        
+        <div class="intro">
+            <h2>Open Source + Commercial Licensing</h2>
+            <p>Omnilearn is open source under the <strong>AGPL v3 license</strong> — free forever for individuals, researchers, non-profits, and open-source projects.</p>
+            <br>
+            <p>However, if you want to use Omnilearn in a <strong>closed-source product</strong>, <strong>proprietary SaaS</strong>, or <strong>commercial offering</strong> without open-sourcing your modifications, you need a <strong>commercial license</strong>.</p>
+        </div>
+        
+        <div class="comparison">
+            <div class="card free">
+                <h3>🟢 AGPL v3 (Free)</h3>
+                <div class="price">$0</div>
+                <p>Perfect for individuals, researchers, and open-source projects</p>
+                <ul>
+                    <li>Full access to source code</li>
+                    <li>Modify and distribute</li>
+                    <li>Internal company use</li>
+                    <li>Non-profit use</li>
+                    <li>Academic research</li>
+                    <li>Community support</li>
+                </ul>
+            </div>
+            
+            <div class="card commercial">
+                <h3>💼 Commercial License</h3>
+                <div class="price">From $7,500</div>
+                <p>For companies building proprietary products</p>
+                <ul>
+                    <li>Closed-source usage rights</li>
+                    <li>White-label options</li>
+                    <li>OEM licensing</li>
+                    <li>Priority support</li>
+                    <li>Legal compliance</li>
+                    <li>Protect your IP</li>
+                </ul>
+            </div>
+        </div>
+        
+        <h2 style="text-align: center; margin-bottom: 30px; color: white;">Commercial License Tiers</h2>
+        
+        <div class="tiers">
+            <div class="tier-card">
+                <h3>🚀 Startup</h3>
+                <div class="price">$7,500</div>
+                <p>one-time + $500/month (optional)</p>
+                <ul>
+                    <li>Closed-source usage</li>
+                    <li>Unlimited users</li>
+                    <li>1 year updates</li>
+                    <li>Email support (48h)</li>
+                    <li>Deployment assistance</li>
+                    <li>Teams <50 employees</li>
+                </ul>
+            </div>
+            
+            <div class="tier-card popular">
+                <h3>🏢 Enterprise</h3>
+                <div class="price">$35,000</div>
+                <p>one-time + $2,500/month</p>
+                <ul>
+                    <li>Everything in Startup</li>
+                    <li>Unlimited deployments</li>
+                    <li>White-label rights</li>
+                    <li>Priority support (4h)</li>
+                    <li>Dedicated account manager</li>
+                    <li>SLA guarantee</li>
+                </ul>
+            </div>
+            
+            <div class="tier-card">
+                <h3>🏷️ OEM/White-Label</h3>
+                <div class="price">$75,000</div>
+                <p>one-time + 5% revenue share</p>
+                <ul>
+                    <li>Everything in Enterprise</li>
+                    <li>Full white-label rights</li>
+                    <li>Embed in your products</li>
+                    <li>Resell to customers</li>
+                    <li>No attribution required</li>
+                    <li>Custom terms available</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="cta">
+            <h2>Ready to Get Started?</h2>
+            <p style="margin-bottom: 30px;">We offer a 30-day pilot program for $500 (credited toward license if you proceed)</p>
+            <a href="mailto:emmanuelhosea09@gmail.com?subject=Omnilearn Commercial License Inquiry" class="cta-button">📧 Contact Us</a>
+            <a href="https://github.com/Cloud99p/omnilearn-agent" class="cta-button secondary">🐙 View on GitHub</a>
+        </div>
+        
+        <div class="faq">
+            <h2>Frequently Asked Questions</h2>
+            
+            <div class="faq-item">
+                <h3>Can I use Omnilearn internally without a commercial license?</h3>
+                <p>Yes! AGPL v3 allows internal use without restrictions. You only need a commercial license if you offer Omnilearn as a SaaS to external users, embed it in a proprietary product, or don't want to open-source your modifications.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>What happens if I don't buy a commercial license?</h3>
+                <p>You can still use Omnilearn under AGPL v3, but you must open-source any modifications you make and make your source code available to users.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>Do you offer discounts?</h3>
+                <p>Yes! We offer 50% discounts for pre-seed/seed startups (raise <$2M), registered non-profits, and free licenses for open-source projects and academic research.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>Can I upgrade later?</h3>
+                <p>Yes! You can upgrade from Startup to Enterprise anytime. The upgrade fee is the difference between licenses, prorated for time elapsed.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h3>What payment methods do you accept?</h3>
+                <p>Wire transfer (USD, EUR, GBP), credit card (Stripe), crypto (USDC, USDT, BTC, ETH), and invoice for Enterprise+ licenses (Net-30 terms).</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2026 OmniLearn. Built with ❤️ by Emmanuel Nenpan Hosea</p>
+            <p><a href="https://github.com/Cloud99p/omnilearn-agent">GitHub</a> • <a href="mailto:emmanuelhosea09@gmail.com">Email</a></p>
+        </footer>
+    </div>
+</body>
+</html>
