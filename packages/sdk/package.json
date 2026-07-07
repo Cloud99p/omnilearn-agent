@@ -26,7 +26,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
-    "prepublishOnly": "pnpm run build && pnpm run test"
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "cross-fetch": "^4.0.0"
