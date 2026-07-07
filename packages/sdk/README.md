@@ -1,8 +1,10 @@
-# @omnilearn/sdk
+# @cloud99p/omnilearn-sdk
 
 **Universal knowledge layer SDK for AI + blockchain systems**
 
 Connect any service to OmniLearn's distributed intelligence network. Record knowledge, search across domains, and stream real-time updates.
+
+**Published on GitHub Packages**: https://github.com/Cloud99p/omnilearn-agent/pkgs/npm/omnilearn-sdk
 
 ---
 
@@ -21,12 +23,39 @@ Connect any service to OmniLearn's distributed intelligence network. Record know
 
 ## 📦 Installation
 
+### GitHub Packages (Recommended)
+
 ```bash
-npm install @omnilearn/sdk
-# or
-pnpm add @omnilearn/sdk
-# or
-yarn add @omnilearn/sdk
+# Add GitHub Packages registry to your .npmrc
+echo "@cloud99p:registry=https://npm.pkg.github.com" >> .npmrc
+
+# Install with pnpm
+pnpm add @cloud99p/omnilearn-sdk
+
+# Or with npm
+npm install @cloud99p/omnilearn-sdk --registry=https://npm.pkg.github.com
+
+# Or with yarn
+yarn add @cloud99p/omnilearn-sdk --registry=https://npm.pkg.github.com
+```
+
+### Authentication (Required)
+
+You need a GitHub Personal Access Token (PAT) with `read:packages` scope:
+
+1. Go to https://github.com/settings/tokens
+2. Create new token with `read:packages` scope
+3. Add to your `.npmrc`:
+
+```bash
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
+```
+
+### Local Development (No Publish)
+
+```bash
+# Install from local path
+pnpm add /path/to/omnilearn-agent/packages/sdk
 ```
 
 ---

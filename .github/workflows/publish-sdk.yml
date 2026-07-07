@@ -1,0 +1,62 @@
+name: Publish SDK to GitHub Packages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@cloud99p'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build SDK
+        run: pnpm --filter @cloud99p/omnilearn-sdk run build
+      
+      - name: Update version (if workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          cd packages/sdk
+          pnpm version ${{ github.event.inputs.version }} --no-git-tag-version
+      
+      - name: Publish to GitHub Packages
+        run: pnpm --filter @cloud99p/omnilearn-sdk publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create GitHub Release (if workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: sdk-v${{ github.event.inputs.version }}
+          name: SDK v${{ github.event.inputs.version }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

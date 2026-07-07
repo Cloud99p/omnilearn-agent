@@ -1,7 +1,7 @@
 {
-  "name": "@omnilearn/sdk",
+  "name": "@cloud99p/omnilearn-sdk",
   "version": "1.0.0",
-  "description": "Universal knowledge layer SDK - Connect any service to OmniLearn's distributed intelligence network",
+  "description": "Universal knowledge layer SDK for AI + blockchain systems",
   "author": "Emmanuel Nenpan Hosea <emmanuelhosea09@gmail.com>",
   "license": "AGPL-3.0-or-later",
   "main": "dist/index.js",
@@ -60,5 +60,8 @@
   "bugs": {
     "url": "https://github.com/Cloud99p/omnilearn-agent/issues"
   },
-  "homepage": "https://github.com/Cloud99p/omnilearn-agent/tree/main/packages/sdk#readme"
+  "homepage": "https://github.com/Cloud99p/omnilearn-agent/tree/main/packages/sdk#readme",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
 }

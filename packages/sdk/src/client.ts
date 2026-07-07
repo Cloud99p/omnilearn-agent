@@ -55,7 +55,7 @@ import {
  * ```
  */
 export class OmniLearnClient {
-  private config: Required<Omit<OmnilearnClientConfig, 'serviceVersion' | 'enableLogging'>> & {
+  private config: Required<Omit<OmniLearnClientConfig, 'serviceVersion' | 'enableLogging'>> & {
     serviceVersion?: string;
     enableLogging: boolean;
   };
