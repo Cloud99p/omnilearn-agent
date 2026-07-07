@@ -26,7 +26,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
-    "prepublishOnly": "pnpm run build"
+    "prepublishOnly": "pnpm run build",
+    "test:local": "tsx test-local.ts"
   },
   "dependencies": {
     "cross-fetch": "^4.0.0"
