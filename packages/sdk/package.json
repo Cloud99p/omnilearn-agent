@@ -1,0 +1,64 @@
+{
+  "name": "@omnilearn/sdk",
+  "version": "1.0.0",
+  "description": "Universal knowledge layer SDK - Connect any service to OmniLearn's distributed intelligence network",
+  "author": "Emmanuel Nenpan Hosea <emmanuelhosea09@gmail.com>",
+  "license": "AGPL-3.0-or-later",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "prepublishOnly": "pnpm run build && pnpm run test"
+  },
+  "dependencies": {
+    "cross-fetch": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "eslint": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "tsup": "^8.0.0",
+    "typescript": "~5.9.2",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "omnilearn",
+    "knowledge-graph",
+    "ai",
+    "machine-learning",
+    "distributed-systems",
+    "hebbian-learning",
+    "semantic-search"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Cloud99p/omnilearn-agent.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/Cloud99p/omnilearn-agent/issues"
+  },
+  "homepage": "https://github.com/Cloud99p/omnilearn-agent/tree/main/packages/sdk#readme"
+}
