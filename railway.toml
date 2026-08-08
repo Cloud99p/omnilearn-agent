@@ -10,6 +10,19 @@ startCommand = "pnpm --filter @workspace/api-server run start"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 
+# Explicit healthcheck: server takes ~30-60s to boot (embedding model
+# preload + DB init), so give a generous start period and retry window.
+# Path must match the real route: /api/healthz (mounted at /api).
+# No port pinned — Railway maps healthcheck to the service's exposed port
+# (the app binds process.env.PORT which Railway injects).
+[deploy.healthcheck]
+path = "/api/healthz"
+protocol = "HTTP"
+interval = 15
+initialDelay = 60
+retries = 20
+timeout = 5
+
 # Environment variables (set in Railway dashboard):
 # DATABASE_URL - from Supabase/Neon/Railway DB
 # CLERK_SECRET_KEY - from Clerk dashboard

@@ -33,6 +33,7 @@ EXPOSE 3000
 # Start server (tsx handles TypeScript at runtime)
 CMD ["pnpm", "start"]
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+# Health check — note: Railway overrides with railway.toml healthcheck.
+# This is a fallback only; use PORT-aware check (default 3000 when unset).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=10 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000}/api/healthz || exit 1
