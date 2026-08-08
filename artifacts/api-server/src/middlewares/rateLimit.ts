@@ -113,6 +113,7 @@ export const githubLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 30, // Limit each IP to 30 GitHub requests per hour (increased for testing)
   trustProxy: false, // Disabled: Railway proxy makes all requests appear from same IP
+  skip: (req) => !req.path.startsWith("/github/"), // only throttle actual GitHub API calls
   message: {
     error: "Too many GitHub requests",
     message:

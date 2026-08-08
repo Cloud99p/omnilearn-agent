@@ -146,7 +146,7 @@ export interface SearchParams {
   /** Optional: Time range filter */
   timeRange?: TimeRange;
   
-  /** Optional: Filter by metadata fields, e.g. { meetingId: 'room-123' } */
+  /** Optional: Filter by metadata fields, e.g. { sessionId: 'session-123' } */
   metadataFilter?: RecordMetadata;
 }
 
@@ -210,7 +210,7 @@ export interface SearchResponse {
 
 
 export interface DeleteParams {
-  /** Required: Metadata filter identifying nodes to delete, e.g. { meetingId: 'room-123' } */
+  /** Required: Metadata filter identifying nodes to delete, e.g. { sessionId: 'session-123' } */
   metadataFilter: RecordMetadata;
 }
 
