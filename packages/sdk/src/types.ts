@@ -74,13 +74,19 @@ export interface RecordResponse {
   nodeId: string;
   
   /** SHA-256 hash for audit trail */
-  proofHash: string;
+  proofHash?: string;
+  
+  /** Server hash field (raw passthrough) */
+  hash?: string;
   
   /** Server timestamp */
   timestamp: string;
   
   /** Processing status */
   status: 'recorded' | 'queued' | 'failed';
+  
+  /** Success flag (V1 server) */
+  success?: boolean;
   
   /** Error message if failed */
   error?: string;
@@ -89,6 +95,9 @@ export interface RecordResponse {
 export interface BatchRecordParams {
   /** Array of records to submit */
   records: RecordParams[];
+  
+  /** Optional: Top-level metadata persisted on every node in the batch */
+  metadata?: RecordMetadata;
 }
 
 export interface BatchRecordResponse {
@@ -114,13 +123,16 @@ export interface BatchRecordResponse {
 
 export interface SearchParams {
   /** Required: Natural language search query */
-  query: string;
+  query?: string;
   
   /** Optional: Filter by service names */
   sources?: string[];
   
   /** Optional: Filter by knowledge types */
   types?: string[];
+  
+  /** Optional: Single knowledge type filter (direct server passthrough) */
+  type?: string;
   
   /** Optional: Filter by domains (e.g., 'blockchain', 'ecommerce') */
   domains?: string[];
@@ -133,6 +145,9 @@ export interface SearchParams {
   
   /** Optional: Time range filter */
   timeRange?: TimeRange;
+  
+  /** Optional: Filter by metadata fields, e.g. { meetingId: 'room-123' } */
+  metadataFilter?: RecordMetadata;
 }
 
 export interface TimeRange {
@@ -190,6 +205,24 @@ export interface SearchResponse {
   
   /** Search execution time in ms */
   searchTimeMs?: number;
+}
+
+
+
+export interface DeleteParams {
+  /** Required: Metadata filter identifying nodes to delete, e.g. { meetingId: 'room-123' } */
+  metadataFilter: RecordMetadata;
+}
+
+export interface DeleteResponse {
+  /** Whether the operation succeeded */
+  success: boolean;
+
+  /** Number of nodes deleted */
+  deleted: number;
+
+  /** Number of nodes matched by the filter */
+  matched: number;
 }
 
 // ============================================================================
@@ -261,22 +294,22 @@ export interface HeartbeatData {
 
 export interface ServiceStats {
   /** Total knowledge nodes recorded by this service */
-  nodesRecorded: number;
+  totalNodes: number;
   
   /** Total Hebbian edges created */
-  edgesCreated: number;
+  totalEdges: number;
   
-  /** Total cryptographic proofs generated */
-  proofsGenerated: number;
+  /** Total records */
+  totalRecords: number;
   
-  /** API calls made today */
-  apiCallsToday: number;
+  /** Node counts grouped by type */
+  nodesByType: Array<{ type: string; count: number }>;
   
-  /** Remaining API calls before rate limit */
-  rateLimitRemaining: number;
+  /** Recent activity entries */
+  recentActivity: any[];
   
-  /** Rate limit reset timestamp */
-  rateLimitReset: string;
+  /** Service identification */
+  serviceInfo: ServiceInfo;
 }
 
 // ============================================================================
@@ -427,9 +460,6 @@ export interface RegisterServiceResponse {
 }
 
 export interface ServiceInfo {
-  /** Service identifier */
-  serviceId: string;
-  
   /** Service name */
   name: string;
   
@@ -438,19 +468,4 @@ export interface ServiceInfo {
   
   /** Domain category */
   domain: string;
-  
-  /** Service status */
-  status: string;
-  
-  /** Rate limit configuration */
-  rateLimit: {
-    perMinute: number;
-    perDay: number;
-  };
-  
-  /** Current usage */
-  usage: {
-    callsToday: number;
-    nodesRecorded: number;
-  };
 }

@@ -4,7 +4,6 @@
  * Main client class for interacting with the OmniLearn knowledge layer
  */
 
-import fetch from 'cross-fetch';
 import {
   OmniLearnClientConfig,
   RecordParams,
@@ -13,6 +12,8 @@ import {
   BatchRecordResponse,
   SearchParams,
   SearchResponse,
+  DeleteParams,
+  DeleteResponse,
   StreamParams,
   StreamEvent,
   ServiceStats,
@@ -153,7 +154,7 @@ export class OmniLearnClient {
   async recordAndWait(params: RecordParams): Promise<RecordResponse> {
     this.log('[recordAndWait] Recording knowledge with acknowledgment', params);
     
-    const response = await this.request<RecordResponse>('POST', '/api/v1/knowledge/record', {
+    const raw = await this.request<RecordResponse>('POST', '/api/v1/knowledge/record', {
       ...params,
       metadata: {
         ...params.metadata,
@@ -162,6 +163,17 @@ export class OmniLearnClient {
         domain: this.config.domain,
       },
     });
+    
+        // V1 server returns { success, nodeId, hash, timestamp } - normalize to SDK shape
+    const response: RecordResponse = {
+      nodeId: String(raw.nodeId ?? raw.hash ?? ''),
+      proofHash: raw.hash ?? raw.proofHash,
+      hash: raw.hash,
+      timestamp: raw.timestamp,
+      status: raw.success === false ? 'failed' : 'recorded',
+      success: raw.success,
+      error: raw.error,
+    };
     
     this.log('[recordAndWait] Knowledge recorded', {
       nodeId: response.nodeId,
@@ -205,8 +217,8 @@ export class OmniLearnClient {
     
     const response = await this.request<BatchRecordResponse>(
       'POST',
-      '/api/v1/knowledge/record/batch',
-      { records }
+      '/api/v1/knowledge/batch',
+      { records, metadata: { ...params.metadata, serviceName: this.serviceName, serviceVersion: this.config.serviceVersion, domain: this.config.domain } }
     );
     
     this.log('[recordBatch] Batch recorded', {
@@ -218,7 +230,36 @@ export class OmniLearnClient {
   }
 
   // ============================================================================
+  
+  /**
+   * Delete knowledge nodes by metadata filter (privacy purge)
+   * 
+   * @param params - Delete parameters (requires metadataFilter, e.g. { meetingId: 'room-123' })
+   * @returns Delete response with deleted/matched counts
+   * 
+   * @example
+   * ```typescript
+   * const result = await client.delete({ metadataFilter: { meetingId: 'room-123' } });
+   * console.log(`Deleted ${result.deleted} nodes`);
+   * ```
+   */
+  async delete(params: DeleteParams): Promise<DeleteResponse> {
+    this.log('[delete] Deleting knowledge by metadata', params.metadataFilter);
+    
+    const response = await this.request<DeleteResponse>(
+      'POST',
+      '/api/v1/knowledge/delete',
+      { metadataFilter: params.metadataFilter }
+    );
+    
+    this.log('[delete] Delete complete', { deleted: response.deleted, matched: response.matched });
+    
+    return response;
+  }
+
+  // ============================================================================
   // KNOWLEDGE SEARCH
+  // ============================================================================
   // ============================================================================
 
   /**
@@ -244,15 +285,36 @@ export class OmniLearnClient {
   async search(params: SearchParams): Promise<SearchResponse> {
     this.log('[search] Searching knowledge graph', params);
     
-    const response = await this.request<SearchResponse>('POST', '/api/v1/knowledge/search', params);
+    // Map SDK plural types -> server singular type; pass metadataFilter through
+    const body: Record<string, unknown> = {
+      query: params.query,
+      limit: params.limit,
+      offset: params.offset,
+      type: params.type ?? params.types?.[0],
+      timeRange: params.timeRange,
+      metadataFilter: params.metadataFilter,
+    };
     
-    this.log('[search] Search complete', {
-      total: response.total,
-      returned: response.nodes.length,
-      searchTimeMs: response.searchTimeMs,
-    });
+    const response = await this.request<{ success: boolean; results: any[]; total: number; query?: string }>(
+      'POST',
+      '/api/v1/knowledge/search',
+      body
+    );
     
-    return response;
+    const nodes: KnowledgeNode[] = (response.results || []).map((r) => ({
+      id: String(r.id),
+      type: r.type,
+      data: r.data || {},
+      metadata: r.metadata || {},
+      similarity: r.similarity,
+      createdAt: r.createdAt,
+      updatedAt: r.createdAt,
+      source: 'omnilearn-v1',
+    }));
+    
+    this.log('[search] Search complete', { total: response.total, returned: nodes.length });
+    
+    return { nodes, total: response.total ?? nodes.length, hasMore: false, searchTimeMs: undefined };
   }
 
   /**
@@ -265,10 +327,7 @@ export class OmniLearnClient {
   async query(query: string, limit: number = 10): Promise<KnowledgeNode[]> {
     this.log('[query] Simple query', { query, limit });
     
-    const response = await this.request<SearchResponse>(
-      'GET',
-      `/api/v1/knowledge/search?query=${encodeURIComponent(query)}&limit=${limit}`
-    );
+    const response = await this.search({ query, limit });
     
     return response.nodes;
   }
@@ -368,7 +427,8 @@ export class OmniLearnClient {
   async getStats(): Promise<ServiceStats> {
     this.log('[getStats] Fetching service statistics');
     
-    return await this.request<ServiceStats>('GET', '/api/v1/services/me/stats');
+    const raw = await this.request<{ success: boolean; stats: ServiceStats }>('GET', '/api/v1/services/me/stats');
+    return raw.stats;
   }
 
   /**
@@ -379,7 +439,8 @@ export class OmniLearnClient {
   async getServiceInfo(): Promise<ServiceInfo> {
     this.log('[getServiceInfo] Fetching service info');
     
-    return await this.request<ServiceInfo>('GET', '/api/v1/services/me');
+    const raw = await this.request<{ success: boolean; stats: ServiceStats }>('GET', '/api/v1/services/me/stats');
+    return raw.stats.serviceInfo;
   }
 
   // ============================================================================
@@ -480,7 +541,7 @@ export class OmniLearnClient {
         clearTimeout(timeoutId);
         
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+          const errorData: any = await response.json().catch(() => ({}));
           throw new OmniLearnError(
             errorData.message || `HTTP ${response.status}: ${response.statusText}`,
             errorData.code || 'HTTP_ERROR',

@@ -27,6 +27,10 @@ export type {
   KnowledgeNode,
   SearchResponse,
   
+  // Knowledge Deletion
+  DeleteParams,
+  DeleteResponse,
+  
   // Real-time Streaming
   StreamParams,
   StreamEvent,
@@ -59,4 +63,4 @@ export { OmniLearnError } from './types';
 /**
  * SDK Version
  */
-export const VERSION = '1.0.0';
+export const VERSION = '1.1.0';
