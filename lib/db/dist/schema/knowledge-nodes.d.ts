@@ -37,6 +37,23 @@ export declare const knowledgeNodes: import("drizzle-orm/pg-core").PgTableWithCo
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        serviceId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "service_id";
+            tableName: "knowledge_nodes";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         content: import("drizzle-orm/pg-core").PgColumn<{
             name: "content";
             tableName: "knowledge_nodes";
@@ -300,6 +317,7 @@ export declare const knowledgeNodes: import("drizzle-orm/pg-core").PgTableWithCo
 }>;
 export declare const insertKnowledgeNodeSchema: z.ZodObject<{
     clerkId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    serviceId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     content: z.ZodString;
     type: z.ZodOptional<z.ZodString>;
     tags: z.ZodOptional<z.ZodArray<z.ZodString>>;

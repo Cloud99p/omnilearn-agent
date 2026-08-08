@@ -18,4 +18,5 @@ export * from "./knowledge-sync";
 export * from "./knowledge-proposals";
 export * from "./chat-patterns";
 export * from "./access-control";
+export * from "./service-registrations";
 //# sourceMappingURL=index.d.ts.map
