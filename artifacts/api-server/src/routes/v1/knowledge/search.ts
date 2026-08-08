@@ -14,6 +14,7 @@ import { knowledgeNodes } from "@workspace/db/schema";
 import { like, desc } from "drizzle-orm";
 import { retrieveRelevantNodes } from "../../../brain/index.js";
 import { optionalAuth, AuthenticatedRequest } from "../../../middlewares/optionalAuth.js";
+import { requireAuthInProduction } from "../../../middlewares/productionGuard.js";
 import { logger } from "../../../lib/logger.js";
 
 const router = Router();
@@ -24,7 +25,7 @@ function matchesMetadataFilter(node: any, filter: Record<string, unknown> | unde
   return Object.entries(filter).every(([key, value]) => metadata[key] === value);
 }
 
-router.post("/search", optionalAuth, async (req, res) => {
+router.post("/search", optionalAuth, requireAuthInProduction, async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const clerkId = authReq.clerkId;

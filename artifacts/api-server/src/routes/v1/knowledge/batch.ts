@@ -7,12 +7,13 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { knowledgeNodes } from "@workspace/db/schema";
 import { optionalAuth, AuthenticatedRequest } from "../../../middlewares/optionalAuth.js";
+import { requireAuthInProduction } from "../../../middlewares/productionGuard.js";
 import { logger } from "../../../lib/logger.js";
 import { contributeNeurons } from "../../../brain/network.js";
 
 const router = Router();
 
-router.post("/batch", optionalAuth, async (req, res) => {
+router.post("/batch", optionalAuth, requireAuthInProduction, async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const clerkId = authReq.clerkId;

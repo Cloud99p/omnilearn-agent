@@ -13,11 +13,12 @@ import { db } from "@workspace/db";
 import { knowledgeNodes } from "@workspace/db/schema";
 import { inArray, sql } from "drizzle-orm";
 import { optionalAuth, AuthenticatedRequest } from "../../../middlewares/optionalAuth.js";
+import { requireAuthInProduction } from "../../../middlewares/productionGuard.js";
 import { logger } from "../../../lib/logger.js";
 
 const router = Router();
 
-router.post("/delete", optionalAuth, async (req, res) => {
+router.post("/delete", optionalAuth, requireAuthInProduction, async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const clerkId = authReq.clerkId;

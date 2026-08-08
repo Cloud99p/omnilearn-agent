@@ -8,6 +8,7 @@ import { db } from "@workspace/db";
 import { knowledgeNodes } from "@workspace/db/schema";
 import { contributeNeurons } from "../../../brain/network.js";
 import { optionalAuth, AuthenticatedRequest } from "../../../middlewares/optionalAuth.js";
+import { requireAuthInProduction } from "../../../middlewares/productionGuard.js";
 import { logger } from "../../../lib/logger.js";
 
 const router = Router();
@@ -15,7 +16,7 @@ const router = Router();
 /**
  * POST /api/v1/knowledge/record
  */
-router.post("/record", optionalAuth, async (req, res) => {
+router.post("/record", optionalAuth, requireAuthInProduction, async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const clerkId = authReq.clerkId;
