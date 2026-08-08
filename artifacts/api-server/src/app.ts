@@ -1,4 +1,4 @@
-/**
+﻿/**
  * OmniLearn Agent
  * Copyright (c) 2026 Emmanuel Nenpan Hosea
  * Licensed under the AGPL v3 License
@@ -76,7 +76,7 @@ const app: Express = express();
 // Use 'loopback' to satisfy express-rate-limit validation while still working with Railway
 app.set("trust proxy", "loopback");
 
-// ── Background ontology reflection ────
+// â”€â”€ Background ontology reflection â”€â”€â”€â”€
 const ONTOLOGY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 function scheduleOntologyReflection() {
   runOntologyReflection().catch((err) =>
@@ -161,7 +161,13 @@ app.use(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-app.use(clerkMiddleware());
+// Clerk auth middleware - only active when Clerk keys are configured.
+// Without keys (local dev), routes still work via optionalAuth/requireAuth.
+if (process.env.CLERK_SECRET_KEY || process.env.CLERK_PUBLISHABLE_KEY) {
+  app.use(clerkMiddleware());
+} else {
+  logger.warn("CLERK keys not set - Clerk middleware disabled, running keyless (local dev)");
+}
 
 app.use("/api", router);
 app.use("/api/sync", syncRouter);

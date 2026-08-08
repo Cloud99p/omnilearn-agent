@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+﻿import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import debugRouter from "./debug.js";
 import chatRouter from "./chat/index.js";
@@ -7,6 +7,7 @@ import skillsRouter from "./skills/index.js";
 import meRouter from "./me/index.js";
 import githubRouter from "./github/index.js";
 import omniRouter from "./omni/index.js";
+import v1Router from "./v1/index.js";
 import ghostRouter from "./ghost/index.js";
 import networkRouter from "./network.js";
 import networkStatsRouter from "./network-stats.js";
@@ -33,6 +34,12 @@ import {
 } from "../middlewares/rateLimit";
 
 const router: IRouter = Router();
+
+// TEMP DEBUG: log every request entering main router
+router.use((req, res, next) => {
+  logger.info({ method: req.method, url: req.url, originalUrl: req.originalUrl }, "MAIN ROUTER ENTRY - " + req.originalUrl);
+  next();
+});
 
 // Apply rate limiters to routes
 router.use(healthRouter); // No rate limit on health checks
@@ -61,6 +68,8 @@ router.use("/omni", (req, res, next) => {
   }, "OMNI ROUTER MOUNT - Request entering");
   next();
 }, omniRouter);
+// V1 API (documented in V1_API_GUIDE.md) â€” was never mounted before
+router.use("/v1", v1Router); // defaultLimiter temporarily removed for debug
 router.use(defaultLimiter, ghostRouter); // Default limit
 router.use(defaultLimiter, networkRouter); // Default limit
 router.use(defaultLimiter, networkStatsRouter); // Network stats endpoints
@@ -77,5 +86,11 @@ router.use("/storage", defaultLimiter, storageRouter); // Storage stats
 router.use("/repositories", defaultLimiter, repositoriesRouter); // Repositories
 router.use("/documents", defaultLimiter, documentsRouter); // Document ingestion
 router.use("/access", defaultLimiter, accessControlRouter); // Access control (RBAC, teams, permissions)
+
+// DEBUG: catch-all to see what reaches the main router
+router.use((req, res, next) => {
+  logger.info({ method: req.method, url: req.url, originalUrl: req.originalUrl }, "MAIN ROUTER - no route matched");
+  next();
+});
 
 export default router;
