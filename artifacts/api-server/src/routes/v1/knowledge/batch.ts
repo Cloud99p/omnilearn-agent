@@ -16,6 +16,7 @@ router.post("/batch", optionalAuth, async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const clerkId = authReq.clerkId;
+    const service = authReq.service;
     
     const { records = [], metadata = {} } = req.body;
 
@@ -29,7 +30,7 @@ router.post("/batch", optionalAuth, async (req, res) => {
       return;
     }
 
-    logger.info({ count: records.length, clerkId }, "Batch knowledge record via v1 API");
+    logger.info({ count: records.length, clerkId, service: service?.name ?? null }, "Batch knowledge record via v1 API");
 
     const nodeIds: number[] = [];
     let failed = 0;
@@ -50,7 +51,8 @@ router.post("/batch", optionalAuth, async (req, res) => {
             tags,
             confidence: 0.85,
             clerkId: clerkId || null,
-            source: "sdk-v1-batch",
+            serviceId: service?.id ?? null,
+            source: service?.name ?? "sdk-v1-batch",
             tokens: tokenizeContent(content),
           })
           .returning();

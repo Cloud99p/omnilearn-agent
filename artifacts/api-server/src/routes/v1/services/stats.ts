@@ -16,12 +16,15 @@ router.get("/stats", optionalAuth, async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const clerkId = authReq.clerkId;
+    const service = authReq.service;
     
-    logger.info({ clerkId }, "Service stats request via v1 API");
+    logger.info({ clerkId, service: service?.name ?? null }, "Service stats request via v1 API");
 
     const nodeWhere = clerkId 
       ? sql`${knowledgeNodes.clerkId} = ${clerkId}`
-      : sql`${knowledgeNodes.clerkId} IS NULL`;
+      : service
+        ? sql`${knowledgeNodes.serviceId} = ${service.id}`
+        : sql`${knowledgeNodes.clerkId} IS NULL`;
 
     const [{ nodeCount }] = await db
       .select({ nodeCount: sql<number>`count(*)` })

@@ -13,6 +13,7 @@ import { z } from "zod/v4";
 export const knowledgeNodes = pgTable("knowledge_nodes", {
   id: serial("id").primaryKey(),
   clerkId: text("clerk_id"),
+  serviceId: text("service_id"),
   content: text("content").notNull(),
   type: text("type").notNull().default("fact"),
   tags: text("tags").array().notNull().default([]),

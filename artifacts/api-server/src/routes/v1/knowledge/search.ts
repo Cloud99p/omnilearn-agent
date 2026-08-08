@@ -28,6 +28,7 @@ router.post("/search", optionalAuth, async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const clerkId = authReq.clerkId;
+    const service = authReq.service;
 
     const { query, limit = 20, offset = 0, type, timeRange, metadataFilter } = req.body;
 
@@ -39,7 +40,7 @@ router.post("/search", optionalAuth, async (req, res) => {
       return;
     }
 
-    logger.info({ query, limit, type, metadataFilter }, "Knowledge search via v1 API");
+    logger.info({ query, limit, type, metadataFilter, service: service?.name ?? null }, "Knowledge search via v1 API");
 
     let results: any[] = [];
 
@@ -51,6 +52,7 @@ router.post("/search", optionalAuth, async (req, res) => {
         .map((node) => ({ ...node, metadata: extractMetadata(node) }))
         .filter((node) => {
           if (node.similarity <= 0.05) return false;
+          if (service && node.serviceId !== service.id) return false;
           if (type && node.type !== type) return false;
           if (!matchesMetadataFilter(node, metadataFilter)) return false;
           if (timeRange) {
@@ -80,6 +82,7 @@ router.post("/search", optionalAuth, async (req, res) => {
       results = rows
         .map((node) => ({ ...node, metadata: extractMetadata(node) }))
         .filter((node) => {
+          if (service && node.serviceId !== service.id) return false;
           if (type && node.type !== type) return false;
           if (!matchesMetadataFilter(node, metadataFilter)) return false;
           if (timeRange) {

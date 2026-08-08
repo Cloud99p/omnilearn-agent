@@ -41,6 +41,23 @@ const check = (label, ok, detail = "") => {
   if (!ok) failures++;
 };
 
+// ── Onboarding: register a NEW service via the SDK (the external-project flow) ──
+let registeredKey = "";
+try {
+  const reg = await tradeBot.registerService({
+    name: `example-service-${Date.now()}`,
+    ownerEmail: "ops@example.com",
+    description: "Generic SDK onboarding demo",
+    domain: "analytics",
+    knowledgeTypes: ["event", "note"],
+    version: "1.0.0",
+  });
+  registeredKey = reg.apiKey;
+  check("registerService", !!reg.serviceId && reg.status === "active", `serviceId=${reg.serviceId}`);
+} catch (e) {
+  check("registerService", false, String(e.message || e));
+}
+
 // ── Service A: trading bot records executions ────────────────────────────
 try {
   const batch = await tradeBot.recordBatch({

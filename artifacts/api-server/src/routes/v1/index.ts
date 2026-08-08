@@ -9,6 +9,7 @@ import knowledgeBatchRouter from "./knowledge/batch.js";
 import knowledgeSearchRouter from "./knowledge/search.js";
 import knowledgeDeleteRouter from "./knowledge/delete.js";
 import servicesStatsRouter from "./services/stats.js";
+import servicesRegisterRouter from "./services/register.js";
 import { logger } from "../../lib/logger.js";
 
 // keep: logger is used at module bottom for mount confirmation
@@ -20,6 +21,7 @@ router.use("/knowledge", knowledgeBatchRouter);
 router.use("/knowledge", knowledgeSearchRouter);
 router.use("/knowledge", knowledgeDeleteRouter);
 router.use("/services/me", servicesStatsRouter);
+router.use("/services", servicesRegisterRouter);
 
 logger.info("V1 API mounted at /api/v1");
 

@@ -19,6 +19,7 @@ router.post("/record", optionalAuth, async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const clerkId = authReq.clerkId;
+    const service = authReq.service;
     
     const { type, data, metadata = {} } = req.body;
 
@@ -43,12 +44,13 @@ router.post("/record", optionalAuth, async (req, res) => {
         tags,
         confidence: 0.85,
         clerkId: clerkId || null,
-        source: "sdk-v1",
+        serviceId: service?.id ?? null,
+        source: service?.name ?? "sdk-v1",
         tokens: tokenizeContent(content),
       })
       .returning();
 
-    logger.info({ nodeId: node.id, type, clerkId }, "Knowledge recorded via v1 API");
+    logger.info({ nodeId: node.id, type, clerkId, service: service?.name ?? null }, "Knowledge recorded via v1 API");
 
     contributeNeurons([{ content, type, tags }], "v1-api").catch(() => {});
 

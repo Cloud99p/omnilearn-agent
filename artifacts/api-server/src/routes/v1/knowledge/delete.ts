@@ -21,6 +21,7 @@ router.post("/delete", optionalAuth, async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const clerkId = authReq.clerkId;
+    const service = authReq.service;
 
     const { metadataFilter } = req.body;
 
@@ -35,15 +36,22 @@ router.post("/delete", optionalAuth, async (req, res) => {
       return;
     }
 
-    logger.info({ clerkId, metadataFilter }, "Knowledge delete via v1 API");
+    logger.info({ clerkId, service: service?.name ?? null, metadataFilter }, "Knowledge delete via v1 API");
 
     // Fetch a generous window, then filter in JS (metadata lives inside the
-    // content JSON blob) — same approach as search.ts.
+    // content JSON blob) — same approach as search.ts. When an API key is
+    // present, scope to that service's nodes only.
     const fetchLimit = 2000;
     const rows = await db
       .select()
       .from(knowledgeNodes)
-      .where(clerkId ? sql`clerk_id = ${clerkId}` : sql`TRUE`)
+      .where(
+        clerkId
+          ? sql`clerk_id = ${clerkId}`
+          : service
+            ? sql`service_id = ${service.id}`
+            : sql`TRUE`
+      )
       .limit(fetchLimit);
 
     const ids = rows
