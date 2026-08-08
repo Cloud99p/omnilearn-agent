@@ -108,6 +108,33 @@ export const skillCreateLimiter = rateLimit({
   },
 });
 
+/**
+ * Tight limiter for public onboarding endpoints (service registration).
+ * Prevents anonymous spam-registration filling the service_registrations
+ * table. Separate from defaultLimiter so keyed API traffic stays free.
+ */
+export const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20, // 20 registrations per IP per hour
+  trustProxy: true,
+  validate: { trustProxy: false },
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "Too many registrations",
+    message: "You have exceeded the registration rate limit. Please try again later.",
+    retryAfter: "3600 seconds",
+  },
+  handler: (req, res) => {
+    logger.warn({ ip: req.ip, path: req.path, method: req.method }, "Registration rate limit exceeded");
+    res.status(429).json({
+      error: "Too many registrations",
+      message: "You have exceeded the registration rate limit. Please try again later.",
+      retryAfter: "3600 seconds",
+    });
+  },
+});
+
 // Strict limit for GitHub operations (API quota protection)
 export const githubLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour

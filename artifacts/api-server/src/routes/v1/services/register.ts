@@ -10,6 +10,7 @@ import { db } from "@workspace/db";
 import { serviceRegistrations } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { optionalAuth, AuthenticatedRequest, sha256Hex } from "../../../middlewares/optionalAuth.js";
+import { registerLimiter } from "../../../middlewares/rateLimit.js";
 import { logger } from "../../../lib/logger.js";
 
 const router = Router();
@@ -25,7 +26,7 @@ function generateApiKey(): { key: string; prefix: string; hash: string } {
 }
 
 /** POST /api/v1/services/register — public (no auth): create a service + API key */
-router.post("/register", async (req, res) => {
+router.post("/register", registerLimiter, async (req, res) => {
   try {
     const body = req.body ?? {};
     const name = typeof body.name === "string" ? body.name.trim().toLowerCase() : "";
