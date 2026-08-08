@@ -64,3 +64,6 @@ logs
 attached_assets/
 attached_assets/
 artifacts/omnilearn/public/opengraph.jpg
+
+# Local Supabase connection (never commit)
+.env.supabase
