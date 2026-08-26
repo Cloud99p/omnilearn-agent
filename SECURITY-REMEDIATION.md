@@ -53,6 +53,8 @@ Consolidated single override block forcing patched versions:
 - `vitest`: `^1.0.0` → `^3.2.6` (dev toolchain, transitive advisory fixes across `packages/sdk`, `packages/network-hierarchy`, `artifacts/api-server`)
 - `vite`: `^7.3.2` → `^7.3.5` (catalog bump)
 - `esbuild`: `^0.27.3` → `^0.28.1` (api-server; 0.28.x also already resolved in lock)
+- `esbuild` (root override): `^0.28.1` — closes 2 dev-path advisories (`tsx`, `drizzle-kit/@esbuild-kit` chains) by forcing the patched 0.28.x line
+- `minimatch` (root override): `^9.0.7` — closes 3 ReDoS advisories on the `@typescript-eslint` dev chain (resolves to 9.0.9)
 
 ## Accepted Risks (documented, cannot patch)
 
@@ -70,7 +72,8 @@ Consolidated single override block forcing patched versions:
 ## Verification
 - `pnpm install`: clean resolution (pnpm 10.33.2), all 12 workspace projects.
 - `pnpm audit --prod`: reduced to the 12 accepted advisories above.
-- Typecheck (`tsc --noEmit`, api-server): **no new errors introduced** — all remaining errors in touched files are pre-existing legacy code issues (confirmed via baseline stash comparison).
+- `pnpm audit` (incl. dev): reduced from 17 to the same 12 accepted advisories (closed `esbuild` low/mod dev paths + 3 `minimatch` ReDoS dev paths).
+- Typecheck (`tsc --noEmit`, api-server): **no new errors introduced** — 162 total, all pre-existing legacy code issues (confirmed via baseline stash comparison); `document-tools.ts` shows only the 4 pre-existing errors.
 - ExcelJS runtime smoke test: **PASS**.
 
 ## Rollback
