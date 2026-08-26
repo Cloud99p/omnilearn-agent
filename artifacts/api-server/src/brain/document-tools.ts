@@ -8,7 +8,7 @@ import fs from "fs/promises";
 import path from "path";
 import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
-import { read, utils } from "xlsx";
+import ExcelJS from "exceljs";
 import { createWorker } from "tesseract.js";
 import { logger } from "../lib/logger.js";
 
@@ -732,23 +732,57 @@ export async function extractTextFromFile(
         // Use xlsx (pure JavaScript, no system deps)
         try {
           const buffer = await fs.readFile(filePath);
-          const workbook = read(buffer, { type: "buffer" });
+          const workbook = new ExcelJS.Workbook();
+          // exceljs bundles its own @types/node, so its Buffer type conflicts
+          // with the workspace's newer generic Buffer<ArrayBufferLike>.
+          // Cast through never to bridge the legacy lib boundary.
+          await workbook.xlsx.load(buffer as never).catch(() => {
+            throw new Error("invalid xlsx/xls workbook");
+          });
           const texts: string[] = [];
-          for (const sheetName of workbook.SheetNames) {
-            const sheet = workbook.Sheets[sheetName];
-            const json = utils.sheet_to_json(sheet, { header: 1 });
-            texts.push(`=== ${sheetName} ===`);
-            for (const row of json) {
-              texts.push(row.map((c: any) => c ?? "").join("\t"));
-            }
-          }
+          workbook.eachSheet((sheet) => {
+            texts.push(`=== ${sheet.name} ===`);
+            sheet.eachRow({ includeEmpty: true }, (row) => {
+              // row.values[0] is the row number; values begin at index 1.
+              // row.values is a messy CellValue union (rich text, hyperlink,
+              // formula, shared-formula, callable) - coerce to unknown[] first.
+              const cellValues = (row.values ?? []) as unknown as unknown[];
+              const cells = cellValues.slice(1).map((v: unknown): string => {
+                if (v === null || v === undefined) return "";
+                if (typeof v === "function") return "";
+                if (Array.isArray(v)) {
+                  // Rich text fragments: [{ text }, { text }, ...]
+                  return v
+                    .map((part: unknown) =>
+                      part && typeof part === "object" && "text" in part
+                        ? String((part as { text: unknown }).text)
+                        : String(part),
+                    )
+                    .join("");
+                }
+                if (typeof v === "object") {
+                  const o = v as Record<string, unknown>;
+                  if ("richText" in o) {
+                    return (o.richText as Array<{ text?: unknown }>).map((p) => String(p.text ?? "")).join("");
+                  }
+                  if ("text" in o) return String(o.text);
+                  if ("hyperlink" in o) return String(o.text ?? o.hyperlink ?? "");
+                  if ("result" in o) return String(o.result ?? "");
+                  if ("error" in o) return `#${String(o.error)}`;
+                }
+                return String(v);
+              });
+              while (cells.length && cells[cells.length - 1] === "") cells.pop();
+              texts.push(cells.join("\t"));
+            });
+          });
           return {
             text: texts.join("\n"),
-            method: "xlsx",
+            method: "exceljs",
             metadata: { originalName, mimeType, type: "excel" },
           };
         } catch (err) {
-          logger.warn({ err }, "xlsx extraction failed");
+          logger.warn({ err }, "exceljs extraction failed");
           return {
             text: `[Excel file "${originalName}" - extraction failed]`,
             method: "binary",
