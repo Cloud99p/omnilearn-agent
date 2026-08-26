@@ -43,6 +43,16 @@ Consolidated single override block forcing patched versions:
 - `body-parser`: `^2.3.0` (invalid-limit DoS)
 - `uuid`: `^11.1.1` (buffer bounds check)
 - `qs`: `^6.15.2` (stringify DoS)
+- `js-yaml`: `^4.3.1` (prototype pollution / code-exec on unsafe load)
+- `fast-uri`: `^3.1.5` (ReDoS / parser DoS)
+- `linkify-it`: `^5.0.2` (ReDoS)
+- `markdown-it`: `^14.2.0` (ReDoS)
+- `postcss`: `^8.5.23` (ReDoS / line-ending DoS)
+- `nanoid`: `^3.3.18` (predictable IDs via non-crypto RNG)
+- `@babel/core`: `^7.29.6` (ReDoS on template literal parsing)
+- `vitest`: `^1.0.0` → `^3.2.6` (dev toolchain, transitive advisory fixes across `packages/sdk`, `packages/network-hierarchy`, `artifacts/api-server`)
+- `vite`: `^7.3.2` → `^7.3.5` (catalog bump)
+- `esbuild`: `^0.27.3` → `^0.28.1` (api-server; 0.28.x also already resolved in lock)
 
 ## Accepted Risks (documented, cannot patch)
 
