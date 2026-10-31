@@ -1,12 +1,8 @@
 FROM node:24-slim
 
 # Cache bust: 2026-06-12 route fix
-# Pin pnpm to the major that wrote pnpm-lock.yaml (lockfileVersion 9.0 -> pnpm 9).
-# Unpinned `npm install -g pnpm` pulls pnpm 10, which refuses to run because
-# package.json still carries a `pnpm.overrides` field it no longer reads
-# (ERR_PNPM_VERIFY_DEPS_BEFORE_RUN). Pinning restores the build without
-# re-resolving a single dependency: same lockfile, same tree, same overrides.
-RUN npm install -g pnpm@9
+# Install pnpm
+RUN npm install -g pnpm
 
 # Install Python/pip for markitdown
 RUN apt-get update && apt-get install -y python3 python3-pip --no-install-recommends && rm -rf /var/lib/apt/lists/*
