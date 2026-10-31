@@ -39,33 +39,37 @@ router.post("/delete", optionalAuth, requireAuthInProduction, async (req, res) =
 
     logger.info({ clerkId, service: service?.name ?? null, metadataFilter }, "Knowledge delete via v1 API");
 
-    // Fetch a generous window, then filter in JS (metadata lives inside the
-    // content JSON blob) — same approach as search.ts. When an API key is
-    // present, scope to that service's nodes only.
-    const fetchLimit = 2000;
-    const rows = await db
-      .select()
-      .from(knowledgeNodes)
-      .where(
-        clerkId
-          ? sql`clerk_id = ${clerkId}`
-          : service
-            ? sql`service_id = ${service.id}`
-            : sql`TRUE`
-      )
-      .limit(fetchLimit);
+    // Match metadata IN POSTGRES.
+    //
+    // The previous implementation fetched an arbitrary, unordered window
+    // (LIMIT 2000) and filtered in JS afterwards. Metadata lives inside the
+    // `content` JSON blob, so any matching node outside that window was
+    // invisible to the filter and the purge silently reported deleted: 0
+    // while leaving transcript data in the graph. Correctness also depended
+    // on which rows Postgres happened to return first.
+    //
+    // The `@>` containment operator does the matching in the database, so
+    // there is no window and no silent miss: a scoped delete either removes
+    // every matching node or fails loudly.
+    //
+    // Guarded cast: `content` is a text column, and a row that is not valid
+    // JSON would throw on a plain ::jsonb cast, 500-ing the whole request.
+    // CASE keeps non-JSON rows as '{}' so they simply never match.
+    const safeContent = sql`(CASE WHEN ${knowledgeNodes.content} ~ '^\\s*\\{' THEN ${knowledgeNodes.content}::jsonb ELSE '{}'::jsonb END)`;
+    const metadataMatch = sql`${safeContent} -> 'metadata' @> ${JSON.stringify(metadataFilter)}::jsonb`;
 
-    const ids = rows
-      .filter((node) => {
-        try {
-          const parsed = JSON.parse(node.content);
-          const metadata = parsed.metadata || {};
-          return filterKeys.every((key) => metadata[key] === metadataFilter[key]);
-        } catch {
-          return false;
-        }
-      })
-      .map((node) => node.id);
+    const scopeCondition = clerkId
+      ? sql`clerk_id = ${clerkId}`
+      : service
+        ? sql`service_id = ${service.id}`
+        : sql`TRUE`;
+
+    const rows = await db
+      .select({ id: knowledgeNodes.id })
+      .from(knowledgeNodes)
+      .where(sql`${scopeCondition} AND ${metadataMatch}`);
+
+    const ids = rows.map((node) => node.id);
 
     let deleted = 0;
     if (ids.length > 0) {
